@@ -39,6 +39,8 @@ const gint STDIN_FD = 3;
 const gint STDOUT_FD = 4;
 const gint ERROR_EXIT_CODE = 127;
 const gint BORDER_WIDTH = 2;
+const gint WIDTH_PC = 50;
+const gint HEIGHT_PC = 50;
 
 #define GET_ENV(x) (getenv("POPUP_TERM_" x))
 #define TRY_OR_DIE(x, y) if (x == -1) { perror(y); exit(ERROR_EXIT_CODE); }
@@ -76,12 +78,20 @@ int main(int argc, char *argv[])
     GtkWidget *window;
     GtkWidget *terminal;
     GdkScreen *screen;
-    GError *error;
+    GError *error = NULL;
 
     TRY_OR_DIE( dup2(0, STDIN_FD), "Could not copy stdin" );
     TRY_OR_DIE( dup2(1, STDOUT_FD), "Could not copy stdout" );
 
     gtk_init(&argc, &argv);
+
+    // get width/height % from env vars
+    char* w_pc_str = GET_ENV("WIDTH");
+    char* h_pc_str = GET_ENV("HEIGHT");
+    int w_pc = (w_pc_str ? atoi(w_pc_str) : -1);
+    int h_pc = (h_pc_str ? atoi(h_pc_str) : -1);
+    w_pc = (10 <= w_pc && w_pc <= 100 ? w_pc : WIDTH_PC);
+    h_pc = (10 <= h_pc && h_pc <= 100 ? h_pc : HEIGHT_PC);
 
     window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     g_signal_connect(window, "delete-event", gtk_main_quit, NULL);
@@ -89,10 +99,11 @@ int main(int argc, char *argv[])
     gtk_window_set_type_hint(GTK_WINDOW(window), GDK_WINDOW_TYPE_HINT_DIALOG);
     gtk_container_set_border_width(GTK_CONTAINER(window), BORDER_WIDTH);
 
+    // set window width/height
     screen = gtk_window_get_screen(GTK_WINDOW(window));
     gint width = gdk_screen_get_width(screen);
     gint height = gdk_screen_get_height(screen);
-    gtk_window_set_default_size(GTK_WINDOW(window), width/2, height/2);
+    gtk_window_set_default_size(GTK_WINDOW(window), width*w_pc/100, height*h_pc/100);
 
     terminal = vte_terminal_new();
     g_signal_connect(terminal, "child-exited", G_CALLBACK(term_exited), &status);
