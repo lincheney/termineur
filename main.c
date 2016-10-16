@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <errno.h>
 #include <gtk/gtk.h>
 #include <gdk/gdk.h>
 #include <vte/vte.h>
@@ -35,6 +36,7 @@ const GdkRGBA palette[PALETTE_SIZE] = {
 };
 
 char *DEFAULT_ARGS[] = {"bash"};
+int stderr_copy = 2;
 const gint STDIN_FD = 3;
 const gint STDOUT_FD = 4;
 const gint ERROR_EXIT_CODE = 127;
@@ -43,7 +45,14 @@ const gint WIDTH_PC = 50;
 const gint HEIGHT_PC = 50;
 
 #define GET_ENV(x) (getenv("POPUP_TERM_" x))
-#define TRY_OR_DIE(x, y) if (x == -1) { perror(y); exit(ERROR_EXIT_CODE); }
+int try_or_die(int value, const char* msg)
+{
+    if (value == -1 ) {
+        dprintf(stderr_copy, "%s: %s\n", msg, strerror(errno));
+        exit(ERROR_EXIT_CODE);
+    }
+    return value;
+}
 
 void term_exited(VteTerminal* terminal, gint status, gint* dest)
 {
@@ -61,8 +70,8 @@ void child_setup(void* data)
     const char* reset_env = GET_ENV("RESET_FD");
 
     if (reset_env != NULL && strncmp(reset_env, "1", 1) == 0) {
-        TRY_OR_DIE( dup2(STDIN_FD, 0), "Could not copy stdin" );
-        TRY_OR_DIE( dup2(STDOUT_FD, 1), "Could not copy stdout" );
+        try_or_die( dup2(STDIN_FD, 0), "Could not copy stdin" );
+        try_or_die( dup2(STDOUT_FD, 1), "Could not copy stdout" );
     }
 
     flags = fcntl(STDIN_FD, F_GETFD);
@@ -80,8 +89,9 @@ int main(int argc, char *argv[])
     GdkScreen *screen;
     GError *error = NULL;
 
-    TRY_OR_DIE( dup2(0, STDIN_FD), "Could not copy stdin" );
-    TRY_OR_DIE( dup2(1, STDOUT_FD), "Could not copy stdout" );
+    try_or_die( dup2(0, STDIN_FD), "Could not copy stdin" );
+    try_or_die( dup2(1, STDOUT_FD), "Could not copy stdout" );
+    stderr_copy = try_or_die( dup(2), "Could not copy stderr" );
 
     gtk_init(&argc, &argv);
 
