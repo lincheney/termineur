@@ -1,6 +1,7 @@
 #include <sys/wait.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include <gtk/gtk.h>
 #include <gdk/gdk.h>
 #include <vte/vte.h>
@@ -33,13 +34,14 @@ const GdkRGBA palette[PALETTE_SIZE] = {
     { 1., 1., 1., 1. }  // white
 };
 
-#define GET_ENV(x) (getenv("POPUP_TERM_" x))
-
 char *DEFAULT_ARGS[] = {"bash"};
 const gint STDIN_FD = 3;
 const gint STDOUT_FD = 4;
 const gint ERROR_EXIT_CODE = 127;
 const gint BORDER_WIDTH = 2;
+
+#define GET_ENV(x) (getenv("POPUP_TERM_" x))
+#define TRY_OR_DIE(x, y) if (x == -1) { perror(y); exit(ERROR_EXIT_CODE); }
 
 void term_exited(VteTerminal* terminal, gint status, gint* dest)
 {
@@ -57,8 +59,8 @@ void child_setup(void* data)
     const char* reset_env = GET_ENV("RESET_FD");
 
     if (reset_env != NULL && strncmp(reset_env, "1", 1) == 0) {
-        dup2(STDIN_FD, 0);
-        dup2(STDOUT_FD, 1);
+        TRY_OR_DIE( dup2(STDIN_FD, 0), "Could not copy stdin" );
+        TRY_OR_DIE( dup2(STDOUT_FD, 1), "Could not copy stdout" );
     }
 
     flags = fcntl(STDIN_FD, F_GETFD);
@@ -74,9 +76,10 @@ int main(int argc, char *argv[])
     GtkWidget *window;
     GtkWidget *terminal;
     GdkScreen *screen;
+    GError *error;
 
-    dup2(0, STDIN_FD);
-    dup2(1, STDOUT_FD);
+    TRY_OR_DIE( dup2(0, STDIN_FD), "Could not copy stdin" );
+    TRY_OR_DIE( dup2(1, STDOUT_FD), "Could not copy stdout" );
 
     gtk_init(&argc, &argv);
 
@@ -103,7 +106,7 @@ int main(int argc, char *argv[])
         args = argv + 1;
     }
 
-    vte_terminal_spawn_sync(
+    if (! vte_terminal_spawn_sync(
             VTE_TERMINAL(terminal),
             VTE_PTY_DEFAULT, //pty flags
             NULL, // pwd
@@ -114,8 +117,12 @@ int main(int argc, char *argv[])
             NULL, // child setup data
             NULL, // child pid
             NULL, // cancellable
-            NULL // error
-        );
+            &error // error
+    ) ) {
+        fprintf(stderr, "Could not start terminal: %s\n", error->message);
+        return ERROR_EXIT_CODE;
+    }
+
     gtk_container_add(GTK_CONTAINER(window), terminal);
 
     gtk_widget_show_all(window);
