@@ -35,7 +35,7 @@ const GdkRGBA palette[PALETTE_SIZE] = {
     { 1., 1., 1., 1. }  // white
 };
 
-char *DEFAULT_ARGS[] = {"bash"};
+#define DEFAULT_SHELL "/bin/sh"
 int stderr_copy = 2;
 const gint STDIN_FD = 3;
 const gint STDOUT_FD = 4;
@@ -120,14 +120,19 @@ int main(int argc, char *argv[])
     vte_terminal_set_cursor_blink_mode(VTE_TERMINAL(terminal), VTE_CURSOR_BLINK_OFF);
     vte_terminal_set_colors(VTE_TERMINAL(terminal), &fg, &bg, palette, PALETTE_SIZE);
 
-    char **args = NULL;
-    if (argc <= 1) {
-        args = DEFAULT_ARGS;
-    } else {
+    char **args;
+    char *default_args[] = {NULL, NULL};
+    char *user_shell = NULL;
+
+    if (argc > 1) {
         args = argv + 1;
+    } else {
+        user_shell = vte_get_user_shell();
+        default_args[0] = user_shell ? user_shell : DEFAULT_SHELL;
+        args = default_args;
     }
 
-    if (! vte_terminal_spawn_sync(
+    gboolean success = vte_terminal_spawn_sync(
             VTE_TERMINAL(terminal),
             VTE_PTY_DEFAULT, //pty flags
             NULL, // pwd
@@ -139,9 +144,12 @@ int main(int argc, char *argv[])
             NULL, // child pid
             NULL, // cancellable
             &error // error
-    ) ) {
+    );
+    free(user_shell);
+
+    if (! success) {
         fprintf(stderr, "Could not start terminal: %s\n", error->message);
-        return ERROR_EXIT_CODE;
+        exit(ERROR_EXIT_CODE);
     }
 
     gtk_container_add(GTK_CONTAINER(window), terminal);
@@ -149,5 +157,5 @@ int main(int argc, char *argv[])
     gtk_widget_show_all(window);
     gtk_main();
 
-    return status;
+    exit(status);
 }
