@@ -81,6 +81,22 @@ void child_setup(void* data)
     fcntl(STDOUT_FD, F_SETFD, flags & ~FD_CLOEXEC);
 }
 
+gboolean key_pressed(GtkWidget* terminal, GdkEventKey* event, gpointer data)
+{
+    guint modifiers = event->state & gtk_accelerator_get_default_mod_mask();
+    if (modifiers & (GDK_CONTROL_MASK|GDK_SHIFT_MASK)) {
+        switch (event->keyval) {
+            case GDK_KEY_V:
+                vte_terminal_paste_clipboard(VTE_TERMINAL(terminal));
+                return TRUE;
+            case GDK_KEY_C:
+                vte_terminal_copy_clipboard(VTE_TERMINAL(terminal));
+                return TRUE;
+        }
+    }
+    return FALSE;
+}
+
 int main(int argc, char *argv[])
 {
     int status = 0;
@@ -152,6 +168,7 @@ int main(int argc, char *argv[])
         exit(ERROR_EXIT_CODE);
     }
 
+    g_signal_connect(terminal, "key-press-event", G_CALLBACK(key_pressed), NULL);
     gtk_container_add(GTK_CONTAINER(window), terminal);
 
     gtk_widget_show_all(window);
