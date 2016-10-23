@@ -84,7 +84,7 @@ void child_setup(void* data)
 gboolean key_pressed(GtkWidget* terminal, GdkEventKey* event, gpointer data)
 {
     guint modifiers = event->state & gtk_accelerator_get_default_mod_mask();
-    if (modifiers & (GDK_CONTROL_MASK|GDK_SHIFT_MASK)) {
+    if ((modifiers & GDK_CONTROL_MASK) && (modifiers & GDK_SHIFT_MASK)) {
         switch (event->keyval) {
             case GDK_KEY_V:
                 vte_terminal_paste_clipboard(VTE_TERMINAL(terminal));
