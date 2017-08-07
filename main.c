@@ -139,7 +139,8 @@ int main(int argc, char *argv[])
     // set window width/height
     screen = gtk_window_get_screen(GTK_WINDOW(window));
     display = gdk_screen_get_display(screen);
-    monitor = gdk_display_get_monitor_at_window(display, GDK_WINDOW(window));
+    gtk_widget_realize(window);
+    monitor = gdk_display_get_monitor_at_window(display, gtk_widget_get_window(window));
     gdk_monitor_get_geometry(monitor, &geometry);
     gtk_window_set_default_size(GTK_WINDOW(window), geometry.width*w_pc/100, geometry.height*h_pc/100);
 
