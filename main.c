@@ -103,6 +103,9 @@ int main(int argc, char *argv[])
     GtkWidget *window;
     GtkWidget *terminal;
     GdkScreen *screen;
+    GdkDisplay *display;
+    GdkMonitor *monitor;
+    GdkRectangle geometry;
     GError *error = NULL;
 
     try_or_die( dup2(0, STDIN_FD), "Could not copy stdin" );
@@ -127,9 +130,10 @@ int main(int argc, char *argv[])
 
     // set window width/height
     screen = gtk_window_get_screen(GTK_WINDOW(window));
-    gint width = gdk_screen_get_width(screen);
-    gint height = gdk_screen_get_height(screen);
-    gtk_window_set_default_size(GTK_WINDOW(window), width*w_pc/100, height*h_pc/100);
+    display = gdk_screen_get_display(screen);
+    monitor = gdk_display_get_monitor_at_window(display, window);
+    gdk_monitor_get_geometry(monitor, &geometry);
+    gtk_window_set_default_size(GTK_WINDOW(window), geometry.width*w_pc/100, geometry.height*h_pc/100);
 
     terminal = vte_terminal_new();
     g_signal_connect(terminal, "child-exited", G_CALLBACK(term_exited), &status);
