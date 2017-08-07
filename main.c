@@ -97,6 +97,14 @@ gboolean key_pressed(GtkWidget* terminal, GdkEventKey* event, gpointer data)
     return FALSE;
 }
 
+void term_spawn_callback(GtkWidget* terminal, GPid pid, GError *error, gpointer user_data)
+{
+    if (error) {
+        fprintf(stderr, "Could not start terminal: %s\n", error->message);
+        exit(ERROR_EXIT_CODE);
+    }
+}
+
 int main(int argc, char *argv[])
 {
     int status = 0;
@@ -152,7 +160,7 @@ int main(int argc, char *argv[])
         args = default_args;
     }
 
-    gboolean success = vte_terminal_spawn_sync(
+    vte_terminal_spawn_async(
             VTE_TERMINAL(terminal),
             VTE_PTY_DEFAULT, //pty flags
             NULL, // pwd
@@ -161,16 +169,13 @@ int main(int argc, char *argv[])
             G_SPAWN_SEARCH_PATH | G_SPAWN_LEAVE_DESCRIPTORS_OPEN, // g spawn flags
             child_setup, // child setup
             NULL, // child setup data
-            NULL, // child pid
+            NULL, // child setup data destroy
+            -1, // timeout
             NULL, // cancellable
-            &error // error
+            (VteTerminalSpawnAsyncCallback) term_spawn_callback, // callback
+            NULL // user data
     );
     free(user_shell);
-
-    if (! success) {
-        fprintf(stderr, "Could not start terminal: %s\n", error->message);
-        exit(ERROR_EXIT_CODE);
-    }
 
     g_signal_connect(terminal, "key-press-event", G_CALLBACK(key_pressed), NULL);
     gtk_container_add(GTK_CONTAINER(window), terminal);
