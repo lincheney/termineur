@@ -1,6 +1,6 @@
 CC=gcc
 DEPS=gtk+-3.0 vte-2.91 gdk-3.0
-CFLAGS=-O3 $(shell pkg-config --cflags $(DEPS))
+CFLAGS=-O3 $(shell pkg-config --cflags $(DEPS)) -Wall
 LIBS=$(shell pkg-config --libs $(DEPS))
 
 %.o: %.c
