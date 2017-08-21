@@ -37,8 +37,8 @@ const GdkRGBA palette[PALETTE_SIZE] = {
 
 #define DEFAULT_SHELL "/bin/sh"
 int stderr_copy = 2;
-const gint STDIN_FD = 3;
-const gint STDOUT_FD = 4;
+int STDIN_FD;
+int STDOUT_FD;
 const gint ERROR_EXIT_CODE = 127;
 const gint BORDER_WIDTH = 2;
 const gint WIDTH_PC = 50;
@@ -114,10 +114,9 @@ int main(int argc, char *argv[])
     GdkDisplay *display;
     GdkMonitor *monitor;
     GdkRectangle geometry;
-    GError *error = NULL;
 
-    try_or_die( dup2(0, STDIN_FD), "Could not copy stdin" );
-    try_or_die( dup2(1, STDOUT_FD), "Could not copy stdout" );
+    STDIN_FD = try_or_die( dup(0), "Could not copy stdin" );
+    STDOUT_FD = try_or_die( dup(1), "Could not copy stdout" );
     stderr_copy = try_or_die( dup(2), "Could not copy stderr" );
 
     gtk_init(&argc, &argv);
@@ -161,12 +160,20 @@ int main(int argc, char *argv[])
         args = default_args;
     }
 
+    gchar** env = NULL;
+    char buffer[4];
+    buffer[0] = '\0';
+    try_or_die( snprintf(buffer, sizeof(buffer), "%i", STDIN_FD), "unable to print to buffer" );
+    env = g_environ_setenv(env, "POPUP_TERM_STDIN_FD", buffer, 1);
+    try_or_die( snprintf(buffer, sizeof(buffer), "%i", STDOUT_FD), "unable to print to buffer" );
+    env = g_environ_setenv(env, "POPUP_TERM_STDOUT_FD", buffer, 1);
+
     vte_terminal_spawn_async(
             VTE_TERMINAL(terminal),
             VTE_PTY_DEFAULT, //pty flags
             NULL, // pwd
             args, // args
-            NULL, // env
+            env, // env
             G_SPAWN_SEARCH_PATH | G_SPAWN_LEAVE_DESCRIPTORS_OPEN, // g spawn flags
             child_setup, // child setup
             NULL, // child setup data
@@ -177,6 +184,7 @@ int main(int argc, char *argv[])
             NULL // user data
     );
     free(user_shell);
+    g_strfreev(env);
 
     g_signal_connect(terminal, "key-press-event", G_CALLBACK(key_pressed), NULL);
     gtk_container_add(GTK_CONTAINER(window), terminal);
