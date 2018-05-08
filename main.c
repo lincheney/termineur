@@ -16,7 +16,9 @@ const gint ERROR_EXIT_CODE = 127;
 #define GET_ENV(x) (getenv("POPUP_TERM_" x))
 
 #define PALETTE_SIZE (16)
-GdkRGBA palette[PALETTE_SIZE] = {
+GdkRGBA palette[PALETTE_SIZE+2] = {
+    { 0., 0., 0., 1. }, // background
+    { 1., 1., 1., 1. }, // foreground
     { 0., 0., 0., 1. }, // black
     { .5, 0., 0., 1. }, // red
     { 0., .5, 0., 1. }, // green
@@ -32,7 +34,7 @@ GdkRGBA palette[PALETTE_SIZE] = {
     { 0., 0., 1., 1. }, // light blue
     { 1., 0., 1., 1. }, // light magenta
     { 0., 1., 1., 1. }, // light cyan
-    { 1., 1., 1., 1. }  // white
+    { 1., 1., 1., 1. }, // white
 };
 
 void term_exited(VteTerminal* terminal, gint status, gint* dest)
@@ -95,7 +97,7 @@ void load_config(GtkWidget* terminal, const char* filename) {
 
 #define TRY_SET_PALETTE_COL(n) \
     if (strcmp(line, "col" #n) == 0) { \
-        gdk_rgba_parse(palette+(n), value); \
+        gdk_rgba_parse(palette+2+(n), value); \
         continue; \
     }
 
@@ -115,6 +117,70 @@ void load_config(GtkWidget* terminal, const char* filename) {
         TRY_SET_PALETTE_COL(13);
         TRY_SET_PALETTE_COL(14);
         TRY_SET_PALETTE_COL(15);
+
+        if (strcmp(line, "background") == 0) {
+            gdk_rgba_parse(palette, value);
+            continue;
+        }
+
+        if (strcmp(line, "foreground") == 0) {
+            gdk_rgba_parse(palette+1, value);
+            continue;
+        }
+
+        if (strcmp(line, "cursor-blink-mode") == 0) {
+            int attr =
+                strcmp(value, "SYSTEM") == 0 ?
+                    VTE_CURSOR_BLINK_SYSTEM :
+                strcmp(value, "ON") == 0 ?
+                    VTE_CURSOR_BLINK_ON :
+                strcmp(value, "OFF") == 0 ?
+                    VTE_CURSOR_BLINK_OFF :
+                    -1;
+            if (attr != -1) g_object_set(terminal, line, attr, NULL);
+            continue;
+        }
+
+        if (strcmp(line, "cursor-shape") == 0) {
+            int attr =
+                strcmp(value, "BLOCK") == 0 ?
+                    VTE_CURSOR_SHAPE_BLOCK :
+                strcmp(value, "IBEAM") == 0 ?
+                    VTE_CURSOR_SHAPE_IBEAM :
+                strcmp(value, "UNDERLINE") == 0 ?
+                    VTE_CURSOR_SHAPE_UNDERLINE :
+                    -1;
+            if (attr != -1) g_object_set(terminal, line, attr, NULL);
+            continue;
+        }
+
+        if (strcmp(line, "encoding") == 0) {
+            g_object_set(terminal, line, value, NULL);
+            continue;
+        }
+
+        if (strcmp(line, "font") == 0) {
+            PangoFontDescription* font = pango_font_description_from_string(value);
+            g_object_set(terminal, "font-desc", font, NULL);
+            continue;
+        }
+
+        if (strcmp(line, "font-scale") == 0) {
+            g_object_set(terminal, line, strtod(value, NULL), NULL);
+            continue;
+        }
+
+#define TRY_SET_INT_PROP(name) \
+    if (strcmp(line, name) == 0) { \
+        g_object_set(terminal, line, atoi(value), NULL); \
+        continue; \
+    }
+
+        TRY_SET_INT_PROP("pointer-autohide")
+        TRY_SET_INT_PROP("rewrap-on-resize")
+        TRY_SET_INT_PROP("scroll-on-keystroke")
+        TRY_SET_INT_PROP("scroll-on-output")
+        TRY_SET_INT_PROP("scrollback-lines")
     }
 
     fclose(config);
@@ -138,7 +204,7 @@ int main(int argc, char *argv[])
     vte_terminal_set_cursor_blink_mode(VTE_TERMINAL(terminal), VTE_CURSOR_BLINK_OFF);
 
     // populate palette
-    vte_terminal_set_colors(VTE_TERMINAL(terminal), NULL, NULL, palette, PALETTE_SIZE);
+    vte_terminal_set_colors(VTE_TERMINAL(terminal), palette+1, palette, palette+2, PALETTE_SIZE);
 
     char **args;
     char *default_args[] = {NULL, NULL};
@@ -170,7 +236,6 @@ int main(int argc, char *argv[])
     free(user_shell);
 
     g_signal_connect(terminal, "key-press-event", G_CALLBACK(key_pressed), NULL);
-    g_object_set(terminal, "scrollback-lines", 0, NULL);
     gtk_container_add(GTK_CONTAINER(window), terminal);
 
     gtk_widget_show_all(window);
