@@ -47,17 +47,31 @@ void term_exited(VteTerminal* terminal, gint status, gint* dest)
     gtk_main_quit();
 }
 
+typedef struct {
+    char* name;
+    guint key;
+    GdkModifierType modifiers;
+    void(*callback)(VteTerminal*);
+} KeyCombo;
+
+void copy_clipboard(VteTerminal* terminal) {
+    vte_terminal_copy_clipboard_format(terminal, VTE_FORMAT_TEXT);
+}
+
+KeyCombo keyboard_shortcuts[] = {
+    {"paste-clipboard", 0, 0, vte_terminal_paste_clipboard},
+    {"copy-clipboard",  0, 0, copy_clipboard},
+};
+
 gboolean key_pressed(GtkWidget* terminal, GdkEventKey* event, gpointer data)
 {
     guint modifiers = event->state & gtk_accelerator_get_default_mod_mask();
-    if ((modifiers & GDK_CONTROL_MASK) && (modifiers & GDK_SHIFT_MASK)) {
-        switch (event->keyval) {
-            case GDK_KEY_V:
-                vte_terminal_paste_clipboard(VTE_TERMINAL(terminal));
-                return TRUE;
-            case GDK_KEY_C:
-                vte_terminal_copy_clipboard_format(VTE_TERMINAL(terminal), VTE_FORMAT_TEXT);
-                return TRUE;
+    for (int i = 0; i < sizeof(keyboard_shortcuts)/sizeof(KeyCombo); i++) {
+        KeyCombo* combo = keyboard_shortcuts+i;
+        printf("%i %i\n", event->keyval, modifiers);
+        if (combo->key == event->keyval && combo->modifiers == modifiers) {
+            combo->callback(VTE_TERMINAL(terminal));
+            return TRUE;
         }
     }
     return FALSE;
@@ -181,6 +195,17 @@ void load_config(GtkWidget* terminal, const char* filename) {
         TRY_SET_INT_PROP("scroll-on-keystroke")
         TRY_SET_INT_PROP("scroll-on-output")
         TRY_SET_INT_PROP("scrollback-lines")
+
+        for (int i = 0; i < sizeof(keyboard_shortcuts)/sizeof(KeyCombo); i++) {
+            KeyCombo* combo = keyboard_shortcuts+i;
+            if (strcmp(line, combo->name) == 0) {
+                gtk_accelerator_parse(value, &(combo->key), &(combo->modifiers));
+                if (combo->modifiers & GDK_SHIFT_MASK) {
+                    combo->key = gdk_keyval_to_upper(combo->key);
+                }
+                break;
+            }
+        }
     }
 
     fclose(config);
