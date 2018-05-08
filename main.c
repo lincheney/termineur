@@ -8,6 +8,7 @@
 #include <vte/vte.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <ctype.h>
 
 #define DEFAULT_SHELL "/bin/sh"
 const gint ERROR_EXIT_CODE = 127;
@@ -66,6 +67,58 @@ void term_spawn_callback(GtkWidget* terminal, GPid pid, GError *error, gpointer 
         fprintf(stderr, "Could not start terminal: %s\n", error->message);
         exit(ERROR_EXIT_CODE);
     }
+}
+
+void load_config(GtkWidget* terminal, const char* filename) {
+    FILE* config = fopen(filename, "r");
+    if (!config) {
+        /* if (error) g_warning("Error loading key file: %s", error->message); */
+        return;
+    }
+
+    char* line = NULL;
+    char* value;
+    size_t len = 0;
+    ssize_t read;
+    while ((read = getline(&line, &len, config)) != -1) {
+        if (line[0] == '#') continue; // comment
+
+        value = strchr(line, '=');
+        if (! value) continue; // invalid line
+
+        *value = '\0';
+        // whitespace trimming
+        for (char* c = value-1; isspace(*c); c--) *c = '\0';
+        value++;
+        while( isspace(*value) ) value++;
+        for (char* c = line+read-1; isspace(*c); c--) *c = '\0';
+
+#define TRY_SET_PALETTE_COL(n) \
+    if (strcmp(line, "col" #n) == 0) { \
+        gdk_rgba_parse(palette+(n), value); \
+        continue; \
+    }
+
+        TRY_SET_PALETTE_COL(0);
+        TRY_SET_PALETTE_COL(1);
+        TRY_SET_PALETTE_COL(2);
+        TRY_SET_PALETTE_COL(3);
+        TRY_SET_PALETTE_COL(4);
+        TRY_SET_PALETTE_COL(5);
+        TRY_SET_PALETTE_COL(6);
+        TRY_SET_PALETTE_COL(7);
+        TRY_SET_PALETTE_COL(8);
+        TRY_SET_PALETTE_COL(9);
+        TRY_SET_PALETTE_COL(10);
+        TRY_SET_PALETTE_COL(11);
+        TRY_SET_PALETTE_COL(12);
+        TRY_SET_PALETTE_COL(13);
+        TRY_SET_PALETTE_COL(14);
+        TRY_SET_PALETTE_COL(15);
+    }
+
+    fclose(config);
+    if (line) free(line);
 }
 
 int main(int argc, char *argv[])
