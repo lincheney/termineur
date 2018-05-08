@@ -9,50 +9,30 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-#define C1 (1./3.)
-#define C2 (2./3.)
-#define PALETTE_SIZE (16)
-
-const GdkRGBA bg = { .1, 0., 0., 1. };
-const GdkRGBA fg = { 1., 1., 1., 1. };
-
-const GdkRGBA palette[PALETTE_SIZE] = {
-    { 0., 0., 0., 1. }, // black
-    { C2, 0., 0., 1. }, // red
-    { 0., C2, 0., 1. }, // green
-    { C2, C1, 0., 1. }, // yellow
-    { 0., 0., C2, 1. }, // blue
-    { C2, 0., C2, 1. }, // agenta
-    { 0., C2, C2, 1. }, // cyan
-    { C2, C2, C2, 1. }, // light grey
-    { C1, C1, C1, 1. }, // dark grey
-    { 1., C1, C1, 1. }, // light red
-    { C1, 1., C1, 1. }, // light green
-    { 1., 1., C2, 1. }, // light yellow
-    { C1, C1, 1., 1. }, // light blue
-    { 1., C1, 1., 1. }, // light magenta
-    { C1, 1., 1., 1. }, // light cyan
-    { 1., 1., 1., 1. }  // white
-};
-
 #define DEFAULT_SHELL "/bin/sh"
-int stderr_copy = 2;
-int STDIN_FD;
-int STDOUT_FD;
 const gint ERROR_EXIT_CODE = 127;
-const gint BORDER_WIDTH = 2;
-const gint WIDTH_PC = 50;
-const gint HEIGHT_PC = 50;
 
 #define GET_ENV(x) (getenv("POPUP_TERM_" x))
-int try_or_die(int value, const char* msg)
-{
-    if (value == -1 ) {
-        dprintf(stderr_copy, "%s: %s\n", msg, strerror(errno));
-        exit(ERROR_EXIT_CODE);
-    }
-    return value;
-}
+
+#define PALETTE_SIZE (16)
+GdkRGBA palette[PALETTE_SIZE] = {
+    { 0., 0., 0., 1. }, // black
+    { .5, 0., 0., 1. }, // red
+    { 0., .5, 0., 1. }, // green
+    { .5, .5, 0., 1. }, // yellow
+    { 0., 0., .5, 1. }, // blue
+    { .5, 0., .5, 1. }, // magenta
+    { 0., .5, .5, 1. }, // cyan
+    { 1., 1., 1., 1. }, // light grey
+    { .5, .5, .5, 1. }, // dark grey
+    { 1., 0., 0., 1. }, // light red
+    { 0., 1., 0., 1. }, // light green
+    { 1., 1., 0., 1. }, // light yellow
+    { 0., 0., 1., 1. }, // light blue
+    { 1., 0., 1., 1. }, // light magenta
+    { 0., 1., 1., 1. }, // light cyan
+    { 1., 1., 1., 1. }  // white
+};
 
 void term_exited(VteTerminal* terminal, gint status, gint* dest)
 {
@@ -64,23 +44,6 @@ void term_exited(VteTerminal* terminal, gint status, gint* dest)
     gtk_main_quit();
 }
 
-void child_setup(void* data)
-{
-    int flags;
-    const char* reset_env = GET_ENV("RESET_FD");
-
-    if (reset_env != NULL && strncmp(reset_env, "1", 1) == 0) {
-        try_or_die( dup2(STDIN_FD, 0), "Could not copy stdin" );
-        try_or_die( dup2(STDOUT_FD, 1), "Could not copy stdout" );
-    }
-
-    flags = fcntl(STDIN_FD, F_GETFD);
-    fcntl(STDIN_FD, F_SETFD, flags & ~FD_CLOEXEC);
-
-    flags = fcntl(STDOUT_FD, F_GETFD);
-    fcntl(STDOUT_FD, F_SETFD, flags & ~FD_CLOEXEC);
-}
-
 gboolean key_pressed(GtkWidget* terminal, GdkEventKey* event, gpointer data)
 {
     guint modifiers = event->state & gtk_accelerator_get_default_mod_mask();
@@ -90,7 +53,7 @@ gboolean key_pressed(GtkWidget* terminal, GdkEventKey* event, gpointer data)
                 vte_terminal_paste_clipboard(VTE_TERMINAL(terminal));
                 return TRUE;
             case GDK_KEY_C:
-                vte_terminal_copy_clipboard(VTE_TERMINAL(terminal));
+                vte_terminal_copy_clipboard_format(VTE_TERMINAL(terminal), VTE_FORMAT_TEXT);
                 return TRUE;
         }
     }
@@ -110,43 +73,19 @@ int main(int argc, char *argv[])
     int status = 0;
     GtkWidget *window;
     GtkWidget *terminal;
-    GdkScreen *screen;
-    GdkDisplay *display;
-    GdkMonitor *monitor;
-    GdkRectangle geometry;
-
-    STDIN_FD = try_or_die( dup(0), "Could not copy stdin" );
-    STDOUT_FD = try_or_die( dup(1), "Could not copy stdout" );
-    stderr_copy = try_or_die( dup(2), "Could not copy stderr" );
 
     gtk_init(&argc, &argv);
 
-    // get width/height % from env vars
-    char* w_pc_str = GET_ENV("WIDTH");
-    char* h_pc_str = GET_ENV("HEIGHT");
-    int w_pc = (w_pc_str ? atoi(w_pc_str) : -1);
-    int h_pc = (h_pc_str ? atoi(h_pc_str) : -1);
-    w_pc = (10 <= w_pc && w_pc <= 100 ? w_pc : WIDTH_PC);
-    h_pc = (10 <= h_pc && h_pc <= 100 ? h_pc : HEIGHT_PC);
-
     window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_window_set_icon_name(GTK_WINDOW(window), "utilities-terminal");
     g_signal_connect(window, "delete-event", gtk_main_quit, NULL);
-    gtk_window_set_decorated(GTK_WINDOW(window), FALSE);
-    gtk_window_set_type_hint(GTK_WINDOW(window), GDK_WINDOW_TYPE_HINT_DIALOG);
-    gtk_container_set_border_width(GTK_CONTAINER(window), BORDER_WIDTH);
-
-    // set window width/height
-    screen = gtk_window_get_screen(GTK_WINDOW(window));
-    display = gdk_screen_get_display(screen);
-    gtk_widget_realize(window);
-    monitor = gdk_display_get_monitor_at_window(display, gtk_widget_get_window(window));
-    gdk_monitor_get_geometry(monitor, &geometry);
-    gtk_window_set_default_size(GTK_WINDOW(window), geometry.width*w_pc/100, geometry.height*h_pc/100);
 
     terminal = vte_terminal_new();
     g_signal_connect(terminal, "child-exited", G_CALLBACK(term_exited), &status);
     vte_terminal_set_cursor_blink_mode(VTE_TERMINAL(terminal), VTE_CURSOR_BLINK_OFF);
-    vte_terminal_set_colors(VTE_TERMINAL(terminal), &fg, &bg, palette, PALETTE_SIZE);
+
+    // populate palette
+    vte_terminal_set_colors(VTE_TERMINAL(terminal), NULL, NULL, palette, PALETTE_SIZE);
 
     char **args;
     char *default_args[] = {NULL, NULL};
@@ -160,22 +99,14 @@ int main(int argc, char *argv[])
         args = default_args;
     }
 
-    gchar** env = NULL;
-    char buffer[4];
-    buffer[0] = '\0';
-    try_or_die( snprintf(buffer, sizeof(buffer), "%i", STDIN_FD), "unable to print to buffer" );
-    env = g_environ_setenv(env, "POPUP_TERM_STDIN_FD", buffer, 1);
-    try_or_die( snprintf(buffer, sizeof(buffer), "%i", STDOUT_FD), "unable to print to buffer" );
-    env = g_environ_setenv(env, "POPUP_TERM_STDOUT_FD", buffer, 1);
-
     vte_terminal_spawn_async(
             VTE_TERMINAL(terminal),
             VTE_PTY_DEFAULT, //pty flags
             NULL, // pwd
             args, // args
-            env, // env
-            G_SPAWN_SEARCH_PATH | G_SPAWN_LEAVE_DESCRIPTORS_OPEN, // g spawn flags
-            child_setup, // child setup
+            NULL, // env
+            G_SPAWN_SEARCH_PATH, // g spawn flags
+            NULL, // child setup
             NULL, // child setup data
             NULL, // child setup data destroy
             -1, // timeout
@@ -184,9 +115,9 @@ int main(int argc, char *argv[])
             NULL // user data
     );
     free(user_shell);
-    g_strfreev(env);
 
     g_signal_connect(terminal, "key-press-event", G_CALLBACK(key_pressed), NULL);
+    g_object_set(terminal, "scrollback-lines", 0, NULL);
     gtk_container_add(GTK_CONTAINER(window), terminal);
 
     gtk_widget_show_all(window);
