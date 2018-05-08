@@ -58,9 +58,18 @@ void copy_clipboard(VteTerminal* terminal) {
     vte_terminal_copy_clipboard_format(terminal, VTE_FORMAT_TEXT);
 }
 
+void increase_font_size(VteTerminal* terminal) {
+    vte_terminal_set_font_scale(terminal, vte_terminal_get_font_scale(terminal)+0.2);
+}
+void decrease_font_size(VteTerminal* terminal) {
+    vte_terminal_set_font_scale(terminal, vte_terminal_get_font_scale(terminal)-0.2);
+}
+
 KeyCombo keyboard_shortcuts[] = {
     {"paste-clipboard", 0, 0, vte_terminal_paste_clipboard},
     {"copy-clipboard",  0, 0, copy_clipboard},
+    {"increase-font-size", 0, 0, increase_font_size},
+    {"decrease-font-size", 0, 0, decrease_font_size},
 };
 
 gboolean key_pressed(GtkWidget* terminal, GdkEventKey* event, gpointer data)
@@ -68,7 +77,6 @@ gboolean key_pressed(GtkWidget* terminal, GdkEventKey* event, gpointer data)
     guint modifiers = event->state & gtk_accelerator_get_default_mod_mask();
     for (int i = 0; i < sizeof(keyboard_shortcuts)/sizeof(KeyCombo); i++) {
         KeyCombo* combo = keyboard_shortcuts+i;
-        printf("%i %i\n", event->keyval, modifiers);
         if (combo->key == event->keyval && combo->modifiers == modifiers) {
             combo->callback(VTE_TERMINAL(terminal));
             return TRUE;
