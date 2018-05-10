@@ -37,7 +37,7 @@ GdkRGBA palette[PALETTE_SIZE+2] = {
 };
 gboolean show_scrollbar = 1;
 #define DEFAULT_SHELL "/bin/sh"
-char* default_shell = NULL;
+char** default_args = NULL;
 
 void term_exited(VteTerminal* terminal, gint status, gint* dest)
 {
@@ -248,12 +248,14 @@ void load_config(const char* filename, GtkWidget* terminal, GtkWidget* window) {
             continue;
         }
 
-        if (strcmp(line, "default-shell") == 0) {
-            free(default_shell);
+        if (strcmp(line, "default-args") == 0) {
+            g_strfreev(default_args);
             if (strlen(value) == 0) {
-                default_shell = NULL;
+                default_args = NULL;
             } else {
-                default_shell = strdup(value);
+                if (! g_shell_parse_argv(value, NULL, &default_args, NULL) ) {
+                    g_warning("Failed to parse arg for %s: %s", line, value);
+                }
             }
             continue;
         }
@@ -298,20 +300,17 @@ int main(int argc, char *argv[])
     vte_terminal_set_colors(VTE_TERMINAL(terminal), palette+1, palette, palette+2, PALETTE_SIZE);
 
     char **args;
-    char *default_args[] = {NULL, NULL};
+    char *fallback_args[] = {NULL, NULL};
     char *user_shell = NULL;
 
     if (argc > 1) {
         args = argv + 1;
+    } else if (default_args) {
+        args = default_args;
     } else {
         user_shell = vte_get_user_shell();
-        default_args[0] =
-            default_shell ?
-                default_shell :
-            user_shell ?
-                user_shell :
-                DEFAULT_SHELL;
-        args = default_args;
+        fallback_args[0] = user_shell ? user_shell : DEFAULT_SHELL;
+        args = fallback_args;
     }
 
     vte_terminal_spawn_async(
@@ -329,7 +328,7 @@ int main(int argc, char *argv[])
             (VteTerminalSpawnAsyncCallback) term_spawn_callback, // callback
             NULL // user data
     );
-    free(default_shell);
+    g_strfreev(default_args);
     free(user_shell);
 
     g_signal_connect(terminal, "key-press-event", G_CALLBACK(key_pressed), NULL);
