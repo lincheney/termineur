@@ -10,7 +10,6 @@
 #include <fcntl.h>
 #include <ctype.h>
 
-#define DEFAULT_SHELL "/bin/sh"
 const gint ERROR_EXIT_CODE = 127;
 
 #define GET_ENV(x) (getenv("POPUP_TERM_" x))
@@ -37,6 +36,8 @@ GdkRGBA palette[PALETTE_SIZE+2] = {
     { 1., 1., 1., 1. }, // white
 };
 gboolean show_scrollbar = 1;
+#define DEFAULT_SHELL "/bin/sh"
+char* default_shell = NULL;
 
 void term_exited(VteTerminal* terminal, gint status, gint* dest)
 {
@@ -247,6 +248,16 @@ void load_config(const char* filename, GtkWidget* terminal, GtkWidget* window) {
             continue;
         }
 
+        if (strcmp(line, "default-shell") == 0) {
+            free(default_shell);
+            if (strlen(value) == 0) {
+                default_shell = NULL;
+            } else {
+                default_shell = strdup(value);
+            }
+            continue;
+        }
+
         for (int i = 0; i < sizeof(keyboard_shortcuts)/sizeof(KeyCombo); i++) {
             KeyCombo* combo = keyboard_shortcuts+i;
             if (strcmp(line, combo->name) == 0) {
@@ -294,7 +305,12 @@ int main(int argc, char *argv[])
         args = argv + 1;
     } else {
         user_shell = vte_get_user_shell();
-        default_args[0] = user_shell ? user_shell : DEFAULT_SHELL;
+        default_args[0] =
+            default_shell ?
+                default_shell :
+            user_shell ?
+                user_shell :
+                DEFAULT_SHELL;
         args = default_args;
     }
 
@@ -313,6 +329,7 @@ int main(int argc, char *argv[])
             (VteTerminalSpawnAsyncCallback) term_spawn_callback, // callback
             NULL // user data
     );
+    free(default_shell);
     free(user_shell);
 
     g_signal_connect(terminal, "key-press-event", G_CALLBACK(key_pressed), NULL);
