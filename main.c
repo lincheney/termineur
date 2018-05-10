@@ -36,6 +36,7 @@ GdkRGBA palette[PALETTE_SIZE+2] = {
     { 0., 1., 1., 1. }, // light cyan
     { 1., 1., 1., 1. }, // white
 };
+gboolean show_scrollbar = 1;
 
 void term_exited(VteTerminal* terminal, gint status, gint* dest)
 {
@@ -209,6 +210,11 @@ void load_config(const char* filename, GtkWidget* terminal, GtkWidget* window) {
         TRY_SET_INT_PROP("scroll-on-output")
         TRY_SET_INT_PROP("scrollback-lines")
 
+        if (strcmp(line, "show-scrollbar") == 0) {
+            show_scrollbar = 0;
+            continue;
+        }
+
         if (strcmp(line, "window-icon") == 0) {
             gtk_window_set_icon_name(GTK_WINDOW(window), value);
             continue;
@@ -235,14 +241,19 @@ int main(int argc, char *argv[])
     int status = 0;
     GtkWidget *window;
     GtkWidget *terminal;
+    GtkWidget *grid;
+    GtkWidget *scrollbar;
 
     gtk_init(&argc, &argv);
 
     window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     g_signal_connect(window, "delete-event", gtk_main_quit, NULL);
 
+    grid = gtk_grid_new();
+
     terminal = vte_terminal_new();
     g_signal_connect(terminal, "child-exited", G_CALLBACK(term_exited), &status);
+    g_object_set(terminal, "expand", 1, NULL);
     vte_terminal_set_cursor_blink_mode(VTE_TERMINAL(terminal), VTE_CURSOR_BLINK_OFF);
 
     // populate palette
@@ -278,7 +289,13 @@ int main(int argc, char *argv[])
     free(user_shell);
 
     g_signal_connect(terminal, "key-press-event", G_CALLBACK(key_pressed), NULL);
-    gtk_container_add(GTK_CONTAINER(window), terminal);
+    gtk_container_add(GTK_CONTAINER(window), grid);
+    gtk_container_add(GTK_CONTAINER(grid), GTK_WIDGET(terminal));
+
+    if (show_scrollbar) {
+        scrollbar = gtk_scrollbar_new(GTK_ORIENTATION_VERTICAL, gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(terminal)));
+        gtk_container_add(GTK_CONTAINER(grid), GTK_WIDGET(scrollbar));
+    }
 
     gtk_widget_show_all(window);
     gtk_main();
