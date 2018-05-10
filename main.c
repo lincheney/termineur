@@ -100,6 +100,8 @@ KeyCombo keyboard_shortcuts[] = {
     {"scroll-down", 0, 0, scroll_down},
     {"scroll-page-up", 0, 0, scroll_page_up},
     {"scroll-page-down", 0, 0, scroll_page_down},
+    {"select-all", 0, 0, vte_terminal_select_all},
+    {"unselect-all", 0, 0, vte_terminal_unselect_all},
 };
 
 gboolean key_pressed(GtkWidget* terminal, GdkEventKey* event, gpointer data)
