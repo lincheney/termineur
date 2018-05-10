@@ -69,6 +69,26 @@ void reset_terminal(VteTerminal* terminal) {
     vte_terminal_reset(terminal, 1, 1);
     vte_terminal_feed_child_binary(terminal, (guint8*)"\x0c", 1); // control-l = clear
 }
+void scroll_up(VteTerminal* terminal) {
+    GtkAdjustment* adj = gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(terminal));
+    gdouble delta = gtk_adjustment_get_step_increment(adj);
+    gtk_adjustment_set_value(adj, gtk_adjustment_get_value(adj)-delta);
+}
+void scroll_down(VteTerminal* terminal) {
+    GtkAdjustment* adj = gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(terminal));
+    gdouble delta = gtk_adjustment_get_step_increment(adj);
+    gtk_adjustment_set_value(adj, gtk_adjustment_get_value(adj)+delta);
+}
+void scroll_page_up(VteTerminal* terminal) {
+    GtkAdjustment* adj = gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(terminal));
+    gdouble delta = gtk_adjustment_get_page_size(adj);
+    gtk_adjustment_set_value(adj, gtk_adjustment_get_value(adj)-delta);
+}
+void scroll_page_down(VteTerminal* terminal) {
+    GtkAdjustment* adj = gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(terminal));
+    gdouble delta = gtk_adjustment_get_page_size(adj);
+    gtk_adjustment_set_value(adj, gtk_adjustment_get_value(adj)+delta);
+}
 
 KeyCombo keyboard_shortcuts[] = {
     {"paste-clipboard", 0, 0, vte_terminal_paste_clipboard},
@@ -76,6 +96,10 @@ KeyCombo keyboard_shortcuts[] = {
     {"increase-font-size", 0, 0, increase_font_size},
     {"decrease-font-size", 0, 0, decrease_font_size},
     {"reset", 0, 0, reset_terminal},
+    {"scroll-up", 0, 0, scroll_up},
+    {"scroll-down", 0, 0, scroll_down},
+    {"scroll-page-up", 0, 0, scroll_page_up},
+    {"scroll-page-down", 0, 0, scroll_page_down},
 };
 
 gboolean key_pressed(GtkWidget* terminal, GdkEventKey* event, gpointer data)
