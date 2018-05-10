@@ -98,7 +98,7 @@ void term_spawn_callback(GtkWidget* terminal, GPid pid, GError *error, gpointer 
     }
 }
 
-void load_config(GtkWidget* terminal, const char* filename) {
+void load_config(const char* filename, GtkWidget* terminal, GtkWidget* window) {
     FILE* config = fopen(filename, "r");
     if (!config) {
         /* if (error) g_warning("Error loading key file: %s", error->message); */
@@ -209,6 +209,11 @@ void load_config(GtkWidget* terminal, const char* filename) {
         TRY_SET_INT_PROP("scroll-on-output")
         TRY_SET_INT_PROP("scrollback-lines")
 
+        if (strcmp(line, "window-icon") == 0) {
+            gtk_window_set_icon_name(GTK_WINDOW(window), value);
+            continue;
+        }
+
         for (int i = 0; i < sizeof(keyboard_shortcuts)/sizeof(KeyCombo); i++) {
             KeyCombo* combo = keyboard_shortcuts+i;
             if (strcmp(line, combo->name) == 0) {
@@ -234,7 +239,6 @@ int main(int argc, char *argv[])
     gtk_init(&argc, &argv);
 
     window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    gtk_window_set_icon_name(GTK_WINDOW(window), "utilities-terminal");
     g_signal_connect(window, "delete-event", gtk_main_quit, NULL);
 
     terminal = vte_terminal_new();
