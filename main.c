@@ -228,6 +228,7 @@ void load_config(const char* filename, GtkWidget* terminal, GtkWidget* window) {
         continue; \
     }
 
+        TRY_SET_INT_PROP("allow-hyperlink")
         TRY_SET_INT_PROP("pointer-autohide")
         TRY_SET_INT_PROP("rewrap-on-resize")
         TRY_SET_INT_PROP("scroll-on-keystroke")
