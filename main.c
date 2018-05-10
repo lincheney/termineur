@@ -64,12 +64,17 @@ void increase_font_size(VteTerminal* terminal) {
 void decrease_font_size(VteTerminal* terminal) {
     vte_terminal_set_font_scale(terminal, vte_terminal_get_font_scale(terminal)-0.2);
 }
+void reset_terminal(VteTerminal* terminal) {
+    vte_terminal_reset(terminal, 1, 1);
+    vte_terminal_feed_child_binary(terminal, (guint8*)"\x0c", 1); // control-l = clear
+}
 
 KeyCombo keyboard_shortcuts[] = {
     {"paste-clipboard", 0, 0, vte_terminal_paste_clipboard},
     {"copy-clipboard",  0, 0, copy_clipboard},
     {"increase-font-size", 0, 0, increase_font_size},
     {"decrease-font-size", 0, 0, decrease_font_size},
+    {"reset", 0, 0, reset_terminal},
 };
 
 gboolean key_pressed(GtkWidget* terminal, GdkEventKey* event, gpointer data)
