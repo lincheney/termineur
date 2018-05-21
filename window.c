@@ -89,17 +89,17 @@ GtkWidget* make_terminal(GtkWidget* window, int argc, char** argv) {
 }
 
 gboolean key_pressed(GtkWidget* window, GdkEventKey* event, gpointer data) {
-    return FALSE;
-    /* guint modifiers = event->state & gtk_accelerator_get_default_mod_mask(); */
-    /* gboolean handled = FALSE; */
-    /* for (int i = 0; i < keyboard_shortcuts->len; i++) { */
-        /* KeyCombo* combo = &g_array_index(keyboard_shortcuts, KeyCombo, i); */
-        /* if (combo->key == event->keyval && combo->modifiers == modifiers) { */
-            /* combo->callback(VTE_TERMINAL(terminal), combo->data); */
-            /* handled = TRUE; */
-        /* } */
-    /* } */
-    /* return handled; */
+    guint modifiers = event->state & gtk_accelerator_get_default_mod_mask();
+    gboolean handled = FALSE;
+    for (int i = 0; i < keyboard_shortcuts->len; i++) {
+        KeyCombo* combo = &g_array_index(keyboard_shortcuts, KeyCombo, i);
+        if (combo->key == event->keyval && combo->modifiers == modifiers) {
+            VteTerminal* terminal = get_terminal(window);
+            combo->callback(terminal, combo->data);
+            handled = TRUE;
+        }
+    }
+    return handled;
 }
 
 void notebook_tab_removed(GtkWidget* notebook, GtkWidget *child, guint page_num) {
@@ -109,7 +109,6 @@ void notebook_tab_removed(GtkWidget* notebook, GtkWidget *child, guint page_num)
 }
 
 GtkWidget* make_window(GtkWidget* terminal) {
-    int status = 0;
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     GtkWidget *notebook = gtk_notebook_new();
     gtk_widget_set_can_focus(notebook, FALSE);
