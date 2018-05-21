@@ -1,6 +1,8 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#include <vte/vte.h>
+
 #define PALETTE_SIZE (16)
 extern GdkRGBA palette[PALETTE_SIZE+2];
 gboolean show_scrollbar;
