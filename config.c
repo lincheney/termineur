@@ -236,6 +236,7 @@ void load_config(const char* filename, GtkWidget* terminal, GtkWidget* window) {
             }
 
             g_array_append_val(keyboard_shortcuts, combo);
+            continue;
         }
     }
 
