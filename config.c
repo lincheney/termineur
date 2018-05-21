@@ -211,32 +211,46 @@ void load_config(const char* filename, GtkWidget* terminal, GtkWidget* window) {
             continue;
         }
 
-        KeyComboCallback callback = NULL;
-#define TRY_SET_SHORTCUT(name) \
-    if (strcmp(line, #name) == 0) { \
-        callback = name; \
-    }
+        if (strncmp(line, "key-", sizeof("key-")-1) == 0) {
+            char* shortcut = line + sizeof("key-")-1;
+            KeyComboCallback callback = NULL;
 
-        TRY_SET_SHORTCUT(paste_clipboard)
-        else TRY_SET_SHORTCUT(copy_clipboard)
-        else TRY_SET_SHORTCUT(increase_font_size)
-        else TRY_SET_SHORTCUT(decrease_font_size)
-        else TRY_SET_SHORTCUT(reset_terminal)
-        else TRY_SET_SHORTCUT(scroll_up)
-        else TRY_SET_SHORTCUT(scroll_down)
-        else TRY_SET_SHORTCUT(scroll_page_up)
-        else TRY_SET_SHORTCUT(scroll_page_down)
-        else TRY_SET_SHORTCUT(select_all)
-        else TRY_SET_SHORTCUT(unselect_all)
-
-        if (callback) {
-            KeyCombo combo = {0, 0, callback};
-            gtk_accelerator_parse(value, &(combo.key), &(combo.modifiers));
-            if (combo.modifiers & GDK_SHIFT_MASK) {
-                combo.key = gdk_keyval_to_upper(combo.key);
+            char* arg = strchr(value, ':');
+            if (arg) {
+                *arg = '\0';
+                arg++;
+            } else {
+                arg = line + len - 1; // set to null byte
             }
 
-            g_array_append_val(keyboard_shortcuts, combo);
+#define TRY_SET_SHORTCUT(name) \
+            if (strcmp(value, #name) == 0) { \
+                callback = name; \
+            }
+
+            TRY_SET_SHORTCUT(paste_clipboard)
+            else TRY_SET_SHORTCUT(copy_clipboard)
+            else TRY_SET_SHORTCUT(increase_font_size)
+            else TRY_SET_SHORTCUT(decrease_font_size)
+            else TRY_SET_SHORTCUT(reset_terminal)
+            else TRY_SET_SHORTCUT(scroll_up)
+            else TRY_SET_SHORTCUT(scroll_down)
+            else TRY_SET_SHORTCUT(scroll_page_up)
+            else TRY_SET_SHORTCUT(scroll_page_down)
+            else TRY_SET_SHORTCUT(select_all)
+            else TRY_SET_SHORTCUT(unselect_all)
+
+            if (callback) {
+                KeyCombo combo = {0, 0, callback};
+                gtk_accelerator_parse(shortcut, &(combo.key), &(combo.modifiers));
+                if (combo.modifiers & GDK_SHIFT_MASK) {
+                    combo.key = gdk_keyval_to_upper(combo.key);
+                }
+
+                g_array_append_val(keyboard_shortcuts, combo);
+            } else {
+                g_warning("Unrecognised action: %s", value);
+            }
             continue;
         }
     }
