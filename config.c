@@ -89,6 +89,7 @@ void load_config(const char* filename, GtkWidget* terminal, GtkWidget* window) {
     ssize_t read;
     while ((read = getline(&line, &len, config)) != -1) {
         if (line[0] == '#') continue; // comment
+        if (line[0] == ';') continue; // comment
 
         value = strchr(line, '=');
         if (! value) continue; // invalid line
