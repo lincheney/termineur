@@ -104,12 +104,13 @@ char* str_unescape(char* string) {
                     shift = sscanf(p+2, "%2x", (unsigned int*)p) + 2;
                 }
                 break;
+
             default: shift = 0;
         }
+
         p++;
         if (shift) {
             memmove(p, p+shift, len-(p-string)-shift+1);
-            p++;
         }
     }
     return string;
