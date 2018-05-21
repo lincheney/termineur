@@ -33,7 +33,7 @@ gboolean key_pressed(GtkWidget* terminal, GdkEventKey* event, gpointer data)
     for (int i = 0; i < keyboard_shortcuts->len; i++) {
         KeyCombo* combo = &g_array_index(keyboard_shortcuts, KeyCombo, i);
         if (combo->key == event->keyval && combo->modifiers == modifiers) {
-            combo->callback(VTE_TERMINAL(terminal));
+            combo->callback(VTE_TERMINAL(terminal), combo->data);
             handled = TRUE;
         }
     }

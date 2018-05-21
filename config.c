@@ -29,9 +29,9 @@ char** default_args = NULL;
 /* CALLBACKS */
 
 KeyComboCallback \
-    paste_clipboard = vte_terminal_paste_clipboard
-    , select_all = vte_terminal_select_all
-    , unselect_all = vte_terminal_unselect_all
+    paste_clipboard = (KeyComboCallback)vte_terminal_paste_clipboard
+    , select_all = (KeyComboCallback)vte_terminal_select_all
+    , unselect_all = (KeyComboCallback)vte_terminal_unselect_all
 ;
 
 void copy_clipboard(VteTerminal* terminal) {
@@ -67,6 +67,52 @@ void scroll_page_down(VteTerminal* terminal) {
     GtkAdjustment* adj = gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(terminal));
     gdouble delta = gtk_adjustment_get_page_size(adj);
     gtk_adjustment_set_value(adj, gtk_adjustment_get_value(adj)+delta);
+}
+
+void feed_data(VteTerminal* terminal, gchar* data) {
+    vte_terminal_feed_child_binary(terminal, (guint8*)data, strlen(data));
+}
+
+char* str_unescape(char* string) {
+    char* p = string;
+    size_t len = strlen(string);
+    int shift;
+
+    while ((p = strchr(p, '\\'))) {
+        shift = 1;
+        switch (p[1]) {
+            case '\\': break;
+            case 'n': *p = '\n'; break;
+            case 'r': *p = '\r'; break;
+            case 't': *p = '\t'; break;
+            case 'v': *p = '\v'; break;
+            case 'a': *p = '\a'; break;
+
+            case '0':
+            case '1':
+            case '2':
+            case '3':
+            case '4':
+            case '5':
+            case '6':
+            case '7':
+                shift = sscanf(p+1, "%3o", (unsigned int*)p) + 1;
+                break;
+
+            case 'x':
+                if (p+2 < string+len) {
+                    shift = sscanf(p+2, "%2x", (unsigned int*)p) + 2;
+                }
+                break;
+            default: shift = 0;
+        }
+        p++;
+        if (shift) {
+            memmove(p, p+shift, len-(p-string)-shift+1);
+            p++;
+        }
+    }
+    return string;
 }
 
 void load_config(const char* filename, GtkWidget* terminal, GtkWidget* window) {
@@ -219,13 +265,11 @@ void load_config(const char* filename, GtkWidget* terminal, GtkWidget* window) {
             if (arg) {
                 *arg = '\0';
                 arg++;
-            } else {
-                arg = line + len - 1; // set to null byte
             }
 
 #define TRY_SET_SHORTCUT(name) \
             if (strcmp(value, #name) == 0) { \
-                callback = name; \
+                callback = (KeyComboCallback)name; \
             }
 
             TRY_SET_SHORTCUT(paste_clipboard)
@@ -239,12 +283,16 @@ void load_config(const char* filename, GtkWidget* terminal, GtkWidget* window) {
             else TRY_SET_SHORTCUT(scroll_page_down)
             else TRY_SET_SHORTCUT(select_all)
             else TRY_SET_SHORTCUT(unselect_all)
+            else TRY_SET_SHORTCUT(feed_data)
 
             if (callback) {
-                KeyCombo combo = {0, 0, callback};
+                KeyCombo combo = {0, 0, callback, NULL};
                 gtk_accelerator_parse(shortcut, &(combo.key), &(combo.modifiers));
                 if (combo.modifiers & GDK_SHIFT_MASK) {
                     combo.key = gdk_keyval_to_upper(combo.key);
+                }
+                if (arg) {
+                    combo.data = strdup(str_unescape(arg));
                 }
 
                 g_array_append_val(keyboard_shortcuts, combo);

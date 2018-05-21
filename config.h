@@ -6,11 +6,12 @@ extern GdkRGBA palette[PALETTE_SIZE+2];
 gboolean show_scrollbar;
 char** default_args;
 
-typedef void(*KeyComboCallback)(VteTerminal*);
+typedef void(*KeyComboCallback)(VteTerminal*, gpointer);
 typedef struct {
     guint key;
     GdkModifierType modifiers;
     KeyComboCallback callback;
+    gpointer data;
 } KeyCombo;
 
 GArray* keyboard_shortcuts;
