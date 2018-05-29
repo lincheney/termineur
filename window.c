@@ -37,6 +37,7 @@ GtkWidget* make_terminal(GtkWidget* window, int argc, char** argv) {
     grid = gtk_grid_new();
 
     terminal = vte_terminal_new();
+    copy_properties(dummy_terminal, G_OBJECT(terminal));
     g_object_set_data(G_OBJECT(grid), "terminal", terminal);
 
     g_signal_connect(terminal, "child-exited", G_CALLBACK(term_exited), grid);
@@ -44,7 +45,6 @@ GtkWidget* make_terminal(GtkWidget* window, int argc, char** argv) {
     vte_terminal_set_cursor_blink_mode(VTE_TERMINAL(terminal), VTE_CURSOR_BLINK_OFF);
 
     // populate palette
-    load_config("config.ini", terminal, window);
     vte_terminal_set_colors(VTE_TERMINAL(terminal), palette+1, palette, palette+2, PALETTE_SIZE);
 
     char **args;

@@ -17,7 +17,11 @@ typedef struct {
 } KeyCombo;
 
 GArray* keyboard_shortcuts;
+GObject* dummy_terminal;
+GHashTable* terminal_properties;
+char* window_icon;
 
-void load_config(const char*, GtkWidget*, GtkWidget*);
+void copy_properties(GObject* src, GObject* dest);
+void load_config(const char*, GApplication*);
 
 #endif

@@ -24,7 +24,9 @@ GdkRGBA palette[PALETTE_SIZE+2] = {
     { 1., 1., 1., 1. }, // white
 };
 gboolean show_scrollbar = 1;
+GObject* dummy_terminal = NULL;
 char** default_args = NULL;
+char* window_icon = NULL;
 
 /* CALLBACKS */
 
@@ -116,7 +118,30 @@ char* str_unescape(char* string) {
     return string;
 }
 
-void load_config(const char* filename, GtkWidget* terminal, GtkWidget* window) {
+void copy_properties(GObject* src, GObject* dest) {
+    guint n, skip=0;
+    GParamSpec** params = g_object_class_list_properties(G_OBJECT_GET_CLASS(src), &n);
+
+    const gchar* names[n];
+    GValue values[n];
+
+    for(guint i = 0; i < n; i ++) {
+        if (
+                params[i]->flags & G_PARAM_READABLE &&
+                params[i]->flags & G_PARAM_WRITABLE &&
+                (! g_type_is_a(params[i]->value_type, G_TYPE_OBJECT) )
+        ) {
+            names[i-skip] = params[i]->name;
+        } else {
+            skip++;
+        }
+    }
+
+    g_object_getv(src, n-skip, names, values);
+    g_object_setv(dest, n-skip, names, values);
+}
+
+void load_config(const char* filename, GApplication* app) {
     FILE* config = fopen(filename, "r");
     if (!config) {
         /* if (error) g_warning("Error loading key file: %s", error->message); */
@@ -129,6 +154,9 @@ void load_config(const char* filename, GtkWidget* terminal, GtkWidget* window) {
     } else {
         keyboard_shortcuts = g_array_new(FALSE, FALSE, sizeof(KeyCombo));
     }
+
+    if (dummy_terminal) g_object_unref(dummy_terminal);
+    dummy_terminal = G_OBJECT(vte_terminal_new());
 
     char* line = NULL;
     char* value;
@@ -190,7 +218,7 @@ void load_config(const char* filename, GtkWidget* terminal, GtkWidget* window) {
                 strcmp(value, "OFF") == 0 ?
                     VTE_CURSOR_BLINK_OFF :
                     -1;
-            if (attr != -1) g_object_set(terminal, line, attr, NULL);
+            if (attr != -1) g_object_set(dummy_terminal, line, attr, NULL);
             continue;
         }
 
@@ -203,29 +231,29 @@ void load_config(const char* filename, GtkWidget* terminal, GtkWidget* window) {
                 strcmp(value, "UNDERLINE") == 0 ?
                     VTE_CURSOR_SHAPE_UNDERLINE :
                     -1;
-            if (attr != -1) g_object_set(terminal, line, attr, NULL);
+            if (attr != -1) g_object_set(dummy_terminal, line, attr, NULL);
             continue;
         }
 
         if (strcmp(line, "encoding") == 0) {
-            g_object_set(terminal, line, value, NULL);
+            g_object_set(dummy_terminal, line, value, NULL);
             continue;
         }
 
         if (strcmp(line, "font") == 0) {
             PangoFontDescription* font = pango_font_description_from_string(value);
-            g_object_set(terminal, "font-desc", font, NULL);
+            g_object_set(dummy_terminal, "font-desc", font, NULL);
             continue;
         }
 
         if (strcmp(line, "font-scale") == 0) {
-            g_object_set(terminal, line, strtod(value, NULL), NULL);
+            g_object_set(dummy_terminal, line, strtod(value, NULL), NULL);
             continue;
         }
 
 #define TRY_SET_INT_PROP(name) \
     if (strcmp(line, name) == 0) { \
-        g_object_set(terminal, line, atoi(value), NULL); \
+        g_object_set(dummy_terminal, line, atoi(value), NULL); \
         continue; \
     }
 
@@ -237,12 +265,12 @@ void load_config(const char* filename, GtkWidget* terminal, GtkWidget* window) {
         TRY_SET_INT_PROP("scrollback-lines")
 
         if (strcmp(line, "show-scrollbar") == 0) {
-            show_scrollbar = 0;
+            show_scrollbar = atoi(value);
             continue;
         }
 
         if (strcmp(line, "window-icon") == 0) {
-            gtk_window_set_icon_name(GTK_WINDOW(window), value);
+            window_icon = value;
             continue;
         }
 
@@ -307,4 +335,3 @@ void load_config(const char* filename, GtkWidget* terminal, GtkWidget* window) {
     fclose(config);
     if (line) free(line);
 }
-
