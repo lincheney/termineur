@@ -23,7 +23,7 @@ void startup(GtkApplication* app, gpointer data) {
 int main(int argc, char *argv[]) {
     gtk_init(&argc, &argv);
 
-    GtkApplication* app = gtk_application_new ("org.gnome.example", G_APPLICATION_FLAGS_NONE);
+    app = gtk_application_new ("org.gnome.example", G_APPLICATION_FLAGS_NONE);
     g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
     g_signal_connect(app, "startup", G_CALLBACK(startup), NULL);
 

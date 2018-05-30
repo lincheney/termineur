@@ -2,6 +2,7 @@
 #include <vte/vte.h>
 #include <ctype.h>
 #include "config.h"
+#include "window.h"
 
 GdkRGBA palette[PALETTE_SIZE+2] = {
     { 0., 0., 0., 1. }, // background
@@ -70,6 +71,9 @@ void scroll_page_down(VteTerminal* terminal) {
     GtkAdjustment* adj = gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(terminal));
     gdouble delta = gtk_adjustment_get_page_size(adj);
     gtk_adjustment_set_value(adj, gtk_adjustment_get_value(adj)+delta);
+}
+void new_tab(VteTerminal* terminal) {
+    add_terminal(GTK_WIDGET(get_active_window()), NULL);
 }
 
 void feed_data(VteTerminal* terminal, gchar* data) {
@@ -317,6 +321,7 @@ void load_config(const char* filename) {
             else TRY_SET_SHORTCUT(scroll_page_down)
             else TRY_SET_SHORTCUT(select_all)
             else TRY_SET_SHORTCUT(unselect_all)
+            else TRY_SET_SHORTCUT(new_tab)
             else TRY_SET_SHORTCUT(feed_data)
 
             if (callback) {

@@ -23,7 +23,8 @@ VteTerminal* get_nth_terminal(GtkWidget* window, int index) {
     return VTE_TERMINAL(terminal);
 }
 
-VteTerminal* get_terminal(GtkWidget* window) {
+VteTerminal* get_active_terminal(GtkWidget* window) {
+    if (! window) window = GTK_WIDGET(get_active_window());
     GtkWidget* notebook = g_object_get_data(G_OBJECT(window), "notebook");
     int index = gtk_notebook_get_current_page(GTK_NOTEBOOK(notebook));
     return get_nth_terminal(window, index);
@@ -94,7 +95,7 @@ gboolean key_pressed(GtkWidget* window, GdkEventKey* event, gpointer data) {
     for (int i = 0; i < keyboard_shortcuts->len; i++) {
         KeyCombo* combo = &g_array_index(keyboard_shortcuts, KeyCombo, i);
         if (combo->key == event->keyval && combo->modifiers == modifiers) {
-            VteTerminal* terminal = get_terminal(window);
+            VteTerminal* terminal = get_active_terminal(window);
             combo->callback(terminal, combo->data);
             handled = TRUE;
         }
@@ -108,6 +109,18 @@ void notebook_tab_removed(GtkWidget* notebook, GtkWidget *child, guint page_num)
     }
 }
 
+void add_terminal(GtkWidget* window, GtkWidget* terminal) {
+    GtkWidget* notebook = g_object_get_data(G_OBJECT(window), "notebook");
+
+    if (!terminal) {
+        terminal = make_terminal(window, 0, NULL);
+    }
+
+    int page = gtk_notebook_append_page(GTK_NOTEBOOK(notebook), terminal, NULL);
+    gtk_widget_show_all(terminal);
+    g_object_set(notebook, "page", page, NULL);
+}
+
 GtkWidget* make_window(GtkWidget* terminal) {
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     GtkWidget *notebook = gtk_notebook_new();
@@ -118,13 +131,9 @@ GtkWidget* make_window(GtkWidget* terminal) {
     gtk_widget_set_can_focus(notebook, FALSE);
     g_signal_connect(notebook, "page-removed", G_CALLBACK(notebook_tab_removed), NULL);
 
-    if (!terminal) {
-        terminal = make_terminal(window, 0, NULL);
-    }
-
+    add_terminal(window, terminal);
     g_signal_connect(window, "key-press-event", G_CALLBACK(key_pressed), NULL);
     gtk_container_add(GTK_CONTAINER(window), notebook);
-    gtk_notebook_append_page(GTK_NOTEBOOK(notebook), terminal, NULL);
 
     gtk_widget_show_all(window);
     gtk_widget_grab_focus(GTK_WIDGET(get_nth_terminal(window, 0)));
