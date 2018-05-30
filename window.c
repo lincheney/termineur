@@ -37,7 +37,7 @@ GtkWidget* make_terminal(GtkWidget* window, int argc, char** argv) {
     grid = gtk_grid_new();
 
     terminal = vte_terminal_new();
-    copy_properties(G_OBJECT(terminal));
+    configure_terminal(G_OBJECT(terminal));
     g_object_set_data(G_OBJECT(grid), "terminal", terminal);
 
     g_signal_connect(terminal, "child-exited", G_CALLBACK(term_exited), grid);

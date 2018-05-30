@@ -21,7 +21,7 @@ GArray* terminal_prop_names;
 GArray* terminal_prop_values;
 char* window_icon;
 
-void copy_properties(GObject* dest);
+void configure_terminal(GObject* dest);
 void load_config(const char*);
 
 #endif

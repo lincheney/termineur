@@ -128,7 +128,7 @@ char* str_unescape(char* string) {
         g_array_append_val(terminal_prop_values, _val); \
     }
 
-void copy_properties(GObject* dest) {
+void configure_terminal(GObject* dest) {
     g_object_setv(dest, terminal_prop_names->len, (const char**)terminal_prop_names->data, (GValue*)terminal_prop_values->data);
 }
 
