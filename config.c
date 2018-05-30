@@ -132,7 +132,7 @@ void copy_properties(GObject* dest) {
     g_object_setv(dest, terminal_prop_names->len, (const char**)terminal_prop_names->data, (GValue*)terminal_prop_values->data);
 }
 
-void load_config(const char* filename, GApplication* app) {
+void load_config(const char* filename) {
     FILE* config = fopen(filename, "r");
     if (!config) {
         /* if (error) g_warning("Error loading key file: %s", error->message); */

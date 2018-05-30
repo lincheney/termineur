@@ -22,6 +22,6 @@ GArray* terminal_prop_values;
 char* window_icon;
 
 void copy_properties(GObject* dest);
-void load_config(const char*, GApplication*);
+void load_config(const char*);
 
 #endif

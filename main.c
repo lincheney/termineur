@@ -17,7 +17,7 @@ void activate(GtkApplication* app, gpointer data) {
 }
 
 void startup(GtkApplication* app, gpointer data) {
-    load_config("config.ini", G_APPLICATION(app));
+    load_config("config.ini");
 }
 
 int main(int argc, char *argv[]) {
