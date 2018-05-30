@@ -24,7 +24,8 @@ GdkRGBA palette[PALETTE_SIZE+2] = {
     { 1., 1., 1., 1. }, // white
 };
 gboolean show_scrollbar = 1;
-GObject* dummy_terminal = NULL;
+GArray* terminal_prop_names = NULL;
+GArray* terminal_prop_values = NULL;
 char** default_args = NULL;
 char* window_icon = NULL;
 
@@ -118,27 +119,17 @@ char* str_unescape(char* string) {
     return string;
 }
 
-void copy_properties(GObject* src, GObject* dest) {
-    guint n, skip=0;
-    GParamSpec** params = g_object_class_list_properties(G_OBJECT_GET_CLASS(src), &n);
-
-    const gchar* names[n];
-    GValue values[n];
-
-    for(guint i = 0; i < n; i ++) {
-        if (
-                params[i]->flags & G_PARAM_READABLE &&
-                params[i]->flags & G_PARAM_WRITABLE &&
-                (! g_type_is_a(params[i]->value_type, G_TYPE_OBJECT) )
-        ) {
-            names[i-skip] = params[i]->name;
-        } else {
-            skip++;
-        }
+#define STORE_PROPERTY(name, type, TYPE, value) { \
+        GValue _val = G_VALUE_INIT; \
+        g_value_init(&_val, TYPE); \
+        g_value_set_ ## type (&_val, value); \
+        char* _name = strdup(name); \
+        g_array_append_val(terminal_prop_names, _name); \
+        g_array_append_val(terminal_prop_values, _val); \
     }
 
-    g_object_getv(src, n-skip, names, values);
-    g_object_setv(dest, n-skip, names, values);
+void copy_properties(GObject* dest) {
+    g_object_setv(dest, terminal_prop_names->len, (const char**)terminal_prop_names->data, (GValue*)terminal_prop_values->data);
 }
 
 void load_config(const char* filename, GApplication* app) {
@@ -155,8 +146,18 @@ void load_config(const char* filename, GApplication* app) {
         keyboard_shortcuts = g_array_new(FALSE, FALSE, sizeof(KeyCombo));
     }
 
-    if (dummy_terminal) g_object_unref(dummy_terminal);
-    dummy_terminal = G_OBJECT(vte_terminal_new());
+    if (terminal_prop_names) {
+        g_array_remove_range(terminal_prop_names, 0, terminal_prop_names->len);
+    } else {
+        terminal_prop_names = g_array_new(FALSE, FALSE, sizeof(char*));
+        g_array_set_clear_func(terminal_prop_names, free);
+    }
+
+    if (terminal_prop_values) {
+        g_array_remove_range(terminal_prop_values, 0, terminal_prop_values->len);
+    } else {
+        terminal_prop_values = g_array_new(FALSE, FALSE, sizeof(GValue));
+    }
 
     char* line = NULL;
     char* value;
@@ -218,7 +219,7 @@ void load_config(const char* filename, GApplication* app) {
                 strcmp(value, "OFF") == 0 ?
                     VTE_CURSOR_BLINK_OFF :
                     -1;
-            if (attr != -1) g_object_set(dummy_terminal, line, attr, NULL);
+            if (attr != -1) STORE_PROPERTY(line, int, G_TYPE_INT, attr);
             continue;
         }
 
@@ -231,29 +232,29 @@ void load_config(const char* filename, GApplication* app) {
                 strcmp(value, "UNDERLINE") == 0 ?
                     VTE_CURSOR_SHAPE_UNDERLINE :
                     -1;
-            if (attr != -1) g_object_set(dummy_terminal, line, attr, NULL);
+            if (attr != -1) STORE_PROPERTY(line, int, G_TYPE_INT, attr);
             continue;
         }
 
         if (strcmp(line, "encoding") == 0) {
-            g_object_set(dummy_terminal, line, value, NULL);
+            STORE_PROPERTY(line, string, G_TYPE_STRING, value);
             continue;
         }
 
         if (strcmp(line, "font") == 0) {
             PangoFontDescription* font = pango_font_description_from_string(value);
-            g_object_set(dummy_terminal, "font-desc", font, NULL);
+            STORE_PROPERTY("font-desc", boxed, PANGO_TYPE_FONT_DESCRIPTION, font);
             continue;
         }
 
         if (strcmp(line, "font-scale") == 0) {
-            g_object_set(dummy_terminal, line, strtod(value, NULL), NULL);
+            STORE_PROPERTY(line, double, G_TYPE_DOUBLE, strtod(value, NULL));
             continue;
         }
 
 #define TRY_SET_INT_PROP(name) \
     if (strcmp(line, name) == 0) { \
-        g_object_set(dummy_terminal, line, atoi(value), NULL); \
+        STORE_PROPERTY(line, int, G_TYPE_INT, atoi(value)); \
         continue; \
     }
 
