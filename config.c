@@ -128,8 +128,12 @@ char* str_unescape(char* string) {
         g_array_append_val(terminal_prop_values, _val); \
     }
 
-void configure_terminal(GObject* dest) {
-    g_object_setv(dest, terminal_prop_names->len, (const char**)terminal_prop_names->data, (GValue*)terminal_prop_values->data);
+void configure_terminal(GObject* terminal) {
+    g_object_setv(terminal, terminal_prop_names->len, (const char**)terminal_prop_names->data, (GValue*)terminal_prop_values->data);
+}
+
+void configure_window(GtkWindow* window) {
+    gtk_window_set_icon_name(window, window_icon);
 }
 
 void load_config(const char* filename) {
@@ -271,7 +275,7 @@ void load_config(const char* filename) {
         }
 
         if (strcmp(line, "window-icon") == 0) {
-            window_icon = value;
+            window_icon = strdup(value);
             continue;
         }
 

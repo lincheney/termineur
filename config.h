@@ -17,11 +17,9 @@ typedef struct {
 } KeyCombo;
 
 GArray* keyboard_shortcuts;
-GArray* terminal_prop_names;
-GArray* terminal_prop_values;
-char* window_icon;
 
-void configure_terminal(GObject* dest);
 void load_config(const char*);
+void configure_terminal(GObject*);
+void configure_window(GtkWindow*);
 
 #endif
