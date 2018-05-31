@@ -125,7 +125,6 @@ GtkWidget* make_window(GtkWidget* terminal) {
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     GtkWidget *notebook = gtk_notebook_new();
     g_object_set_data(G_OBJECT(window), "notebook", notebook);
-    configure_window(GTK_WINDOW(window));
 
     gtk_notebook_set_show_border(GTK_NOTEBOOK(notebook), FALSE);
     gtk_widget_set_can_focus(notebook, FALSE);
@@ -134,6 +133,8 @@ GtkWidget* make_window(GtkWidget* terminal) {
     add_terminal(window, terminal);
     g_signal_connect(window, "key-press-event", G_CALLBACK(key_pressed), NULL);
     gtk_container_add(GTK_CONTAINER(window), notebook);
+
+    configure_window(GTK_WINDOW(window));
 
     gtk_widget_show_all(window);
     gtk_widget_grab_focus(GTK_WIDGET(get_nth_terminal(window, 0)));

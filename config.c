@@ -31,6 +31,10 @@ GtkCssProvider* css_provider = NULL;
 char** default_args = NULL;
 char* window_icon = NULL;
 
+// notebook child props
+gboolean tab_expand = FALSE;
+gboolean tab_fill = TRUE;
+
 /* CALLBACKS */
 
 KeyComboCallback \
@@ -143,6 +147,15 @@ void configure_window(GtkWindow* window) {
     GtkWidget* notebook = g_object_get_data(G_OBJECT(window), "notebook");
     GtkStyleContext* context = gtk_widget_get_style_context(notebook);
     gtk_style_context_add_provider(context, GTK_STYLE_PROVIDER(css_provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+
+    for(int i = gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook))-1; i >= 0; i --) {
+        gtk_container_child_set(
+                GTK_CONTAINER(notebook), GTK_WIDGET(gtk_notebook_get_nth_page(GTK_NOTEBOOK(notebook), i)),
+                "tab-expand", tab_expand,
+                "tab-fill", tab_fill,
+                NULL
+        );
+    }
 }
 
 void load_config(const char* filename) {
@@ -227,9 +240,20 @@ void load_config(const char* filename) {
 
        if (strcmp(line, "css-file") == 0) {
            gtk_css_provider_load_from_path(css_provider, value, NULL);
+           continue;
        }
 
-        if (strcmp(line, "cursor-blink-mode") == 0) {
+       if (strcmp(line, "tab-fill") == 0) {
+           tab_fill = atoi(value);
+           continue;
+       }
+
+       if (strcmp(line, "tab-expand") == 0) {
+           tab_expand = atoi(value);
+           continue;
+       }
+
+       if (strcmp(line, "cursor-blink-mode") == 0) {
             int attr =
                 strcmp(value, "SYSTEM") == 0 ?
                     VTE_CURSOR_BLINK_SYSTEM :
