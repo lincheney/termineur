@@ -77,12 +77,23 @@ void scroll_page_down(VteTerminal* terminal) {
     gdouble delta = gtk_adjustment_get_page_size(adj);
     gtk_adjustment_set_value(adj, gtk_adjustment_get_value(adj)+delta);
 }
+void feed_data(VteTerminal* terminal, gchar* data) {
+    vte_terminal_feed_child_binary(terminal, (guint8*)data, strlen(data));
+}
 void new_tab(VteTerminal* terminal) {
     add_terminal(GTK_WIDGET(get_active_window()));
 }
-
-void feed_data(VteTerminal* terminal, gchar* data) {
-    vte_terminal_feed_child_binary(terminal, (guint8*)data, strlen(data));
+void jump_tab(VteTerminal* terminal, int delta) {
+    GtkNotebook* notebook = GTK_NOTEBOOK(gtk_widget_get_parent(gtk_widget_get_parent(GTK_WIDGET(terminal))));
+    int n = gtk_notebook_get_current_page(notebook);
+    int pages = gtk_notebook_get_n_pages(notebook);
+    gtk_notebook_set_current_page(notebook, (n+delta) % pages);
+}
+void prev_tab(VteTerminal* terminal) {
+    jump_tab(terminal, -1);
+}
+void next_tab(VteTerminal* terminal) {
+    jump_tab(terminal, 1);
 }
 
 char* str_unescape(char* string) {
@@ -355,8 +366,10 @@ void load_config(const char* filename) {
             else TRY_SET_SHORTCUT(scroll_page_down)
             else TRY_SET_SHORTCUT(select_all)
             else TRY_SET_SHORTCUT(unselect_all)
-            else TRY_SET_SHORTCUT(new_tab)
             else TRY_SET_SHORTCUT(feed_data)
+            else TRY_SET_SHORTCUT(new_tab)
+            else TRY_SET_SHORTCUT(prev_tab)
+            else TRY_SET_SHORTCUT(next_tab)
 
             if (callback) {
                 KeyCombo combo = {0, 0, callback, NULL};
