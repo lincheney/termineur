@@ -117,6 +117,7 @@ void add_terminal(GtkWidget* window, GtkWidget* terminal) {
     }
 
     int page = gtk_notebook_append_page(GTK_NOTEBOOK(notebook), terminal, NULL);
+    gtk_notebook_set_tab_detachable(GTK_NOTEBOOK(notebook), GTK_WIDGET(terminal), TRUE);
     gtk_widget_show_all(terminal);
     g_object_set(notebook, "page", page, NULL);
 }
@@ -124,6 +125,7 @@ void add_terminal(GtkWidget* window, GtkWidget* terminal) {
 GtkWidget* make_window(GtkWidget* terminal) {
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     GtkWidget *notebook = gtk_notebook_new();
+    gtk_notebook_set_group_name(GTK_NOTEBOOK(notebook), "terminals");
     g_object_set_data(G_OBJECT(window), "notebook", notebook);
 
     gtk_notebook_set_show_border(GTK_NOTEBOOK(notebook), FALSE);
