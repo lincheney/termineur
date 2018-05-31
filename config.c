@@ -354,6 +354,11 @@ void load_config(const char* filename) {
             continue;
         }
 
+        if (strcmp(line, "word-char-exceptions") == 0) {
+            STORE_PROPERTY(line, string, G_TYPE_STRING, value);
+            continue;
+        }
+
         if (strcmp(line, "font") == 0) {
             PangoFontDescription* font = pango_font_description_from_string(value);
             STORE_PROPERTY("font-desc", boxed, PANGO_TYPE_FONT_DESCRIPTION, font);
@@ -371,6 +376,7 @@ void load_config(const char* filename) {
         continue; \
     }
 
+        TRY_SET_INT_PROP("audible-bell")
         TRY_SET_INT_PROP("allow-hyperlink")
         TRY_SET_INT_PROP("pointer-autohide")
         TRY_SET_INT_PROP("rewrap-on-resize")
