@@ -24,6 +24,7 @@ GdkRGBA palette[PALETTE_SIZE+2] = {
     { 0., 1., 1., 1. }, // light cyan
     { 1., 1., 1., 1. }, // white
 };
+GtkWidget* detaching_tab = NULL;
 gboolean show_scrollbar = 1;
 GArray* terminal_prop_names = NULL;
 GArray* terminal_prop_values = NULL;
@@ -100,11 +101,11 @@ void next_tab(VteTerminal* terminal) {
     jump_tab(terminal, 1);
 }
 void move_tab(VteTerminal* terminal, int delta) {
-    GtkWidget* child = gtk_widget_get_parent(GTK_WIDGET(terminal));
-    GtkNotebook* notebook = GTK_NOTEBOOK(gtk_widget_get_parent(child));
+    GtkWidget* tab = gtk_widget_get_parent(GTK_WIDGET(terminal));
+    GtkNotebook* notebook = GTK_NOTEBOOK(gtk_widget_get_parent(tab));
     int n = gtk_notebook_get_current_page(notebook);
     n += delta;
-    gtk_notebook_reorder_child(notebook, child, n > 0 ? n : 0);
+    gtk_notebook_reorder_child(notebook, tab, n > 0 ? n : 0);
 }
 void move_tab_prev(VteTerminal* terminal) {
     move_tab(terminal, -1);
@@ -113,13 +114,29 @@ void move_tab_next(VteTerminal* terminal) {
     move_tab(terminal, 1);
 }
 void detach_tab(VteTerminal* terminal) {
-    GtkWidget* child = gtk_widget_get_parent(GTK_WIDGET(terminal));
-    GtkContainer* notebook = GTK_CONTAINER(gtk_widget_get_parent(child));
+    GtkWidget* tab = gtk_widget_get_parent(GTK_WIDGET(terminal));
+    GtkContainer* notebook = GTK_CONTAINER(gtk_widget_get_parent(tab));
 
-    g_object_ref(child);
-    gtk_container_remove(notebook, child);
-    new_window(child);
-    g_object_unref(child);
+    g_object_ref(tab);
+    gtk_container_remove(notebook, tab);
+    new_window(tab);
+    g_object_unref(tab);
+}
+void cut_tab(VteTerminal* terminal) {
+    detaching_tab = gtk_widget_get_parent(GTK_WIDGET(terminal));
+}
+void paste_tab(VteTerminal* terminal) {
+    if (detaching_tab) {
+        GtkContainer* src_notebook = GTK_CONTAINER(gtk_widget_get_parent(detaching_tab));
+        GtkWidget* dest_window = gtk_widget_get_toplevel(GTK_WIDGET(terminal));
+        GtkNotebook* dest_notebook = g_object_get_data(G_OBJECT(dest_window), "notebook");
+
+        g_object_ref(detaching_tab);
+        gtk_container_remove(src_notebook, detaching_tab);
+        add_tab_to_window(dest_window, detaching_tab, gtk_notebook_get_current_page(dest_notebook)+1);
+        g_object_unref(detaching_tab);
+        detaching_tab = NULL;
+    }
 }
 
 char* str_unescape(char* string) {
@@ -428,6 +445,8 @@ void load_config(const char* filename) {
             else TRY_SET_SHORTCUT(move_tab_prev)
             else TRY_SET_SHORTCUT(move_tab_next)
             else TRY_SET_SHORTCUT(detach_tab)
+            else TRY_SET_SHORTCUT(cut_tab)
+            else TRY_SET_SHORTCUT(paste_tab)
 
 #undef TRY_SET_SHORTCUT
 

@@ -116,24 +116,22 @@ void notebook_switch_page(GtkNotebook* notebook, GtkWidget* page, guint num) {
     gtk_widget_grab_focus(term);
 }
 
-void add_tab_to_window(GtkWidget* window, GtkWidget* tab) {
+void add_tab_to_window(GtkWidget* window, GtkWidget* tab, int position) {
     GtkNotebook* notebook = GTK_NOTEBOOK(g_object_get_data(G_OBJECT(window), "notebook"));
     /* gtk_notebook_set_tab_detachable(GTK_NOTEBOOK(notebook), tab, TRUE); */
-    int page = gtk_notebook_append_page(notebook, tab, NULL);
+    int page = gtk_notebook_insert_page(notebook, tab, NULL, position);
     configure_tab(GTK_CONTAINER(notebook), tab);
+
+    gtk_widget_show_all(tab);
+    gtk_widget_realize(g_object_get_data(G_OBJECT(tab), "terminal"));
     gtk_notebook_set_current_page(notebook, page);
+    gtk_notebook_set_tab_detachable(GTK_NOTEBOOK(notebook), tab, TRUE);
 }
 
 void add_terminal(GtkWidget* window) {
-    GtkWidget* notebook = g_object_get_data(G_OBJECT(window), "notebook");
-
     GtkWidget* tab = gtk_grid_new();
-    GtkWidget* term = make_terminal(tab, 0, NULL);
-
-    add_tab_to_window(window, tab);
-    gtk_notebook_set_tab_detachable(GTK_NOTEBOOK(notebook), tab, TRUE);
-    gtk_widget_show_all(tab);
-    gtk_widget_realize(term);
+    make_terminal(tab, 0, NULL);
+    add_tab_to_window(window, tab, -1);
 }
 
 GtkWidget* make_window() {
@@ -161,7 +159,7 @@ GtkWidget* make_window() {
 GtkWidget* new_window(GtkWidget* tab) {
     GtkWidget* window = make_window();
     if (tab) {
-        add_tab_to_window(window, tab);
+        add_tab_to_window(window, tab, -1);
     } else {
         add_terminal(window);
     }
