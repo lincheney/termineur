@@ -31,9 +31,13 @@ GtkCssProvider* css_provider = NULL;
 char** default_args = NULL;
 char* window_icon = NULL;
 
-// notebook child props
+// notebook props
 gboolean tab_expand = FALSE;
 gboolean tab_fill = TRUE;
+gboolean notebook_enable_popup = FALSE;
+gboolean notebook_scrollable = FALSE;
+gboolean notebook_show_tabs = TRUE;
+GtkPositionType notebook_tab_pos = GTK_POS_TOP;
 
 /* CALLBACKS */
 
@@ -162,8 +166,14 @@ void configure_tab(GtkContainer* notebook, GtkWidget* tab) {
 
 void configure_window(GtkWindow* window) {
     gtk_window_set_icon_name(window, window_icon);
-    // css
     GtkWidget* notebook = g_object_get_data(G_OBJECT(window), "notebook");
+    g_object_set(notebook,
+            "enable-popup", notebook_enable_popup,
+            "scrollable", notebook_scrollable,
+            "show-tabs", notebook_show_tabs,
+            "tab-pos", notebook_tab_pos,
+        NULL);
+    // css
     GtkStyleContext* context = gtk_widget_get_style_context(notebook);
     gtk_style_context_add_provider(context, GTK_STYLE_PROVIDER(css_provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
 }
@@ -238,6 +248,8 @@ void load_config(const char* filename) {
         TRY_SET_PALETTE_COL(14);
         TRY_SET_PALETTE_COL(15);
 
+#undef TRY_SET_PALETTE_COL
+
         if (strcmp(line, "background") == 0) {
             gdk_rgba_parse(palette, value);
             continue;
@@ -253,15 +265,34 @@ void load_config(const char* filename) {
            continue;
        }
 
-       if (strcmp(line, "tab-fill") == 0) {
-           tab_fill = atoi(value);
-           continue;
-       }
+#define TRY_SET_INT_PROP(name, var) \
+    if (strcmp(line, name) == 0) { \
+        var = atoi(value); \
+        continue; \
+    }
 
-       if (strcmp(line, "tab-expand") == 0) {
-           tab_expand = atoi(value);
-           continue;
-       }
+       TRY_SET_INT_PROP("tab-fill", tab_fill)
+       TRY_SET_INT_PROP("tab-expand", tab_expand)
+       TRY_SET_INT_PROP("tab-enable-popup", notebook_enable_popup)
+       TRY_SET_INT_PROP("tab-scrollable", notebook_scrollable)
+       TRY_SET_INT_PROP("show-tabs", notebook_show_tabs)
+
+#undef TRY_SET_INT_PROP
+
+       if (strcmp(line, "tab-pos") == 0) {
+            int attr =
+                strcmp(value, "TOP") == 0 ?
+                    GTK_POS_TOP :
+                strcmp(value, "BOTTOM") == 0 ?
+                    GTK_POS_BOTTOM :
+                strcmp(value, "LEFT") == 0 ?
+                    GTK_POS_LEFT :
+                strcmp(value, "RIGHT") == 0 ?
+                    GTK_POS_RIGHT :
+                    -1;
+            if (attr != -1) notebook_tab_pos = attr;
+            continue;
+        }
 
        if (strcmp(line, "cursor-blink-mode") == 0) {
             int attr =
@@ -318,6 +349,8 @@ void load_config(const char* filename) {
         TRY_SET_INT_PROP("scroll-on-output")
         TRY_SET_INT_PROP("scrollback-lines")
 
+#undef TRY_SET_INT_PROP
+
         if (strcmp(line, "show-scrollbar") == 0) {
             show_scrollbar = atoi(value);
             continue;
@@ -370,6 +403,8 @@ void load_config(const char* filename) {
             else TRY_SET_SHORTCUT(new_tab)
             else TRY_SET_SHORTCUT(prev_tab)
             else TRY_SET_SHORTCUT(next_tab)
+
+#undef TRY_SET_SHORTCUT
 
             if (callback) {
                 KeyCombo combo = {0, 0, callback, NULL};
