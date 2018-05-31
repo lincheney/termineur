@@ -7,7 +7,7 @@ HEADERS=config.h window.h
 %.o: %.c $(HEADERS)
 	$(CC) -c -o $@ $< $(CFLAGS) $(LIBS)
 
-popup-term: main.o config.o window.c
+popup-term: main.o config.o window.o
 	gcc -o $@ $^ $(CFLAGS) $(LIBS)
 
 .PHONY: clean
