@@ -12,8 +12,7 @@
 #include "window.h"
 
 void activate(GtkApplication* app, gpointer data) {
-    GtkWidget* window = make_window(NULL);
-    gtk_application_add_window(app, GTK_WINDOW(window));
+    new_window();
 }
 
 void startup(GtkApplication* app, gpointer data) {
@@ -28,6 +27,6 @@ int main(int argc, char *argv[]) {
     g_signal_connect(app, "startup", G_CALLBACK(startup), NULL);
 
     int status = g_application_run(G_APPLICATION(app), argc, argv);
-    g_object_unref (app);
+    g_object_unref(app);
     return status;
 }

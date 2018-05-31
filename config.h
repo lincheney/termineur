@@ -19,7 +19,8 @@ typedef struct {
 GArray* keyboard_shortcuts;
 
 void load_config(const char*);
-void configure_terminal(GObject*);
+void configure_terminal(GtkWidget*);
+void configure_tab(GtkContainer*, GtkWidget*);
 void configure_window(GtkWindow*);
 
 #endif

@@ -78,7 +78,7 @@ void scroll_page_down(VteTerminal* terminal) {
     gtk_adjustment_set_value(adj, gtk_adjustment_get_value(adj)+delta);
 }
 void new_tab(VteTerminal* terminal) {
-    add_terminal(GTK_WIDGET(get_active_window()), NULL);
+    add_terminal(GTK_WIDGET(get_active_window()));
 }
 
 void feed_data(VteTerminal* terminal, gchar* data) {
@@ -137,8 +137,16 @@ char* str_unescape(char* string) {
         g_array_append_val(terminal_prop_values, _val); \
     }
 
-void configure_terminal(GObject* terminal) {
-    g_object_setv(terminal, terminal_prop_names->len, (const char**)terminal_prop_names->data, (GValue*)terminal_prop_values->data);
+void configure_terminal(GtkWidget* terminal) {
+    g_object_setv(G_OBJECT(terminal), terminal_prop_names->len, (const char**)terminal_prop_names->data, (GValue*)terminal_prop_values->data);
+}
+
+void configure_tab(GtkContainer* notebook, GtkWidget* tab) {
+    gtk_container_child_set(GTK_CONTAINER(notebook), tab,
+            "tab-expand", tab_expand,
+            "tab-fill", tab_fill,
+            NULL
+    );
 }
 
 void configure_window(GtkWindow* window) {
@@ -147,15 +155,6 @@ void configure_window(GtkWindow* window) {
     GtkWidget* notebook = g_object_get_data(G_OBJECT(window), "notebook");
     GtkStyleContext* context = gtk_widget_get_style_context(notebook);
     gtk_style_context_add_provider(context, GTK_STYLE_PROVIDER(css_provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-
-    for(int i = gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook))-1; i >= 0; i --) {
-        gtk_container_child_set(
-                GTK_CONTAINER(notebook), GTK_WIDGET(gtk_notebook_get_nth_page(GTK_NOTEBOOK(notebook), i)),
-                "tab-expand", tab_expand,
-                "tab-fill", tab_fill,
-                NULL
-        );
-    }
 }
 
 void load_config(const char* filename) {
