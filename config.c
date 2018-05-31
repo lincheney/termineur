@@ -123,7 +123,9 @@ void detach_tab(VteTerminal* terminal) {
     g_object_unref(tab);
 }
 void cut_tab(VteTerminal* terminal) {
+    if (detaching_tab) g_object_remove_weak_pointer(G_OBJECT(detaching_tab), (void*)&detaching_tab);
     detaching_tab = gtk_widget_get_parent(GTK_WIDGET(terminal));
+    g_object_add_weak_pointer(G_OBJECT(detaching_tab), (void*)&detaching_tab);
 }
 void paste_tab(VteTerminal* terminal) {
     if (detaching_tab) {
