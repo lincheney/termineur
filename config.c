@@ -100,9 +100,9 @@ void next_tab(VteTerminal* terminal) {
     jump_tab(terminal, 1);
 }
 void move_tab(VteTerminal* terminal, int delta) {
-    GtkNotebook* notebook = GTK_NOTEBOOK(gtk_widget_get_parent(gtk_widget_get_parent(GTK_WIDGET(terminal))));
+    GtkWidget* child = gtk_widget_get_parent(GTK_WIDGET(terminal));
+    GtkNotebook* notebook = GTK_NOTEBOOK(gtk_widget_get_parent(child));
     int n = gtk_notebook_get_current_page(notebook);
-    GtkWidget* child = gtk_notebook_get_nth_page(notebook, n);
     n += delta;
     gtk_notebook_reorder_child(notebook, child, n > 0 ? n : 0);
 }
@@ -111,6 +111,15 @@ void move_tab_prev(VteTerminal* terminal) {
 }
 void move_tab_next(VteTerminal* terminal) {
     move_tab(terminal, 1);
+}
+void detach_tab(VteTerminal* terminal) {
+    GtkWidget* child = gtk_widget_get_parent(GTK_WIDGET(terminal));
+    GtkContainer* notebook = GTK_CONTAINER(gtk_widget_get_parent(child));
+
+    g_object_ref(child);
+    gtk_container_remove(notebook, child);
+    new_window(child);
+    g_object_unref(child);
 }
 
 char* str_unescape(char* string) {
@@ -418,6 +427,7 @@ void load_config(const char* filename) {
             else TRY_SET_SHORTCUT(next_tab)
             else TRY_SET_SHORTCUT(move_tab_prev)
             else TRY_SET_SHORTCUT(move_tab_next)
+            else TRY_SET_SHORTCUT(detach_tab)
 
 #undef TRY_SET_SHORTCUT
 

@@ -108,7 +108,6 @@ void notebook_tab_removed(GtkWidget* notebook, GtkWidget *child, guint page_num)
 
 GtkNotebook* notebook_create_window(GtkNotebook* notebook, GtkWidget* page, gint x, gint y) {
     GtkWidget* window = make_window();
-    gtk_widget_show_all(window);
     return GTK_NOTEBOOK(g_object_get_data(G_OBJECT(window), "notebook"));
 }
 
@@ -117,19 +116,24 @@ void notebook_switch_page(GtkNotebook* notebook, GtkWidget* page, guint num) {
     gtk_widget_grab_focus(term);
 }
 
+void add_tab_to_window(GtkWidget* window, GtkWidget* tab) {
+    GtkNotebook* notebook = GTK_NOTEBOOK(g_object_get_data(G_OBJECT(window), "notebook"));
+    /* gtk_notebook_set_tab_detachable(GTK_NOTEBOOK(notebook), tab, TRUE); */
+    int page = gtk_notebook_append_page(notebook, tab, NULL);
+    configure_tab(GTK_CONTAINER(notebook), tab);
+    gtk_notebook_set_current_page(notebook, page);
+}
+
 void add_terminal(GtkWidget* window) {
     GtkWidget* notebook = g_object_get_data(G_OBJECT(window), "notebook");
 
-    GtkWidget* grid = gtk_grid_new();
-    GtkWidget* term = make_terminal(grid, 0, NULL);
+    GtkWidget* tab = gtk_grid_new();
+    GtkWidget* term = make_terminal(tab, 0, NULL);
 
-    int page = gtk_notebook_append_page(GTK_NOTEBOOK(notebook), grid, NULL);
-    gtk_notebook_set_tab_detachable(GTK_NOTEBOOK(notebook), grid, TRUE);
-    configure_tab(GTK_CONTAINER(notebook), grid);
-
-    gtk_widget_show_all(grid);
+    add_tab_to_window(window, tab);
+    gtk_notebook_set_tab_detachable(GTK_NOTEBOOK(notebook), tab, TRUE);
+    gtk_widget_show_all(tab);
     gtk_widget_realize(term);
-    gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), page);
 }
 
 GtkWidget* make_window() {
@@ -150,12 +154,16 @@ GtkWidget* make_window() {
     gtk_container_add(GTK_CONTAINER(window), notebook);
 
     configure_window(GTK_WINDOW(window));
+    gtk_widget_show_all(window);
     return window;
 }
 
-GtkWidget* new_window() {
+GtkWidget* new_window(GtkWidget* tab) {
     GtkWidget* window = make_window();
-    add_terminal(window);
-    gtk_widget_show_all(window);
+    if (tab) {
+        add_tab_to_window(window, tab);
+    } else {
+        add_terminal(window);
+    }
     return window;
 }
