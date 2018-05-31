@@ -27,6 +27,7 @@ GdkRGBA palette[PALETTE_SIZE+2] = {
 gboolean show_scrollbar = 1;
 GArray* terminal_prop_names = NULL;
 GArray* terminal_prop_values = NULL;
+GtkCssProvider* css_provider = NULL;
 char** default_args = NULL;
 char* window_icon = NULL;
 
@@ -138,6 +139,10 @@ void configure_terminal(GObject* terminal) {
 
 void configure_window(GtkWindow* window) {
     gtk_window_set_icon_name(window, window_icon);
+    // css
+    GtkWidget* notebook = g_object_get_data(G_OBJECT(window), "notebook");
+    GtkStyleContext* context = gtk_widget_get_style_context(notebook);
+    gtk_style_context_add_provider(context, GTK_STYLE_PROVIDER(css_provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
 }
 
 void load_config(const char* filename) {
@@ -146,6 +151,8 @@ void load_config(const char* filename) {
         /* if (error) g_warning("Error loading key file: %s", error->message); */
         return;
     }
+
+    if (! css_provider) css_provider = gtk_css_provider_new();
 
     // reallocate keyboard_shortcuts
     if (keyboard_shortcuts) {
@@ -217,6 +224,10 @@ void load_config(const char* filename) {
             gdk_rgba_parse(palette+1, value);
             continue;
         }
+
+       if (strcmp(line, "css-file") == 0) {
+           gtk_css_provider_load_from_path(css_provider, value, NULL);
+       }
 
         if (strcmp(line, "cursor-blink-mode") == 0) {
             int attr =
