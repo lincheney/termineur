@@ -237,25 +237,14 @@ void load_config(const char* filename) {
 
     if (! css_provider) css_provider = gtk_css_provider_new();
 
-    // reallocate keyboard_shortcuts
-    if (keyboard_shortcuts) {
-        g_array_remove_range(keyboard_shortcuts, 0, keyboard_shortcuts->len);
-    } else {
-        keyboard_shortcuts = g_array_new(FALSE, FALSE, sizeof(KeyCombo));
-    }
+#define CLEAR_ARRAY(array, type) \
+    if (array) g_array_remove_range(array, 0, array->len); \
+    else array = g_array_new(FALSE, FALSE, sizeof(type))
 
-    if (terminal_prop_names) {
-        g_array_remove_range(terminal_prop_names, 0, terminal_prop_names->len);
-    } else {
-        terminal_prop_names = g_array_new(FALSE, FALSE, sizeof(char*));
-        g_array_set_clear_func(terminal_prop_names, free);
-    }
-
-    if (terminal_prop_values) {
-        g_array_remove_range(terminal_prop_values, 0, terminal_prop_values->len);
-    } else {
-        terminal_prop_values = g_array_new(FALSE, FALSE, sizeof(GValue));
-    }
+    CLEAR_ARRAY(keyboard_shortcuts, KeyCombo);
+    CLEAR_ARRAY(terminal_prop_names, char*);
+    g_array_set_clear_func(terminal_prop_names, free);
+    CLEAR_ARRAY(terminal_prop_values, GValue);
 
     char* line = NULL;
     char* value;
@@ -331,14 +320,10 @@ void load_config(const char* filename) {
 
        if (strcmp(line, "tab-pos") == 0) {
             int attr =
-                strcmp(value, "TOP") == 0 ?
-                    GTK_POS_TOP :
-                strcmp(value, "BOTTOM") == 0 ?
-                    GTK_POS_BOTTOM :
-                strcmp(value, "LEFT") == 0 ?
-                    GTK_POS_LEFT :
-                strcmp(value, "RIGHT") == 0 ?
-                    GTK_POS_RIGHT :
+                strcmp(value, "TOP")    == 0 ? GTK_POS_TOP    :
+                strcmp(value, "BOTTOM") == 0 ? GTK_POS_BOTTOM :
+                strcmp(value, "LEFT")   == 0 ? GTK_POS_LEFT   :
+                strcmp(value, "RIGHT")  == 0 ? GTK_POS_RIGHT  :
                     -1;
             if (attr != -1) notebook_tab_pos = attr;
             continue;
@@ -346,12 +331,9 @@ void load_config(const char* filename) {
 
        if (strcmp(line, "cursor-blink-mode") == 0) {
             int attr =
-                strcmp(value, "SYSTEM") == 0 ?
-                    VTE_CURSOR_BLINK_SYSTEM :
-                strcmp(value, "ON") == 0 ?
-                    VTE_CURSOR_BLINK_ON :
-                strcmp(value, "OFF") == 0 ?
-                    VTE_CURSOR_BLINK_OFF :
+                strcmp(value, "SYSTEM") == 0 ? VTE_CURSOR_BLINK_SYSTEM :
+                strcmp(value, "ON")     == 0 ? VTE_CURSOR_BLINK_ON     :
+                strcmp(value, "OFF")    == 0 ? VTE_CURSOR_BLINK_OFF    :
                     -1;
             if (attr != -1) STORE_PROPERTY(line, int, G_TYPE_INT, attr);
             continue;
@@ -359,12 +341,9 @@ void load_config(const char* filename) {
 
         if (strcmp(line, "cursor-shape") == 0) {
             int attr =
-                strcmp(value, "BLOCK") == 0 ?
-                    VTE_CURSOR_SHAPE_BLOCK :
-                strcmp(value, "IBEAM") == 0 ?
-                    VTE_CURSOR_SHAPE_IBEAM :
-                strcmp(value, "UNDERLINE") == 0 ?
-                    VTE_CURSOR_SHAPE_UNDERLINE :
+                strcmp(value, "BLOCK")     == 0 ? VTE_CURSOR_SHAPE_BLOCK     :
+                strcmp(value, "IBEAM")     == 0 ? VTE_CURSOR_SHAPE_IBEAM     :
+                strcmp(value, "UNDERLINE") == 0 ? VTE_CURSOR_SHAPE_UNDERLINE :
                     -1;
             if (attr != -1) STORE_PROPERTY(line, int, G_TYPE_INT, attr);
             continue;
