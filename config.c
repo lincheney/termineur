@@ -145,6 +145,10 @@ void paste_tab(VteTerminal* terminal) {
         detaching_tab = NULL;
     }
 }
+void switch_to_tab(VteTerminal* terminal, int data) {
+    GtkNotebook* notebook = GTK_NOTEBOOK(gtk_widget_get_parent(gtk_widget_get_parent(GTK_WIDGET(terminal))));
+    gtk_notebook_set_current_page(notebook, data);
+}
 
 char* str_unescape(char* string) {
     char* p = string;
@@ -428,11 +432,17 @@ void load_config(const char* filename) {
                 *arg = '\0';
                 arg++;
             }
+            void* data = NULL;
 
-#define TRY_SET_SHORTCUT(name) \
+#define TRY_SET_SHORTCUT_WITH_DATA(name, processor) \
             if (strcmp(value, #name) == 0) { \
                 callback = (KeyComboCallback)name; \
+                if (arg) { \
+                    arg = str_unescape(arg); \
+                    data = processor; \
+                } \
             }
+#define TRY_SET_SHORTCUT(name) TRY_SET_SHORTCUT_WITH_DATA(name, NULL)
 
             TRY_SET_SHORTCUT(paste_clipboard)
             else TRY_SET_SHORTCUT(copy_clipboard)
@@ -447,7 +457,7 @@ void load_config(const char* filename) {
             else TRY_SET_SHORTCUT(scroll_bottom)
             else TRY_SET_SHORTCUT(select_all)
             else TRY_SET_SHORTCUT(unselect_all)
-            else TRY_SET_SHORTCUT(feed_data)
+            else TRY_SET_SHORTCUT_WITH_DATA(feed_data, strdup(arg))
             else TRY_SET_SHORTCUT(new_tab)
             else TRY_SET_SHORTCUT(new_window)
             else TRY_SET_SHORTCUT(prev_tab)
@@ -457,6 +467,7 @@ void load_config(const char* filename) {
             else TRY_SET_SHORTCUT(detach_tab)
             else TRY_SET_SHORTCUT(cut_tab)
             else TRY_SET_SHORTCUT(paste_tab)
+            else TRY_SET_SHORTCUT_WITH_DATA(switch_to_tab, GINT_TO_POINTER(atoi(arg)))
 
 #undef TRY_SET_SHORTCUT
 
@@ -466,9 +477,7 @@ void load_config(const char* filename) {
                 if (combo.modifiers & GDK_SHIFT_MASK) {
                     combo.key = gdk_keyval_to_upper(combo.key);
                 }
-                if (arg) {
-                    combo.data = strdup(str_unescape(arg));
-                }
+                combo.data = data;
 
                 g_array_append_val(keyboard_shortcuts, combo);
             } else {
