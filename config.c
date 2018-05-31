@@ -62,25 +62,27 @@ void reset_terminal(VteTerminal* terminal) {
     vte_terminal_reset(terminal, 1, 1);
     vte_terminal_feed_child_binary(terminal, (guint8*)"\x0c", 1); // control-l = clear
 }
+#define SCROLL(terminal, value) \
+    GtkAdjustment* adj = gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(terminal)); \
+    gtk_adjustment_set_value(adj, value)
+
 void scroll_up(VteTerminal* terminal) {
-    GtkAdjustment* adj = gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(terminal));
-    gdouble delta = gtk_adjustment_get_step_increment(adj);
-    gtk_adjustment_set_value(adj, gtk_adjustment_get_value(adj)-delta);
+    SCROLL(terminal, gtk_adjustment_get_value(adj) - gtk_adjustment_get_step_increment(adj));
 }
 void scroll_down(VteTerminal* terminal) {
-    GtkAdjustment* adj = gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(terminal));
-    gdouble delta = gtk_adjustment_get_step_increment(adj);
-    gtk_adjustment_set_value(adj, gtk_adjustment_get_value(adj)+delta);
+    SCROLL(terminal, gtk_adjustment_get_value(adj) + gtk_adjustment_get_step_increment(adj));
 }
 void scroll_page_up(VteTerminal* terminal) {
-    GtkAdjustment* adj = gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(terminal));
-    gdouble delta = gtk_adjustment_get_page_size(adj);
-    gtk_adjustment_set_value(adj, gtk_adjustment_get_value(adj)-delta);
+    SCROLL(terminal, gtk_adjustment_get_value(adj) - gtk_adjustment_get_page_size(adj));
 }
 void scroll_page_down(VteTerminal* terminal) {
-    GtkAdjustment* adj = gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(terminal));
-    gdouble delta = gtk_adjustment_get_page_size(adj);
-    gtk_adjustment_set_value(adj, gtk_adjustment_get_value(adj)+delta);
+    SCROLL(terminal, gtk_adjustment_get_value(adj) + gtk_adjustment_get_page_size(adj));
+}
+void scroll_top(VteTerminal* terminal) {
+    SCROLL(terminal, gtk_adjustment_get_lower(adj));
+}
+void scroll_bottom(VteTerminal* terminal) {
+    SCROLL(terminal, gtk_adjustment_get_upper(adj));
 }
 void feed_data(VteTerminal* terminal, gchar* data) {
     vte_terminal_feed_child_binary(terminal, (guint8*)data, strlen(data));
@@ -438,6 +440,8 @@ void load_config(const char* filename) {
             else TRY_SET_SHORTCUT(scroll_down)
             else TRY_SET_SHORTCUT(scroll_page_up)
             else TRY_SET_SHORTCUT(scroll_page_down)
+            else TRY_SET_SHORTCUT(scroll_top)
+            else TRY_SET_SHORTCUT(scroll_bottom)
             else TRY_SET_SHORTCUT(select_all)
             else TRY_SET_SHORTCUT(unselect_all)
             else TRY_SET_SHORTCUT(feed_data)
