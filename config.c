@@ -90,6 +90,9 @@ void feed_data(VteTerminal* terminal, gchar* data) {
 void new_tab(VteTerminal* terminal) {
     add_terminal(GTK_WIDGET(get_active_window()));
 }
+void new_window(VteTerminal* terminal) {
+    make_new_window(NULL);
+}
 void jump_tab(VteTerminal* terminal, int delta) {
     GtkNotebook* notebook = GTK_NOTEBOOK(gtk_widget_get_parent(gtk_widget_get_parent(GTK_WIDGET(terminal))));
     int n = gtk_notebook_get_current_page(notebook);
@@ -121,7 +124,7 @@ void detach_tab(VteTerminal* terminal) {
 
     g_object_ref(tab);
     gtk_container_remove(notebook, tab);
-    new_window(tab);
+    make_new_window(tab);
     g_object_unref(tab);
 }
 void cut_tab(VteTerminal* terminal) {
@@ -446,6 +449,7 @@ void load_config(const char* filename) {
             else TRY_SET_SHORTCUT(unselect_all)
             else TRY_SET_SHORTCUT(feed_data)
             else TRY_SET_SHORTCUT(new_tab)
+            else TRY_SET_SHORTCUT(new_window)
             else TRY_SET_SHORTCUT(prev_tab)
             else TRY_SET_SHORTCUT(next_tab)
             else TRY_SET_SHORTCUT(move_tab_prev)

@@ -12,7 +12,7 @@
 #include "window.h"
 
 void activate(GtkApplication* app, gpointer data) {
-    new_window(NULL);
+    make_new_window(NULL);
 }
 
 void startup(GtkApplication* app, gpointer data) {

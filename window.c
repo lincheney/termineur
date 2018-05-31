@@ -156,7 +156,7 @@ GtkWidget* make_window() {
     return window;
 }
 
-GtkWidget* new_window(GtkWidget* tab) {
+GtkWidget* make_new_window(GtkWidget* tab) {
     GtkWidget* window = make_window();
     if (tab) {
         add_tab_to_window(window, tab, -1);
