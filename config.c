@@ -229,8 +229,8 @@ void configure_window(GtkWindow* window) {
             "tab-pos", notebook_tab_pos,
         NULL);
     // css
-    GtkStyleContext* context = gtk_widget_get_style_context(notebook);
-    gtk_style_context_add_provider(context, GTK_STYLE_PROVIDER(css_provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+    GdkScreen* screen = gdk_screen_get_default();
+    gtk_style_context_add_provider_for_screen(screen, GTK_STYLE_PROVIDER(css_provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
 }
 
 void load_config(const char* filename) {
