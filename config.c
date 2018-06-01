@@ -228,9 +228,6 @@ void configure_window(GtkWindow* window) {
             "show-tabs", notebook_show_tabs,
             "tab-pos", notebook_tab_pos,
         NULL);
-    // css
-    GdkScreen* screen = gdk_screen_get_default();
-    gtk_style_context_add_provider_for_screen(screen, GTK_STYLE_PROVIDER(css_provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
 }
 
 void load_config(const char* filename) {
@@ -306,6 +303,8 @@ void load_config(const char* filename) {
 
        if (strcmp(line, "css-file") == 0) {
            gtk_css_provider_load_from_path(css_provider, value, NULL);
+           GdkScreen* screen = gdk_screen_get_default();
+           gtk_style_context_add_provider_for_screen(screen, GTK_STYLE_PROVIDER(css_provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
            continue;
        }
 
