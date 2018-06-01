@@ -34,10 +34,14 @@ VteTerminal* get_active_terminal(GtkWidget* window) {
 GtkWidget* make_terminal(GtkWidget* grid, int argc, char** argv) {
     GtkWidget *terminal;
     GtkWidget *scrollbar;
+    GtkWidget *label;
 
     terminal = vte_terminal_new();
+    label = gtk_label_new("");
+    g_object_set_data(G_OBJECT(terminal), "label", label);
     g_object_set_data(G_OBJECT(grid), "terminal", terminal);
     gtk_container_add(GTK_CONTAINER(grid), GTK_WIDGET(terminal));
+
     configure_terminal(terminal);
 
     g_signal_connect(terminal, "child-exited", G_CALLBACK(term_exited), grid);
@@ -111,19 +115,20 @@ GtkNotebook* notebook_create_window(GtkNotebook* notebook, GtkWidget* page, gint
     return GTK_NOTEBOOK(g_object_get_data(G_OBJECT(window), "notebook"));
 }
 
-void notebook_switch_page(GtkNotebook* notebook, GtkWidget* page, guint num) {
-    GtkWidget* term = g_object_get_data(G_OBJECT(page), "terminal");
+void notebook_switch_page(GtkNotebook* notebook, GtkWidget* tab, guint num) {
+    GtkWidget* term = g_object_get_data(G_OBJECT(tab), "terminal");
     gtk_widget_grab_focus(term);
 }
 
 void add_tab_to_window(GtkWidget* window, GtkWidget* tab, int position) {
     GtkNotebook* notebook = GTK_NOTEBOOK(g_object_get_data(G_OBJECT(window), "notebook"));
-    /* gtk_notebook_set_tab_detachable(GTK_NOTEBOOK(notebook), tab, TRUE); */
-    int page = gtk_notebook_insert_page(notebook, tab, NULL, position);
+    GtkWidget* terminal = g_object_get_data(G_OBJECT(tab), "terminal");
+    GtkWidget* label = GTK_WIDGET(g_object_get_data(G_OBJECT(terminal), "label"));
+    int page = gtk_notebook_insert_page(notebook, tab, label, position);
     configure_tab(GTK_CONTAINER(notebook), tab);
 
     gtk_widget_show_all(tab);
-    gtk_widget_realize(g_object_get_data(G_OBJECT(tab), "terminal"));
+    gtk_widget_realize(terminal);
     gtk_notebook_set_current_page(notebook, page);
     gtk_notebook_set_tab_detachable(GTK_NOTEBOOK(notebook), tab, TRUE);
 }
