@@ -10,4 +10,8 @@ GtkWidget* make_new_window(GtkWidget*);
 void add_terminal(GtkWidget*);
 void add_tab_to_window(GtkWidget*, GtkWidget*, int);
 
+void foreach_window(GFunc, gpointer);
+void foreach_terminal_in_window(GtkWidget* window, GFunc, gpointer);
+void foreach_terminal(GFunc, gpointer);
+
 #endif

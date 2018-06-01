@@ -3,6 +3,7 @@
 #include <ctype.h>
 #include "config.h"
 #include "window.h"
+#include "terminal.h"
 
 GdkRGBA palette[PALETTE_SIZE+2] = {
     { 0., 0., 0., 1. }, // background
@@ -308,6 +309,11 @@ void load_config(const char* filename) {
            continue;
        }
 
+       if (strcmp(line, "tab-title-format") == 0) {
+           set_tab_title_format(value);
+           continue;
+       }
+
 #define TRY_SET_INT_PROP(name, var) \
     if (strcmp(line, name) == 0) { \
         var = atoi(value); \
@@ -479,4 +485,7 @@ void load_config(const char* filename) {
 
     fclose(config);
     if (line) free(line);
+
+    // reload config everywhere
+    create_timer(1000);
 }

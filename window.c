@@ -100,3 +100,23 @@ GtkWidget* make_new_window(GtkWidget* tab) {
     }
     return window;
 }
+
+void foreach_window(GFunc callback, gpointer data) {
+    GList* windows = gtk_application_get_windows(app);
+    g_list_foreach(windows, callback, data);
+}
+void foreach_terminal_in_window(GtkWidget* window, GFunc callback, gpointer data) {
+    GtkWidget* terminal;
+    GtkNotebook* notebook = g_object_get_data(G_OBJECT(window), "notebook");
+    int n = gtk_notebook_get_n_pages(notebook);
+    for (int i = 0; i < n; i ++) {
+        terminal = g_object_get_data(G_OBJECT(gtk_notebook_get_nth_page(notebook, i)), "terminal");
+        callback(terminal, data);
+    }
+}
+void foreach_terminal(GFunc callback, gpointer data) {
+    GtkWidget* window;
+    for (GList* windows = gtk_application_get_windows(app); windows; windows = windows->next) {
+        foreach_terminal_in_window(GTK_WIDGET(windows->data), callback, data);
+    }
+}
