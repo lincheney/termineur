@@ -18,6 +18,7 @@ struct {
 } tab_title_format = {NULL, 0};
 
 void update_terminal_ui(VteTerminal* terminal);
+void update_terminal_title(VteTerminal* terminal);
 
 void term_exited(VteTerminal* terminal, gint status, GtkWidget* container) {
     gtk_widget_destroy(GTK_WIDGET(container));
@@ -48,6 +49,7 @@ GtkWidget* make_terminal(GtkWidget* grid, int argc, char** argv) {
     configure_terminal(terminal);
 
     g_signal_connect(terminal, "child-exited", G_CALLBACK(term_exited), grid);
+    g_signal_connect(terminal, "window-title-changed", G_CALLBACK(update_terminal_title), NULL);
     g_object_set(terminal, "expand", 1, NULL);
     vte_terminal_set_cursor_blink_mode(VTE_TERMINAL(terminal), VTE_CURSOR_BLINK_OFF);
 
@@ -201,14 +203,16 @@ gboolean construct_title(VteTerminal* terminal, char* buffer, size_t length) {
     return TRUE;
 }
 
-void update_terminal_ui(VteTerminal* terminal) {
-    GtkLabel* label = GTK_LABEL(g_object_get_data(G_OBJECT(terminal), "label"));
-
-    // set the title
+void update_terminal_title(VteTerminal* terminal) {
     char buffer[1024] = "";
     if (construct_title(terminal, buffer, sizeof(buffer)-1)) {
+        GtkLabel* label = GTK_LABEL(g_object_get_data(G_OBJECT(terminal), "label"));
         gtk_label_set_label(label, buffer);
     }
+}
+
+void update_terminal_ui(VteTerminal* terminal) {
+    update_terminal_title(terminal);
 }
 
 gboolean timer_callback(gpointer data) {
