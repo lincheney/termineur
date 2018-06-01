@@ -149,6 +149,11 @@ void switch_to_tab(VteTerminal* terminal, int data) {
     GtkNotebook* notebook = GTK_NOTEBOOK(gtk_widget_get_parent(gtk_widget_get_parent(GTK_WIDGET(terminal))));
     gtk_notebook_set_current_page(notebook, data);
 }
+void tab_popup_menu(VteTerminal* terminal) {
+    GtkNotebook* notebook = GTK_NOTEBOOK(gtk_widget_get_parent(gtk_widget_get_parent(GTK_WIDGET(terminal))));
+    gboolean value;
+    g_signal_emit_by_name(notebook, "popup-menu", &value);
+}
 
 char* str_unescape(char* string) {
     char* p = string;
@@ -453,6 +458,7 @@ void load_config(const char* filename) {
             else TRY_SET_SHORTCUT(cut_tab)
             else TRY_SET_SHORTCUT(paste_tab)
             else TRY_SET_SHORTCUT_WITH_DATA(switch_to_tab, GINT_TO_POINTER(atoi(arg)))
+            else TRY_SET_SHORTCUT(tab_popup_menu)
 
 #undef TRY_SET_SHORTCUT
 
