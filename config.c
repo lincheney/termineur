@@ -39,9 +39,10 @@ gboolean tab_fill = TRUE;
 gboolean notebook_enable_popup = FALSE;
 gboolean notebook_scrollable = FALSE;
 gboolean notebook_show_tabs = TRUE;
+GtkPositionType notebook_tab_pos = GTK_POS_TOP;
 int ui_refresh_interval = 2000;
 PangoEllipsizeMode tab_title_ellipsize_mode = PANGO_ELLIPSIZE_END;
-GtkPositionType notebook_tab_pos = GTK_POS_TOP;
+GtkAlign tab_title_alignment = GTK_JUSTIFY_LEFT;
 
 /* CALLBACKS */
 
@@ -214,15 +215,17 @@ void configure_terminal(GtkWidget* terminal) {
     g_object_setv(G_OBJECT(terminal), terminal_prop_names->len, (const char**)terminal_prop_names->data, (GValue*)terminal_prop_values->data);
 
     GtkWidget* label = g_object_get_data(G_OBJECT(terminal), "label");
-    gtk_label_set_ellipsize(GTK_LABEL(label), tab_title_ellipsize_mode);
+    g_object_set(G_OBJECT(label),
+            "ellipsize", tab_title_ellipsize_mode,
+            "halign", tab_title_alignment,
+            NULL);
 }
 
 void configure_tab(GtkContainer* notebook, GtkWidget* tab) {
     gtk_container_child_set(GTK_CONTAINER(notebook), tab,
             "tab-expand", tab_expand,
             "tab-fill", tab_fill,
-            NULL
-    );
+            NULL);
 }
 
 void configure_window(GtkWindow* window) {
@@ -233,7 +236,7 @@ void configure_window(GtkWindow* window) {
             "scrollable", notebook_scrollable,
             "show-tabs", notebook_show_tabs,
             "tab-pos", notebook_tab_pos,
-        NULL);
+            NULL);
 }
 
 void load_config(const char* filename) {
@@ -336,10 +339,10 @@ void load_config(const char* filename) {
 
        if (strcmp(line, "tab-pos") == 0) {
             int attr =
-                strcmp(value, "TOP")    == 0 ? GTK_POS_TOP    :
-                strcmp(value, "BOTTOM") == 0 ? GTK_POS_BOTTOM :
-                strcmp(value, "LEFT")   == 0 ? GTK_POS_LEFT   :
-                strcmp(value, "RIGHT")  == 0 ? GTK_POS_RIGHT  :
+                strcmp(value, "top")    == 0 ? GTK_POS_TOP    :
+                strcmp(value, "bottom") == 0 ? GTK_POS_BOTTOM :
+                strcmp(value, "left")   == 0 ? GTK_POS_LEFT   :
+                strcmp(value, "right")  == 0 ? GTK_POS_RIGHT  :
                     -1;
             if (attr != -1) notebook_tab_pos = attr;
             continue;
@@ -347,9 +350,9 @@ void load_config(const char* filename) {
 
        if (strcmp(line, "cursor-blink-mode") == 0) {
             int attr =
-                strcmp(value, "SYSTEM") == 0 ? VTE_CURSOR_BLINK_SYSTEM :
-                strcmp(value, "ON")     == 0 ? VTE_CURSOR_BLINK_ON     :
-                strcmp(value, "OFF")    == 0 ? VTE_CURSOR_BLINK_OFF    :
+                strcmp(value, "system") == 0 ? VTE_CURSOR_BLINK_SYSTEM :
+                strcmp(value, "on")     == 0 ? VTE_CURSOR_BLINK_ON     :
+                strcmp(value, "off")    == 0 ? VTE_CURSOR_BLINK_OFF    :
                     -1;
             if (attr != -1) STORE_PROPERTY(line, int, G_TYPE_INT, attr);
             continue;
@@ -357,9 +360,9 @@ void load_config(const char* filename) {
 
         if (strcmp(line, "cursor-shape") == 0) {
             int attr =
-                strcmp(value, "BLOCK")     == 0 ? VTE_CURSOR_SHAPE_BLOCK     :
-                strcmp(value, "IBEAM")     == 0 ? VTE_CURSOR_SHAPE_IBEAM     :
-                strcmp(value, "UNDERLINE") == 0 ? VTE_CURSOR_SHAPE_UNDERLINE :
+                strcmp(value, "block")     == 0 ? VTE_CURSOR_SHAPE_BLOCK     :
+                strcmp(value, "ibeam")     == 0 ? VTE_CURSOR_SHAPE_IBEAM     :
+                strcmp(value, "underline") == 0 ? VTE_CURSOR_SHAPE_UNDERLINE :
                     -1;
             if (attr != -1) STORE_PROPERTY(line, int, G_TYPE_INT, attr);
             continue;
@@ -367,11 +370,32 @@ void load_config(const char* filename) {
 
         if (strcmp(line, "tab-title-ellipsize-mode") == 0) {
             int attr =
-                strcmp(value, "START")  == 0 ? PANGO_ELLIPSIZE_NONE   :
-                strcmp(value, "MIDDLE") == 0 ? PANGO_ELLIPSIZE_MIDDLE :
-                strcmp(value, "END")    == 0 ? PANGO_ELLIPSIZE_END    :
+                strcmp(value, "start")  == 0 ? PANGO_ELLIPSIZE_NONE   :
+                strcmp(value, "middle") == 0 ? PANGO_ELLIPSIZE_MIDDLE :
+                strcmp(value, "end")    == 0 ? PANGO_ELLIPSIZE_END    :
                     -1;
             if (attr != -1) tab_title_ellipsize_mode = attr;
+            continue;
+        }
+
+        if (strcmp(line, "tab-title-ellipsize-mode") == 0) {
+            int attr =
+                strcmp(value, "start")  == 0 ? PANGO_ELLIPSIZE_NONE   :
+                strcmp(value, "middle") == 0 ? PANGO_ELLIPSIZE_MIDDLE :
+                strcmp(value, "end")    == 0 ? PANGO_ELLIPSIZE_END    :
+                    -1;
+            if (attr != -1) tab_title_ellipsize_mode = attr;
+            continue;
+        }
+
+        if (strcmp(line, "tab-title-alignment") == 0) {
+            int attr =
+                strcmp(value, "left")   == 0 ? GTK_ALIGN_START  :
+                strcmp(value, "right")  == 0 ? GTK_ALIGN_END    :
+                strcmp(value, "center") == 0 ? GTK_ALIGN_CENTER :
+                strcmp(value, "fill")   == 0 ? GTK_ALIGN_FILL   :
+                    -1;
+            if (attr != -1) tab_title_alignment = attr;
             continue;
         }
 

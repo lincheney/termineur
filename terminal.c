@@ -38,10 +38,12 @@ GtkWidget* make_terminal(GtkWidget* grid, int argc, char** argv) {
     GtkWidget *label;
 
     terminal = vte_terminal_new();
-    label = gtk_label_new("");
-    g_object_set_data(G_OBJECT(terminal), "label", label);
     g_object_set_data(G_OBJECT(grid), "terminal", terminal);
     gtk_container_add(GTK_CONTAINER(grid), GTK_WIDGET(terminal));
+
+    label = gtk_label_new("");
+    g_object_set_data(G_OBJECT(terminal), "label", label);
+    gtk_label_set_single_line_mode(GTK_LABEL(label), TRUE);
 
     configure_terminal(terminal);
 
