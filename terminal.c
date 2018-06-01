@@ -207,7 +207,7 @@ void update_terminal_ui(VteTerminal* terminal) {
     // set the title
     char buffer[1024] = "";
     if (construct_title(terminal, buffer, sizeof(buffer)-1)) {
-        gtk_label_set_text(label, buffer);
+        gtk_label_set_label(label, buffer);
     }
 }
 

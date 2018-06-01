@@ -36,6 +36,7 @@ char* window_icon = NULL;
 // notebook props
 gboolean tab_expand = FALSE;
 gboolean tab_fill = TRUE;
+gboolean tab_title_markup = FALSE;
 gboolean notebook_enable_popup = FALSE;
 gboolean notebook_scrollable = FALSE;
 gboolean notebook_show_tabs = TRUE;
@@ -218,6 +219,7 @@ void configure_terminal(GtkWidget* terminal) {
     g_object_set(G_OBJECT(label),
             "ellipsize", tab_title_ellipsize_mode,
             "halign", tab_title_alignment,
+            "use-markup", tab_title_markup,
             NULL);
 }
 
@@ -334,6 +336,7 @@ void load_config(const char* filename) {
        TRY_SET_INT_PROP("tab-scrollable", notebook_scrollable)
        TRY_SET_INT_PROP("show-tabs", notebook_show_tabs)
        TRY_SET_INT_PROP("ui-refresh-interval", ui_refresh_interval)
+       TRY_SET_INT_PROP("tab-title-markup", tab_title_markup)
 
 #undef TRY_SET_INT_PROP
 
@@ -345,36 +348,6 @@ void load_config(const char* filename) {
                 strcmp(value, "right")  == 0 ? GTK_POS_RIGHT  :
                     -1;
             if (attr != -1) notebook_tab_pos = attr;
-            continue;
-        }
-
-       if (strcmp(line, "cursor-blink-mode") == 0) {
-            int attr =
-                strcmp(value, "system") == 0 ? VTE_CURSOR_BLINK_SYSTEM :
-                strcmp(value, "on")     == 0 ? VTE_CURSOR_BLINK_ON     :
-                strcmp(value, "off")    == 0 ? VTE_CURSOR_BLINK_OFF    :
-                    -1;
-            if (attr != -1) STORE_PROPERTY(line, int, G_TYPE_INT, attr);
-            continue;
-        }
-
-        if (strcmp(line, "cursor-shape") == 0) {
-            int attr =
-                strcmp(value, "block")     == 0 ? VTE_CURSOR_SHAPE_BLOCK     :
-                strcmp(value, "ibeam")     == 0 ? VTE_CURSOR_SHAPE_IBEAM     :
-                strcmp(value, "underline") == 0 ? VTE_CURSOR_SHAPE_UNDERLINE :
-                    -1;
-            if (attr != -1) STORE_PROPERTY(line, int, G_TYPE_INT, attr);
-            continue;
-        }
-
-        if (strcmp(line, "tab-title-ellipsize-mode") == 0) {
-            int attr =
-                strcmp(value, "start")  == 0 ? PANGO_ELLIPSIZE_NONE   :
-                strcmp(value, "middle") == 0 ? PANGO_ELLIPSIZE_MIDDLE :
-                strcmp(value, "end")    == 0 ? PANGO_ELLIPSIZE_END    :
-                    -1;
-            if (attr != -1) tab_title_ellipsize_mode = attr;
             continue;
         }
 
@@ -396,6 +369,26 @@ void load_config(const char* filename) {
                 strcmp(value, "fill")   == 0 ? GTK_ALIGN_FILL   :
                     -1;
             if (attr != -1) tab_title_alignment = attr;
+            continue;
+        }
+
+       if (strcmp(line, "cursor-blink-mode") == 0) {
+            int attr =
+                strcmp(value, "system") == 0 ? VTE_CURSOR_BLINK_SYSTEM :
+                strcmp(value, "on")     == 0 ? VTE_CURSOR_BLINK_ON     :
+                strcmp(value, "off")    == 0 ? VTE_CURSOR_BLINK_OFF    :
+                    -1;
+            if (attr != -1) STORE_PROPERTY(line, int, G_TYPE_INT, attr);
+            continue;
+        }
+
+        if (strcmp(line, "cursor-shape") == 0) {
+            int attr =
+                strcmp(value, "block")     == 0 ? VTE_CURSOR_SHAPE_BLOCK     :
+                strcmp(value, "ibeam")     == 0 ? VTE_CURSOR_SHAPE_IBEAM     :
+                strcmp(value, "underline") == 0 ? VTE_CURSOR_SHAPE_UNDERLINE :
+                    -1;
+            if (attr != -1) STORE_PROPERTY(line, int, G_TYPE_INT, attr);
             continue;
         }
 
