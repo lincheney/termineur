@@ -39,6 +39,7 @@ gboolean tab_fill = TRUE;
 gboolean notebook_enable_popup = FALSE;
 gboolean notebook_scrollable = FALSE;
 gboolean notebook_show_tabs = TRUE;
+int ui_refresh_interval = 2000;
 GtkPositionType notebook_tab_pos = GTK_POS_TOP;
 
 /* CALLBACKS */
@@ -325,6 +326,7 @@ void load_config(const char* filename) {
        TRY_SET_INT_PROP("tab-enable-popup", notebook_enable_popup)
        TRY_SET_INT_PROP("tab-scrollable", notebook_scrollable)
        TRY_SET_INT_PROP("show-tabs", notebook_show_tabs)
+       TRY_SET_INT_PROP("ui-refresh-interval", ui_refresh_interval)
 
 #undef TRY_SET_INT_PROP
 
@@ -487,5 +489,5 @@ void load_config(const char* filename) {
     if (line) free(line);
 
     // reload config everywhere
-    create_timer(1000);
+    create_timer(ui_refresh_interval);
 }
