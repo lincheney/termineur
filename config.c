@@ -40,6 +40,7 @@ gboolean notebook_enable_popup = FALSE;
 gboolean notebook_scrollable = FALSE;
 gboolean notebook_show_tabs = TRUE;
 int ui_refresh_interval = 2000;
+PangoEllipsizeMode tab_title_ellipsize_mode = PANGO_ELLIPSIZE_END;
 GtkPositionType notebook_tab_pos = GTK_POS_TOP;
 
 /* CALLBACKS */
@@ -211,6 +212,9 @@ char* str_unescape(char* string) {
 
 void configure_terminal(GtkWidget* terminal) {
     g_object_setv(G_OBJECT(terminal), terminal_prop_names->len, (const char**)terminal_prop_names->data, (GValue*)terminal_prop_values->data);
+
+    GtkWidget* label = g_object_get_data(G_OBJECT(terminal), "label");
+    gtk_label_set_ellipsize(GTK_LABEL(label), tab_title_ellipsize_mode);
 }
 
 void configure_tab(GtkContainer* notebook, GtkWidget* tab) {
@@ -358,6 +362,16 @@ void load_config(const char* filename) {
                 strcmp(value, "UNDERLINE") == 0 ? VTE_CURSOR_SHAPE_UNDERLINE :
                     -1;
             if (attr != -1) STORE_PROPERTY(line, int, G_TYPE_INT, attr);
+            continue;
+        }
+
+        if (strcmp(line, "tab-title-ellipsize-mode") == 0) {
+            int attr =
+                strcmp(value, "START")  == 0 ? PANGO_ELLIPSIZE_NONE   :
+                strcmp(value, "MIDDLE") == 0 ? PANGO_ELLIPSIZE_MIDDLE :
+                strcmp(value, "END")    == 0 ? PANGO_ELLIPSIZE_END    :
+                    -1;
+            if (attr != -1) tab_title_ellipsize_mode = attr;
             continue;
         }
 
