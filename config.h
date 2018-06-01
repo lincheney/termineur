@@ -7,6 +7,7 @@
 extern GdkRGBA palette[PALETTE_SIZE+2];
 gboolean show_scrollbar;
 char** default_args;
+int inactivity_duration;
 
 typedef void(*KeyComboCallback)(VteTerminal*, gpointer);
 typedef struct {

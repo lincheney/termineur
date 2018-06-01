@@ -33,6 +33,24 @@ void term_spawn_callback(GtkWidget* terminal, GPid pid, GError *error, gpointer 
     g_object_set_data(G_OBJECT(terminal), "pid", GINT_TO_POINTER(pid));
 }
 
+gboolean terminal_inactivity(VteTerminal* terminal) {
+    g_object_set_data(G_OBJECT(terminal), "inactivity_timer", NULL);
+    return FALSE;
+}
+
+void terminal_activity(VteTerminal* terminal) {
+    GSource* inactivity_timer = g_object_get_data(G_OBJECT(terminal), "inactivity_timer");
+    if (inactivity_timer) {
+        // delay inactivity timer some more
+        g_source_set_ready_time(inactivity_timer, g_source_get_time(inactivity_timer) + inactivity_duration*1000);
+    } else {
+        inactivity_timer = g_timeout_source_new(inactivity_duration);
+        g_source_set_callback(inactivity_timer, (GSourceFunc)terminal_inactivity, terminal, NULL);
+        g_object_set_data(G_OBJECT(terminal), "inactivity_timer", inactivity_timer);
+        g_source_attach(inactivity_timer, NULL);
+    }
+}
+
 GtkWidget* make_terminal(GtkWidget* grid, int argc, char** argv) {
     GtkWidget *terminal;
     GtkWidget *scrollbar;
@@ -50,6 +68,7 @@ GtkWidget* make_terminal(GtkWidget* grid, int argc, char** argv) {
 
     g_signal_connect(terminal, "child-exited", G_CALLBACK(term_exited), grid);
     g_signal_connect(terminal, "window-title-changed", G_CALLBACK(update_terminal_title), NULL);
+    g_signal_connect(terminal, "contents-changed", G_CALLBACK(terminal_activity), NULL);
     g_object_set(terminal, "expand", 1, NULL);
     vte_terminal_set_cursor_blink_mode(VTE_TERMINAL(terminal), VTE_CURSOR_BLINK_OFF);
 

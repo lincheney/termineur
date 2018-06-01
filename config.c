@@ -44,6 +44,7 @@ GtkPositionType notebook_tab_pos = GTK_POS_TOP;
 int ui_refresh_interval = 2000;
 PangoEllipsizeMode tab_title_ellipsize_mode = PANGO_ELLIPSIZE_END;
 GtkAlign tab_title_alignment = GTK_JUSTIFY_LEFT;
+int inactivity_duration = 2000;
 
 /* CALLBACKS */
 
@@ -337,6 +338,7 @@ void load_config(const char* filename) {
        TRY_SET_INT_PROP("show-tabs", notebook_show_tabs)
        TRY_SET_INT_PROP("ui-refresh-interval", ui_refresh_interval)
        TRY_SET_INT_PROP("tab-title-markup", tab_title_markup)
+       TRY_SET_INT_PROP("inactivity-duration", inactivity_duration)
 
 #undef TRY_SET_INT_PROP
 

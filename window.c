@@ -115,7 +115,6 @@ void foreach_terminal_in_window(GtkWidget* window, GFunc callback, gpointer data
     }
 }
 void foreach_terminal(GFunc callback, gpointer data) {
-    GtkWidget* window;
     for (GList* windows = gtk_application_get_windows(app); windows; windows = windows->next) {
         foreach_terminal_in_window(GTK_WIDGET(windows->data), callback, data);
     }
