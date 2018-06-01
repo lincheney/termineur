@@ -3,8 +3,6 @@
 
 #include <vte/vte.h>
 
-#define PALETTE_SIZE (16)
-extern GdkRGBA palette[PALETTE_SIZE+2];
 gboolean show_scrollbar;
 char** default_args;
 int inactivity_duration;

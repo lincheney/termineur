@@ -5,6 +5,8 @@
 #include "window.h"
 #include "terminal.h"
 
+#define PALETTE_SIZE (16)
+extern GdkRGBA palette[PALETTE_SIZE+2];
 GdkRGBA palette[PALETTE_SIZE+2] = {
     { 0., 0., 0., 1. }, // background
     { 1., 1., 1., 1. }, // foreground
@@ -215,6 +217,8 @@ char* str_unescape(char* string) {
 
 void configure_terminal(GtkWidget* terminal) {
     g_object_setv(G_OBJECT(terminal), terminal_prop_names->len, (const char**)terminal_prop_names->data, (GValue*)terminal_prop_values->data);
+    // populate palette
+    vte_terminal_set_colors(VTE_TERMINAL(terminal), palette+1, palette, palette+2, PALETTE_SIZE);
 
     GtkWidget* label = g_object_get_data(G_OBJECT(terminal), "label");
     g_object_set(G_OBJECT(label),

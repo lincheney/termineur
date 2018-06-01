@@ -70,10 +70,6 @@ GtkWidget* make_terminal(GtkWidget* grid, int argc, char** argv) {
     g_signal_connect(terminal, "window-title-changed", G_CALLBACK(update_terminal_title), NULL);
     g_signal_connect(terminal, "contents-changed", G_CALLBACK(terminal_activity), NULL);
     g_object_set(terminal, "expand", 1, NULL);
-    vte_terminal_set_cursor_blink_mode(VTE_TERMINAL(terminal), VTE_CURSOR_BLINK_OFF);
-
-    // populate palette
-    vte_terminal_set_colors(VTE_TERMINAL(terminal), palette+1, palette, palette+2, PALETTE_SIZE);
 
     char **args;
     char *fallback_args[] = {NULL, NULL};
