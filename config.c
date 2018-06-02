@@ -354,6 +354,13 @@ void load_config() {
                 continue;
             }
         }
+#define PARSE_BOOL(string) ( ! ( \
+        g_ascii_strcasecmp((string), "no") == 0 \
+        || g_ascii_strcasecmp((string), "n") == 0 \
+        || g_ascii_strcasecmp((string), "false") == 0 \
+        || strcmp((string), "") == 0 \
+        || strcmp((string), "0") == 0 \
+        ))
 
         if (LINE_EQUALS(css-file)) {
             gtk_css_provider_load_from_path(css_provider, value, NULL);
@@ -366,26 +373,26 @@ void load_config() {
         MAP_LINE(foreground,           gdk_rgba_parse(palette+1, value));
         MAP_LINE(window-title-format,  set_window_title_format(value));
         MAP_LINE(tab-title-format,     set_tab_title_format(value));
-        MAP_LINE(tab-fill,             tab_fill                      = atoi(value));
-        MAP_LINE(tab-expand,           tab_expand                    = atoi(value));
-        MAP_LINE(tab-enable-popup,     notebook_enable_popup         = atoi(value));
-        MAP_LINE(tab-scrollable,       notebook_scrollable           = atoi(value));
-        MAP_LINE(show-tabs,            notebook_show_tabs            = atoi(value));
+        MAP_LINE(tab-fill,             tab_fill                      = PARSE_BOOL(value));
+        MAP_LINE(tab-expand,           tab_expand                    = PARSE_BOOL(value));
+        MAP_LINE(tab-enable-popup,     notebook_enable_popup         = PARSE_BOOL(value));
+        MAP_LINE(tab-scrollable,       notebook_scrollable           = PARSE_BOOL(value));
+        MAP_LINE(show-tabs,            notebook_show_tabs            = PARSE_BOOL(value));
         MAP_LINE(ui-refresh-interval,  ui_refresh_interval           = atoi(value));
-        MAP_LINE(tab-title-markup,     tab_title_markup              = atoi(value));
+        MAP_LINE(tab-title-markup,     tab_title_markup              = PARSE_BOOL(value));
         MAP_LINE(inactivity-duration,  inactivity_duration           = atoi(value));
         MAP_LINE(encoding,             terminal_encoding             = strdup(value));
         MAP_LINE(font,                 terminal_font                 = pango_font_description_from_string(value));
         MAP_LINE(font-scale,           terminal_font_scale           = strtod(value, NULL));
-        MAP_LINE(audible-bell,         terminal_audible_bell         = atoi(value));
-        MAP_LINE(allow-hyperlink,      terminal_allow_hyperlink      = atoi(value));
-        MAP_LINE(pointer-autohide,     terminal_pointer_autohide     = atoi(value));
-        MAP_LINE(rewrap-on-resize,     terminal_rewrap_on_resize     = atoi(value));
-        MAP_LINE(scroll-on-keystroke,  terminal_scroll_on_keystroke  = atoi(value));
-        MAP_LINE(scroll-on-output,     terminal_scroll_on_output     = atoi(value));
+        MAP_LINE(audible-bell,         terminal_audible_bell         = PARSE_BOOL(value));
+        MAP_LINE(allow-hyperlink,      terminal_allow_hyperlink      = PARSE_BOOL(value));
+        MAP_LINE(pointer-autohide,     terminal_pointer_autohide     = PARSE_BOOL(value));
+        MAP_LINE(rewrap-on-resize,     terminal_rewrap_on_resize     = PARSE_BOOL(value));
+        MAP_LINE(scroll-on-keystroke,  terminal_scroll_on_keystroke  = PARSE_BOOL(value));
+        MAP_LINE(scroll-on-output,     terminal_scroll_on_output     = PARSE_BOOL(value));
         MAP_LINE(scrollback-lines,     terminal_scrollback_lines     = atoi(value));
         MAP_LINE(word-char-exceptions, terminal_word_char_exceptions = strdup(value));
-        MAP_LINE(show-scrollbar,       show_scrollbar                = atoi(value));
+        MAP_LINE(show-scrollbar,       show_scrollbar                = PARSE_BOOL(value));
         MAP_LINE(window-icon,          window_icon                   = strdup(value));
 
         if (LINE_EQUALS(default-args)) {
