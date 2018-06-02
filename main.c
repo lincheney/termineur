@@ -21,9 +21,6 @@ void startup(GtkApplication* app, gpointer data) {
     if (! config_filename) {
         config_filename = g_build_filename(g_get_user_config_dir(), "vte_terminal", "config.ini", NULL);
     }
-    char* path = realpath(config_filename, NULL);
-    g_free(config_filename);
-    config_filename = path;
     load_config();
 }
 
