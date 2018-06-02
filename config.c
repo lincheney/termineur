@@ -319,7 +319,7 @@ void load_config(const char* filename) {
         if (strncmp(line, "col", 3) == 0) {
             errno = 0;
             char* endptr = NULL;
-            int n = strtol(line, &endptr, 0);
+            int n = strtol(line+3, &endptr, 0);
             if ((! errno) && *endptr == '\0' && 0 <= n && n < 16) {
                 gdk_rgba_parse(palette+2+n, value);
                 continue;
