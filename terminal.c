@@ -27,13 +27,15 @@ void update_terminal_title(VteTerminal* terminal);
 void update_terminal_label_class(VteTerminal* terminal);
 
 void term_exited(VteTerminal* terminal, gint status, GtkWidget* container) {
+    gtk_widget_destroy(GTK_WIDGET(container));
+}
+
+void term_destroyed(VteTerminal* terminal) {
     GSource* inactivity_timer = g_object_get_data(G_OBJECT(terminal), "inactivity_timer");
     if (inactivity_timer) {
         g_source_destroy(inactivity_timer);
         g_source_unref(inactivity_timer);
     }
-
-    gtk_widget_destroy(GTK_WIDGET(container));
 }
 
 void term_spawn_callback(GtkWidget* terminal, GPid pid, GError *error, gpointer user_data) {
@@ -288,6 +290,7 @@ GtkWidget* make_terminal(GtkWidget* grid, char* cwd, int argc, char** argv) {
 
     g_signal_connect(terminal, "focus-in-event", G_CALLBACK(term_focus_event), NULL);
     g_signal_connect(terminal, "child-exited", G_CALLBACK(term_exited), grid);
+    g_signal_connect(terminal, "destroy", G_CALLBACK(term_destroyed), grid);
     g_signal_connect(terminal, "window-title-changed", G_CALLBACK(update_terminal_title), NULL);
     g_signal_connect(terminal, "contents-changed", G_CALLBACK(terminal_activity), NULL);
     g_object_set(terminal, "expand", 1, NULL);

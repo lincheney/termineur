@@ -179,6 +179,12 @@ void tab_popup_menu(VteTerminal* terminal) {
     gboolean value;
     g_signal_emit_by_name(notebook, "popup-menu", &value);
 }
+void close_tab(VteTerminal* terminal) {
+    GtkWidget* tab = gtk_widget_get_parent(GTK_WIDGET(terminal));
+    GtkNotebook* notebook = GTK_NOTEBOOK(gtk_widget_get_parent(tab));
+    int n = gtk_notebook_page_num(notebook, tab);
+    gtk_notebook_remove_page(notebook, n);
+}
 
 char* str_unescape(char* string) {
     char* p = string;
@@ -472,6 +478,7 @@ void load_config() {
                 TRY_SET_SHORTCUT_WITH_DATA(switch_to_tab, GINT_TO_POINTER(atoi(arg)));
                 TRY_SET_SHORTCUT(tab_popup_menu);
                 TRY_SET_SHORTCUT(reload_config);
+                TRY_SET_SHORTCUT(close_tab);
                 break;
             }
 
