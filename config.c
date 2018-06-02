@@ -58,7 +58,7 @@ gboolean notebook_show_tabs = TRUE;
 GtkPositionType notebook_tab_pos = GTK_POS_TOP;
 int ui_refresh_interval = 2000;
 PangoEllipsizeMode tab_title_ellipsize_mode = PANGO_ELLIPSIZE_END;
-GtkAlign tab_title_alignment = GTK_JUSTIFY_LEFT;
+gfloat tab_title_alignment = 0.5;
 int inactivity_duration = 2000;
 
 /* CALLBACKS */
@@ -241,7 +241,7 @@ void configure_terminal(GtkWidget* terminal) {
     GtkWidget* label = g_object_get_data(G_OBJECT(terminal), "label");
     g_object_set(G_OBJECT(label),
             "ellipsize",  tab_title_ellipsize_mode,
-            "halign",     tab_title_alignment,
+            "xalign",     tab_title_alignment,
             "use-markup", tab_title_markup,
             NULL);
 }
@@ -383,10 +383,9 @@ void load_config(const char* filename) {
         );
 
         MAP_LINE_VALUE(tab-title-alignment, tab_title_alignment,
-                {"left",   GTK_ALIGN_START},
-                {"right",  GTK_ALIGN_END},
-                {"center", GTK_ALIGN_CENTER},
-                {"fill",   GTK_ALIGN_FILL},
+                {"left",   0},
+                {"right",  1},
+                {"center", 0.5},
         );
 
         MAP_LINE_VALUE(cursor-blink-mode, terminal_cursor_blink_mode,
