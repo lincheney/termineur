@@ -32,6 +32,8 @@ gint handle_local_options(GApplication* app, GVariantDict* options, gpointer dat
         const char* display = gdk_display_get_name(gdk_display_get_default());
         snprintf(id_buffer, sizeof(id_buffer), "vte_terminal.x%s", display+1);
         id = id_buffer;
+    } else if (strcmp(id, "") == 0) {
+        id = NULL;
     }
     g_application_set_application_id(app, id);
     return -1;
