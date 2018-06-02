@@ -64,25 +64,45 @@ void notebook_pages_changed(GtkNotebook* notebook) {
     refresh_all_terminals(NULL);
 }
 
-gboolean window_closed(GtkWidget* window, GdkEvent* event, gpointer data) {
-    if (! window_close_confirm) return FALSE;
-
+gint run_confirm_close_dialog(GtkWidget* window, char* message) {
     GtkWidget* dialog = gtk_dialog_new_with_buttons(
             "Confirm close", GTK_WINDOW(window),
             GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
             "_No", GTK_RESPONSE_NO, "_Yes", GTK_RESPONSE_YES, NULL);
 
-    GtkNotebook* notebook = GTK_NOTEBOOK(g_object_get_data(G_OBJECT(window), "notebook"));
-    int npages = gtk_notebook_get_n_pages(notebook);
-    char message[1024];
-    snprintf(message, sizeof(message), "You have %i tabs open.\nAre you sure you want to quit?", npages);
-
     GtkWidget* label = gtk_label_new(message);
+    g_object_set(G_OBJECT(label), "margin", 10, NULL);
     gtk_container_add(GTK_CONTAINER(gtk_dialog_get_content_area(GTK_DIALOG(dialog))), label);
     gtk_widget_show_all(dialog);
 
     gint response = gtk_dialog_run(GTK_DIALOG(dialog));
     gtk_widget_destroy(dialog);
+    return response;
+}
+
+gboolean prevent_window_close(GtkWidget* window, GdkEvent* event, gpointer data) {
+    if (! window_close_confirm) return FALSE;
+
+    GtkNotebook* notebook = GTK_NOTEBOOK(g_object_get_data(G_OBJECT(window), "notebook"));
+    int npages = gtk_notebook_get_n_pages(notebook);
+    char message[1024];
+    snprintf(message, sizeof(message), "You have %i tab(s) open.\nAre you sure you want to quit?", npages);
+
+    gint response = run_confirm_close_dialog(window, message);
+    return response != GTK_RESPONSE_YES;
+}
+
+gboolean prevent_tab_close(VteTerminal* terminal) {
+    if (! tab_close_confirm) return FALSE;
+    if (tab_close_confirm == CLOSE_CONFIRM_SMART && !is_running_foreground_process(terminal)) {
+        return FALSE;
+    }
+
+    char message[1024], name[512];
+    get_foreground_name(terminal, name, sizeof(name));
+    snprintf(message, sizeof(message), "%s is still running.\nAre you sure you want to close it?", name);
+
+    gint response = run_confirm_close_dialog(gtk_widget_get_toplevel(GTK_WIDGET(terminal)), message);
     return response != GTK_RESPONSE_YES;
 }
 
@@ -114,7 +134,7 @@ GtkWidget* make_window() {
     gtk_widget_set_can_focus(notebook, FALSE);
     gtk_notebook_set_group_name(GTK_NOTEBOOK(notebook), "terminals");
     g_object_set_data(G_OBJECT(window), "notebook", notebook);
-    g_signal_connect(window, "delete-event", G_CALLBACK(window_closed), NULL);
+    g_signal_connect(window, "delete-event", G_CALLBACK(prevent_window_close), NULL);
 
     gtk_notebook_set_show_border(GTK_NOTEBOOK(notebook), FALSE);
     g_signal_connect(notebook, "page-removed", G_CALLBACK(notebook_tab_removed), NULL);

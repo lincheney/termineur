@@ -142,6 +142,10 @@ gboolean get_foreground_name(VteTerminal* terminal, char* buffer, size_t length)
     return TRUE;
 }
 
+int is_running_foreground_process(VteTerminal* terminal) {
+    return get_pid(terminal) != get_foreground_pid(terminal);
+}
+
 gboolean construct_title(TitleFormat format, VteTerminal* terminal, gboolean escape_markup, char* buffer, size_t length) {
     if (! format.data) return FALSE;
 
