@@ -56,6 +56,10 @@ void notebook_switch_page(GtkNotebook* notebook, GtkWidget* tab, guint num) {
     gtk_widget_grab_focus(term);
 }
 
+void notebook_pages_changed(GtkNotebook* notebook) {
+    refresh_all_terminals(NULL);
+}
+
 void add_tab_to_window(GtkWidget* window, GtkWidget* tab, int position) {
     GtkNotebook* notebook = GTK_NOTEBOOK(g_object_get_data(G_OBJECT(window), "notebook"));
     GtkWidget* terminal = g_object_get_data(G_OBJECT(tab), "terminal");
@@ -89,6 +93,10 @@ GtkWidget* make_window() {
     g_signal_connect(notebook, "page-removed", G_CALLBACK(notebook_tab_removed), NULL);
     g_signal_connect(notebook, "create-window", G_CALLBACK(notebook_create_window), NULL);
     g_signal_connect(notebook, "switch-page", G_CALLBACK(notebook_switch_page), NULL);
+    // make sure term titles update whenever they are reordered
+    g_signal_connect(notebook, "page-reordered", G_CALLBACK(notebook_pages_changed), NULL);
+    g_signal_connect(notebook, "page-added", G_CALLBACK(notebook_pages_changed), NULL);
+    g_signal_connect(notebook, "page-removed", G_CALLBACK(notebook_pages_changed), NULL);
 
     g_signal_connect(window, "key-press-event", G_CALLBACK(key_pressed), NULL);
     gtk_container_add(GTK_CONTAINER(window), notebook);

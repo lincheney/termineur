@@ -238,7 +238,7 @@ void update_terminal_ui(VteTerminal* terminal) {
     update_terminal_title(terminal);
 }
 
-gboolean timer_callback(gpointer data) {
+gboolean refresh_all_terminals(gpointer data) {
     // how to get all terminals
     foreach_terminal((GFunc)update_terminal_ui, data);
     return TRUE;
@@ -246,7 +246,7 @@ gboolean timer_callback(gpointer data) {
 
 void create_timer(guint interval) {
     if (timer_id) g_source_remove(timer_id);
-    timer_id = g_timeout_add(interval, timer_callback, NULL);
+    timer_id = g_timeout_add(interval, refresh_all_terminals, NULL);
 }
 
 void set_tab_title_format(char* string) {

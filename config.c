@@ -359,7 +359,7 @@ void load_config(const char* filename) {
 
         if (LINE_EQUALS(default-args)) {
             g_strfreev(default_args);
-            if (strlen(value) == 0) {
+            if (*value == '\0') {
                 default_args = NULL;
             } else {
                 if (! g_shell_parse_argv(value, NULL, &default_args, NULL) ) {
