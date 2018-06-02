@@ -17,6 +17,7 @@ VteTerminal* get_active_terminal(GtkWidget* window) {
     if (! window) window = GTK_WIDGET(get_active_window());
     GtkWidget* notebook = g_object_get_data(G_OBJECT(window), "notebook");
     int index = gtk_notebook_get_current_page(GTK_NOTEBOOK(notebook));
+    if (index < 0) return NULL;
     return get_nth_terminal(window, index);
 }
 
