@@ -155,7 +155,7 @@ gboolean get_foreground_name(VteTerminal* terminal, char* buffer, size_t length)
     return TRUE;
 }
 
-gboolean construct_title(VteTerminal* terminal, char* buffer, size_t length) {
+gboolean construct_title(VteTerminal* terminal, gboolean escape_markup, char* buffer, size_t length) {
     if (! tab_title_format.data) return FALSE;
 
     char dir[1024] = "", name[1024] = "";
@@ -210,7 +210,9 @@ gboolean construct_title(VteTerminal* terminal, char* buffer, size_t length) {
                 break;
         }
 
+        if (escape_markup) val = g_markup_escape_text(val, -1);
         APPEND_TO_BUFFER(val)
+        if (escape_markup) g_free(val);
         APPEND_TO_BUFFER(p+1)
         p += len+2;
     }
@@ -220,8 +222,9 @@ gboolean construct_title(VteTerminal* terminal, char* buffer, size_t length) {
 
 void update_terminal_title(VteTerminal* terminal) {
     char buffer[1024] = "";
-    if (construct_title(terminal, buffer, sizeof(buffer)-1)) {
-        GtkLabel* label = GTK_LABEL(g_object_get_data(G_OBJECT(terminal), "label"));
+    GtkLabel* label = GTK_LABEL(g_object_get_data(G_OBJECT(terminal), "label"));
+    gboolean escape_markup = gtk_label_get_use_markup(label);
+    if (construct_title(terminal, escape_markup, buffer, sizeof(buffer)-1)) {
         gtk_label_set_label(label, buffer);
     }
 }
