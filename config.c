@@ -117,8 +117,8 @@ void move_tab(VteTerminal* terminal, int delta) {
     GtkWidget* tab = gtk_widget_get_parent(GTK_WIDGET(terminal));
     GtkNotebook* notebook = GTK_NOTEBOOK(gtk_widget_get_parent(tab));
     int n = gtk_notebook_get_current_page(notebook);
-    n += delta;
-    gtk_notebook_reorder_child(notebook, tab, n > 0 ? n : 0);
+    int pages = gtk_notebook_get_n_pages(notebook);
+    gtk_notebook_reorder_child(notebook, tab, (n+delta) % pages);
 }
 void move_tab_prev(VteTerminal* terminal) {
     move_tab(terminal, -1);
