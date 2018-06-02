@@ -8,6 +8,12 @@ gboolean show_scrollbar;
 char** default_args;
 int inactivity_duration;
 
+gboolean window_close_confirm;
+#define CLOSE_CONFIRM_NO 0
+#define CLOSE_CONFIRM_YES 1
+#define CLOSE_CONFIRM_SMART 2
+gint tab_close_confirm;
+
 typedef void(*KeyComboCallback)(VteTerminal*, gpointer);
 typedef struct {
     guint key;

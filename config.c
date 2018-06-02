@@ -51,7 +51,6 @@ gboolean terminal_scroll_on_output = TRUE;
 guint terminal_scrollback_lines = 0;
 char* terminal_word_char_exceptions = NULL;
 
-// notebook props
 gboolean tab_expand = TRUE;
 gboolean tab_fill = TRUE;
 gboolean tab_title_markup = FALSE;
@@ -63,6 +62,8 @@ int ui_refresh_interval = 5000;
 PangoEllipsizeMode tab_title_ellipsize_mode = PANGO_ELLIPSIZE_END;
 gfloat tab_title_alignment = 0.5;
 int inactivity_duration = 10000;
+gboolean window_close_confirm = TRUE;
+gint tab_close_confirm = CLOSE_CONFIRM_SMART;
 
 /* CALLBACKS */
 
@@ -336,7 +337,7 @@ void load_config() {
 #define MAP_VALUE(var, ...) do { \
             struct mapping {char* name; int value; } map[] = {__VA_ARGS__}; \
             for(int i = 0; i < sizeof(map) / sizeof(struct mapping); i++) { \
-                if (strcmp(value, map[i].name) == 0) { \
+                if (g_ascii_strcasecmp(value, map[i].name) == 0) { \
                     var = map[i].value; \
                     break; \
                 } \
@@ -394,6 +395,18 @@ void load_config() {
         MAP_LINE(word-char-exceptions, terminal_word_char_exceptions = strdup(value));
         MAP_LINE(show-scrollbar,       show_scrollbar                = PARSE_BOOL(value));
         MAP_LINE(window-icon,          window_icon                   = strdup(value));
+        MAP_LINE(window-close-confirm, window_close_confirm          = PARSE_BOOL(value));
+
+        if (LINE_EQUALS(tab-close-confirm)) {
+            if (g_ascii_strcasecmp(value, "smart") == 0) {
+                tab_close_confirm = CLOSE_CONFIRM_SMART;
+            } else if (PARSE_BOOL(value)) {
+                tab_close_confirm = CLOSE_CONFIRM_YES;
+            } else {
+                tab_close_confirm = CLOSE_CONFIRM_NO;
+            }
+            continue;
+        }
 
         if (LINE_EQUALS(default-args)) {
             g_strfreev(default_args);
