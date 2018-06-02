@@ -267,6 +267,21 @@ void configure_window(GtkWindow* window) {
             NULL);
 }
 
+void reconfigure_window(GtkWindow* window) {
+    configure_window(window);
+
+    GtkWidget *terminal, *tab;
+    GtkNotebook* notebook = g_object_get_data(G_OBJECT(window), "notebook");
+    int n = gtk_notebook_get_n_pages(notebook);
+    for (int i = 0; i < n; i ++) {
+        tab = gtk_notebook_get_nth_page(notebook, i);
+        configure_tab(GTK_CONTAINER(notebook), tab);
+        terminal = g_object_get_data(G_OBJECT(tab), "terminal");
+        configure_terminal(terminal);
+        update_terminal_ui(VTE_TERMINAL(terminal));
+    }
+}
+
 void load_config() {
     if (! config_filename) return;
 
@@ -476,5 +491,6 @@ void load_config() {
     if (line) free(line);
 
     // reload config everywhere
+    foreach_window((GFunc)reconfigure_window, NULL);
     create_timer(ui_refresh_interval);
 }
