@@ -13,8 +13,10 @@
 
 char* id = NULL;
 
-void activate(GtkApplication* app, gpointer data) {
-    make_new_window(NULL);
+void activate(GtkApplication* app, GApplicationCommandLine* cmdline, gpointer data) {
+    int argc;
+    char** argv = g_application_command_line_get_arguments(cmdline, &argc);
+    make_new_window_full(NULL, g_application_command_line_get_cwd(cmdline), argc, argv);
 }
 
 void startup(GtkApplication* app, gpointer data) {
@@ -44,9 +46,9 @@ int main(int argc, char *argv[]) {
         {NULL}
     };
 
-    app = gtk_application_new(NULL, G_APPLICATION_FLAGS_NONE);
+    app = gtk_application_new(NULL, G_APPLICATION_HANDLES_COMMAND_LINE);
     g_application_add_main_option_entries(G_APPLICATION(app), entries);
-    g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
+    g_signal_connect(app, "command-line", G_CALLBACK(activate), NULL);
     g_signal_connect(app, "startup", G_CALLBACK(startup), NULL);
     g_signal_connect(app, "handle-local-options", G_CALLBACK(handle_local_options), NULL);
 

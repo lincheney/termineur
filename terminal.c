@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include "config.h"
+#include "terminal.h"
 #include "window.h"
 
 guint timer_id = 0;
@@ -270,7 +271,7 @@ void set_tab_title_format(char* string) {
     }
 }
 
-GtkWidget* make_terminal(GtkWidget* grid, int argc, char** argv) {
+GtkWidget* make_terminal(GtkWidget* grid, char* cwd, int argc, char** argv) {
     GtkWidget *terminal;
     GtkWidget *scrollbar;
     GtkWidget *label;
@@ -307,15 +308,17 @@ GtkWidget* make_terminal(GtkWidget* grid, int argc, char** argv) {
     }
 
     char current_dir[MAXPATHLEN+1] = "";
-    VteTerminal* active_term = get_active_terminal(NULL);
-    if (active_term) {
-        get_current_dir(active_term, current_dir, sizeof(current_dir)-1);
+    if (! cwd) {
+        VteTerminal* active_term = get_active_terminal(NULL);
+        if (active_term && get_current_dir(active_term, current_dir, sizeof(current_dir)-1)) {
+            cwd = current_dir;
+        }
     }
 
     vte_terminal_spawn_async(
             VTE_TERMINAL(terminal),
             VTE_PTY_DEFAULT, //pty flags
-            current_dir[0] == '\0' ? NULL : current_dir, // pwd
+            cwd, // pwd
             args, // args
             NULL, // env
             G_SPAWN_SEARCH_PATH, // g spawn flags

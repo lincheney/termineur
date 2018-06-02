@@ -77,9 +77,9 @@ void add_tab_to_window(GtkWidget* window, GtkWidget* tab, int position) {
     update_terminal_ui(VTE_TERMINAL(terminal));
 }
 
-void add_terminal(GtkWidget* window) {
+void add_terminal_full(GtkWidget* window, char* cwd, int argc, char** argv) {
     GtkWidget* tab = gtk_grid_new();
-    make_terminal(tab, 0, NULL);
+    make_terminal(tab, cwd, argc, argv);
     add_tab_to_window(window, tab, -1);
 }
 
@@ -109,12 +109,12 @@ GtkWidget* make_window() {
     return window;
 }
 
-GtkWidget* make_new_window(GtkWidget* tab) {
+GtkWidget* make_new_window_full(GtkWidget* tab, char* cwd, int argc, char** argv) {
     GtkWidget* window = make_window();
     if (tab) {
         add_tab_to_window(window, tab, -1);
     } else {
-        add_terminal(window);
+        add_terminal_full(window, cwd, argc, argv);
     }
     return window;
 }
