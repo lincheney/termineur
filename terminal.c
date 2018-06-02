@@ -87,8 +87,11 @@ void terminal_activity(VteTerminal* terminal) {
 #define get_pid(terminal) GPOINTER_TO_INT(g_object_get_data(G_OBJECT(terminal), "pid"))
 
 gboolean get_current_dir(VteTerminal* terminal, char* buffer, size_t length) {
+    int pid = get_pid(terminal);
+    if (pid <= 0) return FALSE;
+
     char fname[100];
-    snprintf(fname, 100, "/proc/%i/cwd", get_pid(terminal));
+    snprintf(fname, 100, "/proc/%i/cwd", pid);
     length = readlink(fname, buffer, length);
     if (length == -1) return FALSE;
     buffer[length] = '\0';
@@ -103,8 +106,11 @@ int get_foreground_pid(VteTerminal* terminal) {
 }
 
 gboolean get_foreground_name(VteTerminal* terminal, char* buffer, size_t length) {
+    int pid = get_foreground_pid(terminal);
+    if (pid <= 0) return FALSE;
+
     char fname[100];
-    snprintf(fname, 100, "/proc/%i/status", get_foreground_pid(terminal));
+    snprintf(fname, 100, "/proc/%i/status", pid);
 
     char file_buffer[1024];
     int fd = open(fname, O_RDONLY);
