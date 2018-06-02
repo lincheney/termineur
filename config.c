@@ -6,6 +6,8 @@
 #include "window.h"
 #include "terminal.h"
 
+char* config_filename = NULL;
+
 #define PALETTE_SIZE (16)
 extern GdkRGBA palette[PALETTE_SIZE+2];
 GdkRGBA palette[PALETTE_SIZE+2] = {
@@ -67,6 +69,7 @@ KeyComboCallback \
     paste_clipboard = (KeyComboCallback)vte_terminal_paste_clipboard
     , select_all = (KeyComboCallback)vte_terminal_select_all
     , unselect_all = (KeyComboCallback)vte_terminal_unselect_all
+    , reload_config = (KeyComboCallback)load_config
 ;
 
 void copy_clipboard(VteTerminal* terminal) {
@@ -264,8 +267,10 @@ void configure_window(GtkWindow* window) {
             NULL);
 }
 
-void load_config(const char* filename) {
-    FILE* config = fopen(filename, "r");
+void load_config() {
+    if (! config_filename) return;
+
+    FILE* config = fopen(config_filename, "r");
     if (!config) {
         /* if (error) g_warning("Error loading key file: %s", error->message); */
         return;
@@ -448,6 +453,7 @@ void load_config(const char* filename) {
                 TRY_SET_SHORTCUT(paste_tab);
                 TRY_SET_SHORTCUT_WITH_DATA(switch_to_tab, GINT_TO_POINTER(atoi(arg)));
                 TRY_SET_SHORTCUT(tab_popup_menu);
+                TRY_SET_SHORTCUT(reload_config);
                 break;
             }
 

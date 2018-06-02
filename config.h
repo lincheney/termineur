@@ -3,6 +3,7 @@
 
 #include <vte/vte.h>
 
+char* config_filename;
 gboolean show_scrollbar;
 char** default_args;
 int inactivity_duration;
@@ -17,7 +18,7 @@ typedef struct {
 
 GArray* keyboard_shortcuts;
 
-void load_config(const char*);
+void load_config();
 void configure_terminal(GtkWidget*);
 void configure_tab(GtkContainer*, GtkWidget*);
 void configure_window(GtkWindow*);
