@@ -27,8 +27,10 @@ void update_terminal_label_class(VteTerminal* terminal);
 
 void term_exited(VteTerminal* terminal, gint status, GtkWidget* container) {
     GSource* inactivity_timer = g_object_get_data(G_OBJECT(terminal), "inactivity_timer");
-    g_source_destroy(inactivity_timer);
-    g_source_unref(inactivity_timer);
+    if (inactivity_timer) {
+        g_source_destroy(inactivity_timer);
+        g_source_unref(inactivity_timer);
+    }
 
     gtk_widget_destroy(GTK_WIDGET(container));
 }
