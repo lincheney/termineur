@@ -187,7 +187,9 @@ gboolean construct_title(VteTerminal* terminal, gboolean escape_markup, char* bu
             case 'N':
                 if (*number == '\0') {
                     int n = get_tab_number(terminal);
+#pragma GCC diagnostic ignored "-Wformat-truncation"
                     if (n >= 0) snprintf(number, sizeof(number), "%i", n+1);
+#pragma GCC diagnostic pop
                 }
                 val = number;
                 break;
