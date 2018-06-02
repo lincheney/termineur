@@ -172,7 +172,8 @@ void paste_tab(VteTerminal* terminal) {
 }
 void switch_to_tab(VteTerminal* terminal, int data) {
     GtkNotebook* notebook = GTK_NOTEBOOK(gtk_widget_get_parent(gtk_widget_get_parent(GTK_WIDGET(terminal))));
-    gtk_notebook_set_current_page(notebook, data);
+    int n = gtk_notebook_get_n_pages(notebook);
+    gtk_notebook_set_current_page(notebook, data >= n ? -1 : data);
 }
 void tab_popup_menu(VteTerminal* terminal) {
     GtkNotebook* notebook = GTK_NOTEBOOK(gtk_widget_get_parent(gtk_widget_get_parent(GTK_WIDGET(terminal))));
