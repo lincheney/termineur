@@ -159,23 +159,24 @@ void cut_tab(VteTerminal* terminal) {
     g_object_add_weak_pointer(G_OBJECT(detaching_tab), (void*)&detaching_tab);
 }
 void paste_tab(VteTerminal* terminal) {
-    if (detaching_tab) {
-        GtkNotebook* src_notebook = GTK_NOTEBOOK(gtk_widget_get_parent(detaching_tab));
-        GtkWidget* dest_window = gtk_widget_get_toplevel(GTK_WIDGET(terminal));
-        GtkNotebook* dest_notebook = g_object_get_data(G_OBJECT(dest_window), "notebook");
+    if (! detaching_tab) return;
 
-        int index = gtk_notebook_get_current_page(dest_notebook)+1;
-        if (src_notebook == dest_notebook) {
-            gtk_notebook_reorder_child(dest_notebook, detaching_tab, index);
-        } else {
-            g_object_ref(detaching_tab);
-            gtk_container_remove(GTK_CONTAINER(src_notebook), detaching_tab);
-            add_tab_to_window(dest_window, detaching_tab, index);
-            g_object_unref(detaching_tab);
-        }
+    GtkNotebook* src_notebook = GTK_NOTEBOOK(gtk_widget_get_parent(detaching_tab));
+    GtkWidget* dest_window = gtk_widget_get_toplevel(GTK_WIDGET(terminal));
+    GtkNotebook* dest_notebook = g_object_get_data(G_OBJECT(dest_window), "notebook");
 
-        detaching_tab = NULL;
+    int index = gtk_notebook_get_current_page(dest_notebook)+1;
+    if (src_notebook == dest_notebook) {
+        gtk_notebook_reorder_child(dest_notebook, detaching_tab, index);
+    } else {
+        g_object_ref(detaching_tab);
+        gtk_container_remove(GTK_CONTAINER(src_notebook), detaching_tab);
+        add_tab_to_window(dest_window, detaching_tab, index);
+        g_object_unref(detaching_tab);
     }
+    gtk_notebook_set_current_page(dest_notebook, index);
+
+    detaching_tab = NULL;
 }
 void switch_to_tab(VteTerminal* terminal, int data) {
     GtkNotebook* notebook = GTK_NOTEBOOK(gtk_widget_get_parent(gtk_widget_get_parent(GTK_WIDGET(terminal))));
