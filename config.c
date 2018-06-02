@@ -277,35 +277,20 @@ void load_config(const char* filename) {
 
         *value = '\0';
         // whitespace trimming
-        for (char* c = value-1; isspace(*c); c--) *c = '\0';
+        char* c;
+        for (c = value-1; isspace(*c); c--) ;; *(c+1) = '\0';
         value++;
         while( isspace(*value) ) value++;
-        for (char* c = line+read-1; isspace(*c); c--) *c = '\0';
+        for (c = line+read-1; isspace(*c); c--) ;; *(c+1) = '\0';
 
-#define TRY_SET_PALETTE_COL(n) \
-    if (strcmp(line, "col" #n) == 0) { \
-        gdk_rgba_parse(palette+2+(n), value); \
-        continue; \
-    }
-
-        TRY_SET_PALETTE_COL(0);
-        TRY_SET_PALETTE_COL(1);
-        TRY_SET_PALETTE_COL(2);
-        TRY_SET_PALETTE_COL(3);
-        TRY_SET_PALETTE_COL(4);
-        TRY_SET_PALETTE_COL(5);
-        TRY_SET_PALETTE_COL(6);
-        TRY_SET_PALETTE_COL(7);
-        TRY_SET_PALETTE_COL(8);
-        TRY_SET_PALETTE_COL(9);
-        TRY_SET_PALETTE_COL(10);
-        TRY_SET_PALETTE_COL(11);
-        TRY_SET_PALETTE_COL(12);
-        TRY_SET_PALETTE_COL(13);
-        TRY_SET_PALETTE_COL(14);
-        TRY_SET_PALETTE_COL(15);
-
-#undef TRY_SET_PALETTE_COL
+        if (strncmp(line, "col", 3) == 0) {
+            if (
+                    ('0' <= *(line+3) && *(line+3) <= '9' && *(line+4) == '\0') || // 0-9
+                    (*(line+3) == '1' && '0' <= *(line+4) && *(line+4) <= '5' && *(line+5) == '\0') // 10-15
+            ) {
+                gdk_rgba_parse(palette+2+atoi(line+3), value);
+            }
+        }
 
         if (strcmp(line, "background") == 0) {
             gdk_rgba_parse(palette, value);
