@@ -191,9 +191,8 @@ void tab_popup_menu(VteTerminal* terminal) {
 void close_tab(VteTerminal* terminal) {
     if (! prevent_tab_close(terminal)) {
         GtkWidget* tab = gtk_widget_get_parent(GTK_WIDGET(terminal));
-        GtkNotebook* notebook = GTK_NOTEBOOK(gtk_widget_get_parent(tab));
-        int n = gtk_notebook_page_num(notebook, tab);
-        gtk_notebook_remove_page(notebook, n);
+        GtkContainer* notebook = GTK_CONTAINER(gtk_widget_get_parent(tab));
+        gtk_container_remove(notebook, tab);
     }
 }
 

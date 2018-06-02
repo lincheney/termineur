@@ -38,6 +38,8 @@ void term_destroyed(VteTerminal* terminal) {
         g_source_destroy(inactivity_timer);
         g_source_unref(inactivity_timer);
     }
+    GtkLabel* label = GTK_LABEL(g_object_get_data(G_OBJECT(terminal), "label"));
+    g_object_unref(label);
 }
 
 void term_spawn_callback(GtkWidget* terminal, GPid pid, GError *error, gpointer user_data) {
@@ -310,6 +312,7 @@ GtkWidget* make_terminal(GtkWidget* grid, const char* cwd, int argc, char** argv
     gtk_container_add(GTK_CONTAINER(grid), GTK_WIDGET(terminal));
 
     label = gtk_label_new("");
+    g_object_ref(label);
     g_object_set_data(G_OBJECT(terminal), "label", label);
     gtk_label_set_single_line_mode(GTK_LABEL(label), TRUE);
 
