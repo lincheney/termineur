@@ -42,6 +42,7 @@ void term_spawn_callback(GtkWidget* terminal, GPid pid, GError *error, gpointer 
         exit(ERROR_EXIT_CODE);
     }
     g_object_set_data(G_OBJECT(terminal), "pid", GINT_TO_POINTER(pid));
+    update_terminal_ui(VTE_TERMINAL(terminal));
 }
 
 void change_terminal_state(VteTerminal* terminal, int new_state) {
