@@ -17,8 +17,13 @@ struct {
     int length;
 } tab_title_format = {NULL, 0};
 
+#define TERMINAL_NO_STATE 0
+#define TERMINAL_ACTIVE 1
+#define TERMINAL_INACTIVE 2
+
 void update_terminal_ui(VteTerminal* terminal);
 void update_terminal_title(VteTerminal* terminal);
+void update_terminal_label_class(VteTerminal* terminal);
 
 void term_exited(VteTerminal* terminal, gint status, GtkWidget* container) {
     GSource* inactivity_timer = g_object_get_data(G_OBJECT(terminal), "inactivity_timer");
@@ -37,12 +42,34 @@ void term_spawn_callback(GtkWidget* terminal, GPid pid, GError *error, gpointer 
     g_object_set_data(G_OBJECT(terminal), "pid", GINT_TO_POINTER(pid));
 }
 
+void change_terminal_state(VteTerminal* terminal, int new_state) {
+    int old_state = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(terminal), "activity_state"));
+    if (old_state != new_state) {
+        g_object_set_data(G_OBJECT(terminal), "activity_state", GINT_TO_POINTER(new_state));
+        update_terminal_label_class(terminal);
+    }
+}
+
+gboolean term_focus_event(GtkWidget* terminal, GdkEvent* event, gpointer data) {
+    // clear activity once terminal is focused
+    change_terminal_state(VTE_TERMINAL(terminal), TERMINAL_NO_STATE);
+    return FALSE;
+}
+
 gboolean terminal_inactivity(VteTerminal* terminal) {
+    // don't track activity while we have focus
+    if (gtk_widget_has_focus(GTK_WIDGET(terminal))) return FALSE;
+
+    change_terminal_state(terminal, TERMINAL_INACTIVE);
     g_object_set_data(G_OBJECT(terminal), "inactivity_timer", NULL);
     return FALSE;
 }
 
 void terminal_activity(VteTerminal* terminal) {
+    // don't track activity while we have focus
+    if (gtk_widget_has_focus(GTK_WIDGET(terminal))) return;
+
+    change_terminal_state(terminal, TERMINAL_ACTIVE);
     GSource* inactivity_timer = g_object_get_data(G_OBJECT(terminal), "inactivity_timer");
     if (inactivity_timer) {
         // delay inactivity timer some more
@@ -180,12 +207,33 @@ void update_terminal_title(VteTerminal* terminal) {
     }
 }
 
+void update_terminal_label_class(VteTerminal* terminal) {
+    GtkWidget* label = GTK_WIDGET(g_object_get_data(G_OBJECT(terminal), "label"));
+    GtkStyleContext* context = gtk_widget_get_style_context(label);
+    int state = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(terminal), "activity_state"));
+
+    switch (state) {
+        case TERMINAL_ACTIVE:
+            gtk_style_context_remove_class(context, "inactive");
+            gtk_style_context_add_class(context, "active");
+            break;
+        case TERMINAL_INACTIVE:
+            gtk_style_context_remove_class(context, "active");
+            gtk_style_context_add_class(context, "inactive");
+            break;
+        default:
+            gtk_style_context_remove_class(context, "active");
+            gtk_style_context_remove_class(context, "inactive");
+            break;
+    }
+}
+
 void update_terminal_ui(VteTerminal* terminal) {
     update_terminal_title(terminal);
+    update_terminal_label_class(terminal);
 }
 
 gboolean refresh_all_terminals(gpointer data) {
-    // how to get all terminals
     foreach_terminal((GFunc)update_terminal_ui, data);
     return TRUE;
 }
@@ -226,10 +274,12 @@ GtkWidget* make_terminal(GtkWidget* grid, int argc, char** argv) {
 
     configure_terminal(terminal);
 
+    g_signal_connect(terminal, "focus-in-event", G_CALLBACK(term_focus_event), NULL);
     g_signal_connect(terminal, "child-exited", G_CALLBACK(term_exited), grid);
     g_signal_connect(terminal, "window-title-changed", G_CALLBACK(update_terminal_title), NULL);
     g_signal_connect(terminal, "contents-changed", G_CALLBACK(terminal_activity), NULL);
     g_object_set(terminal, "expand", 1, NULL);
+    g_object_set_data(G_OBJECT(terminal), "activity_state", GINT_TO_POINTER(TERMINAL_NO_STATE));
 
     char **args;
     char *fallback_args[] = {NULL, NULL};
