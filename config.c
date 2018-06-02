@@ -160,14 +160,20 @@ void cut_tab(VteTerminal* terminal) {
 }
 void paste_tab(VteTerminal* terminal) {
     if (detaching_tab) {
-        GtkContainer* src_notebook = GTK_CONTAINER(gtk_widget_get_parent(detaching_tab));
+        GtkNotebook* src_notebook = GTK_NOTEBOOK(gtk_widget_get_parent(detaching_tab));
         GtkWidget* dest_window = gtk_widget_get_toplevel(GTK_WIDGET(terminal));
         GtkNotebook* dest_notebook = g_object_get_data(G_OBJECT(dest_window), "notebook");
 
-        g_object_ref(detaching_tab);
-        gtk_container_remove(src_notebook, detaching_tab);
-        add_tab_to_window(dest_window, detaching_tab, gtk_notebook_get_current_page(dest_notebook)+1);
-        g_object_unref(detaching_tab);
+        int index = gtk_notebook_get_current_page(dest_notebook)+1;
+        if (src_notebook == dest_notebook) {
+            gtk_notebook_reorder_child(dest_notebook, detaching_tab, index);
+        } else {
+            g_object_ref(detaching_tab);
+            gtk_container_remove(GTK_CONTAINER(src_notebook), detaching_tab);
+            add_tab_to_window(dest_window, detaching_tab, index);
+            g_object_unref(detaching_tab);
+        }
+
         detaching_tab = NULL;
     }
 }
