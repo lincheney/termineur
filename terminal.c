@@ -55,64 +55,6 @@ void terminal_activity(VteTerminal* terminal) {
     }
 }
 
-GtkWidget* make_terminal(GtkWidget* grid, int argc, char** argv) {
-    GtkWidget *terminal;
-    GtkWidget *scrollbar;
-    GtkWidget *label;
-
-    terminal = vte_terminal_new();
-    g_object_set_data(G_OBJECT(grid), "terminal", terminal);
-    gtk_container_add(GTK_CONTAINER(grid), GTK_WIDGET(terminal));
-
-    label = gtk_label_new("");
-    g_object_set_data(G_OBJECT(terminal), "label", label);
-    gtk_label_set_single_line_mode(GTK_LABEL(label), TRUE);
-
-    configure_terminal(terminal);
-
-    g_signal_connect(terminal, "child-exited", G_CALLBACK(term_exited), grid);
-    g_signal_connect(terminal, "window-title-changed", G_CALLBACK(update_terminal_title), NULL);
-    g_signal_connect(terminal, "contents-changed", G_CALLBACK(terminal_activity), NULL);
-    g_object_set(terminal, "expand", 1, NULL);
-
-    char **args;
-    char *fallback_args[] = {NULL, NULL};
-    char *user_shell = NULL;
-
-    if (argc > 1) {
-        args = argv + 1;
-    } else if (default_args) {
-        args = default_args;
-    } else {
-        user_shell = vte_get_user_shell();
-        fallback_args[0] = user_shell ? user_shell : DEFAULT_SHELL;
-        args = fallback_args;
-    }
-
-    vte_terminal_spawn_async(
-            VTE_TERMINAL(terminal),
-            VTE_PTY_DEFAULT, //pty flags
-            NULL, // pwd
-            args, // args
-            NULL, // env
-            G_SPAWN_SEARCH_PATH, // g spawn flags
-            NULL, // child setup
-            NULL, // child setup data
-            NULL, // child setup data destroy
-            -1, // timeout
-            NULL, // cancellable
-            (VteTerminalSpawnAsyncCallback) term_spawn_callback, // callback
-            NULL // user data
-    );
-    free(user_shell);
-
-    if (show_scrollbar) {
-        scrollbar = gtk_scrollbar_new(GTK_ORIENTATION_VERTICAL, gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(terminal)));
-        gtk_container_add(GTK_CONTAINER(grid), GTK_WIDGET(scrollbar));
-    }
-    return terminal;
-}
-
 #define get_pid(terminal) GPOINTER_TO_INT(g_object_get_data(G_OBJECT(terminal), "pid"))
 
 gboolean get_current_dir(VteTerminal* terminal, char* buffer, size_t length) {
@@ -267,4 +209,68 @@ void set_tab_title_format(char* string) {
         if (*(p+1) == '\0') break;
         p += 2;
     }
+}
+
+GtkWidget* make_terminal(GtkWidget* grid, int argc, char** argv) {
+    GtkWidget *terminal;
+    GtkWidget *scrollbar;
+    GtkWidget *label;
+
+    terminal = vte_terminal_new();
+    g_object_set_data(G_OBJECT(grid), "terminal", terminal);
+    gtk_container_add(GTK_CONTAINER(grid), GTK_WIDGET(terminal));
+
+    label = gtk_label_new("");
+    g_object_set_data(G_OBJECT(terminal), "label", label);
+    gtk_label_set_single_line_mode(GTK_LABEL(label), TRUE);
+
+    configure_terminal(terminal);
+
+    g_signal_connect(terminal, "child-exited", G_CALLBACK(term_exited), grid);
+    g_signal_connect(terminal, "window-title-changed", G_CALLBACK(update_terminal_title), NULL);
+    g_signal_connect(terminal, "contents-changed", G_CALLBACK(terminal_activity), NULL);
+    g_object_set(terminal, "expand", 1, NULL);
+
+    char **args;
+    char *fallback_args[] = {NULL, NULL};
+    char *user_shell = NULL;
+
+    if (argc > 1) {
+        args = argv + 1;
+    } else if (default_args) {
+        args = default_args;
+    } else {
+        user_shell = vte_get_user_shell();
+        fallback_args[0] = user_shell ? user_shell : DEFAULT_SHELL;
+        args = fallback_args;
+    }
+
+    char current_dir[MAXPATHLEN+1] = "";
+    VteTerminal* active_term = get_active_terminal(NULL);
+    if (active_term) {
+        get_current_dir(active_term, current_dir, sizeof(current_dir)-1);
+    }
+
+    vte_terminal_spawn_async(
+            VTE_TERMINAL(terminal),
+            VTE_PTY_DEFAULT, //pty flags
+            current_dir[0] == '\0' ? NULL : current_dir, // pwd
+            args, // args
+            NULL, // env
+            G_SPAWN_SEARCH_PATH, // g spawn flags
+            NULL, // child setup
+            NULL, // child setup data
+            NULL, // child setup data destroy
+            -1, // timeout
+            NULL, // cancellable
+            (VteTerminalSpawnAsyncCallback) term_spawn_callback, // callback
+            NULL // user data
+    );
+    free(user_shell);
+
+    if (show_scrollbar) {
+        scrollbar = gtk_scrollbar_new(GTK_ORIENTATION_VERTICAL, gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(terminal)));
+        gtk_container_add(GTK_CONTAINER(grid), GTK_WIDGET(scrollbar));
+    }
+    return terminal;
 }
