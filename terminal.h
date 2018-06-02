@@ -4,5 +4,6 @@
 GtkWidget* make_terminal(GtkWidget* grid, int argc, char** argv);
 void create_timer(guint interval);
 void set_tab_title_format(char*);
+void update_terminal_ui(VteTerminal* terminal);
 
 #endif

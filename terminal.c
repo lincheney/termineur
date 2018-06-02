@@ -106,8 +106,6 @@ GtkWidget* make_terminal(GtkWidget* grid, int argc, char** argv) {
         scrollbar = gtk_scrollbar_new(GTK_ORIENTATION_VERTICAL, gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(terminal)));
         gtk_container_add(GTK_CONTAINER(grid), GTK_WIDGET(scrollbar));
     }
-
-    update_terminal_ui(VTE_TERMINAL(terminal));
     return terminal;
 }
 
@@ -158,7 +156,7 @@ gboolean get_foreground_name(VteTerminal* terminal, char* buffer, size_t length)
 gboolean construct_title(VteTerminal* terminal, gboolean escape_markup, char* buffer, size_t length) {
     if (! tab_title_format.data) return FALSE;
 
-    char dir[1024] = "", name[1024] = "";
+    char dir[1024] = "", name[1024] = "", number[4] = "";
     char* title = NULL;
 
     int len;
@@ -203,6 +201,13 @@ gboolean construct_title(VteTerminal* terminal, gboolean escape_markup, char* bu
                     if (! title) title = "";
                 }
                 val = title;
+                break;
+            case 'N':
+                if (*number == '\0') {
+                    int n = get_tab_number(terminal);
+                    if (n >= 0) snprintf(number, sizeof(number), "%i", n+1);
+                }
+                val = number;
                 break;
             default:
                 val = "%";

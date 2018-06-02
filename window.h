@@ -5,6 +5,7 @@ GtkApplication* app;
 
 #define get_active_window() gtk_application_get_active_window(app)
 VteTerminal* get_active_terminal();
+gint get_tab_number(VteTerminal* terminal);
 
 GtkWidget* make_new_window(GtkWidget*);
 void add_terminal(GtkWidget*);

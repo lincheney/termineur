@@ -34,6 +34,12 @@ gboolean key_pressed(GtkWidget* window, GdkEventKey* event, gpointer data) {
     return handled;
 }
 
+gint get_tab_number(VteTerminal* terminal) {
+    GtkWidget* tab = gtk_widget_get_parent(GTK_WIDGET(terminal));
+    GtkNotebook* notebook = GTK_NOTEBOOK(gtk_widget_get_parent(tab));
+    return gtk_notebook_page_num(notebook, tab);
+}
+
 void notebook_tab_removed(GtkWidget* notebook, GtkWidget *child, guint page_num) {
     if (gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook)) == 0) {
         gtk_widget_destroy(gtk_widget_get_toplevel(notebook));
@@ -61,6 +67,7 @@ void add_tab_to_window(GtkWidget* window, GtkWidget* tab, int position) {
     gtk_widget_realize(terminal);
     gtk_notebook_set_current_page(notebook, page);
     gtk_notebook_set_tab_detachable(GTK_NOTEBOOK(notebook), tab, TRUE);
+    update_terminal_ui(VTE_TERMINAL(terminal));
 }
 
 void add_terminal(GtkWidget* window) {
