@@ -149,7 +149,7 @@ gboolean construct_title(VteTerminal* terminal, gboolean escape_markup, char* bu
     length -= len; \
     buffer += len;
 
-    APPEND_TO_BUFFER(tab_title_format.data)
+    APPEND_TO_BUFFER(tab_title_format.data);
 
     /*
      * loop through and repeatedly append segments to buffer
@@ -198,9 +198,9 @@ gboolean construct_title(VteTerminal* terminal, gboolean escape_markup, char* bu
         }
 
         if (escape_markup) val = g_markup_escape_text(val, -1);
-        APPEND_TO_BUFFER(val)
+        APPEND_TO_BUFFER(val);
         if (escape_markup) g_free(val);
-        APPEND_TO_BUFFER(p+1)
+        APPEND_TO_BUFFER(p+1);
         p += len+2;
     }
 #undef APPEND_TO_BUFFER

@@ -51,17 +51,17 @@ gboolean terminal_scroll_on_output = TRUE;
 guint terminal_scrollback_lines = 0;
 
 // notebook props
-gboolean tab_expand = FALSE;
+gboolean tab_expand = TRUE;
 gboolean tab_fill = TRUE;
 gboolean tab_title_markup = FALSE;
 gboolean notebook_enable_popup = FALSE;
 gboolean notebook_scrollable = FALSE;
 gboolean notebook_show_tabs = TRUE;
 GtkPositionType notebook_tab_pos = GTK_POS_TOP;
-int ui_refresh_interval = 2000;
+int ui_refresh_interval = 5000;
 PangoEllipsizeMode tab_title_ellipsize_mode = PANGO_ELLIPSIZE_END;
 gfloat tab_title_alignment = 0.5;
-int inactivity_duration = 2000;
+int inactivity_duration = 10000;
 
 /* CALLBACKS */
 
