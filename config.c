@@ -363,6 +363,7 @@ void load_config() {
 
         MAP_LINE(background,           gdk_rgba_parse(palette, value));
         MAP_LINE(foreground,           gdk_rgba_parse(palette+1, value));
+        MAP_LINE(window-title-format,  set_window_title_format(value));
         MAP_LINE(tab-title-format,     set_tab_title_format(value));
         MAP_LINE(tab-fill,             tab_fill                      = atoi(value));
         MAP_LINE(tab-expand,           tab_expand                    = atoi(value));

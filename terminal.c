@@ -13,10 +13,12 @@ guint timer_id = 0;
 const gint ERROR_EXIT_CODE = 127;
 #define DEFAULT_SHELL "/bin/sh"
 
-struct {
+typedef struct {
     char* data;
     int length;
-} tab_title_format = {NULL, 0};
+} TitleFormat;
+TitleFormat tab_title_format = {NULL, 0};
+TitleFormat window_title_format = {NULL, 0};
 
 #define TERMINAL_NO_STATE 0
 #define TERMINAL_ACTIVE 1
@@ -45,7 +47,9 @@ void term_spawn_callback(GtkWidget* terminal, GPid pid, GError *error, gpointer 
         exit(ERROR_EXIT_CODE);
     }
     g_object_set_data(G_OBJECT(terminal), "pid", GINT_TO_POINTER(pid));
+
     update_terminal_ui(VTE_TERMINAL(terminal));
+    update_window_title(GTK_WINDOW(gtk_widget_get_toplevel(terminal)), NULL);
 }
 
 void change_terminal_state(VteTerminal* terminal, int new_state) {
@@ -138,8 +142,8 @@ gboolean get_foreground_name(VteTerminal* terminal, char* buffer, size_t length)
     return TRUE;
 }
 
-gboolean construct_title(VteTerminal* terminal, gboolean escape_markup, char* buffer, size_t length) {
-    if (! tab_title_format.data) return FALSE;
+gboolean construct_title(TitleFormat format, VteTerminal* terminal, gboolean escape_markup, char* buffer, size_t length) {
+    if (! format.data) return FALSE;
 
     char dir[1024] = "", name[1024] = "", number[4] = "";
     char* title = NULL;
@@ -152,7 +156,7 @@ gboolean construct_title(VteTerminal* terminal, gboolean escape_markup, char* bu
     length -= len; \
     buffer += len;
 
-    APPEND_TO_BUFFER(tab_title_format.data);
+    APPEND_TO_BUFFER(format.data);
 
     /*
      * loop through and repeatedly append segments to buffer
@@ -160,8 +164,8 @@ gboolean construct_title(VteTerminal* terminal, gboolean escape_markup, char* bu
      * that got replaced with a \0 in set_tab_title_format()
      * so check the first char and insert extra text as appropriate
      */
-    char* p = tab_title_format.data + len + 1;
-    while (p <= tab_title_format.data+tab_title_format.length) {
+    char* p = format.data + len + 1;
+    while (p <= format.data+format.length) {
         char* val;
         switch (*p) {
             case 'd':
@@ -216,7 +220,7 @@ void update_terminal_title(VteTerminal* terminal) {
     char buffer[1024] = "";
     GtkLabel* label = GTK_LABEL(g_object_get_data(G_OBJECT(terminal), "label"));
     gboolean escape_markup = gtk_label_get_use_markup(label);
-    if (construct_title(terminal, escape_markup, buffer, sizeof(buffer)-1)) {
+    if (construct_title(tab_title_format, terminal, escape_markup, buffer, sizeof(buffer)-1)) {
         gtk_label_set_label(label, buffer);
     }
 }
@@ -247,8 +251,19 @@ void update_terminal_ui(VteTerminal* terminal) {
     update_terminal_label_class(terminal);
 }
 
+void update_window_title(GtkWindow* window, gpointer data) {
+    VteTerminal* terminal = get_active_terminal(GTK_WIDGET(window));
+    if (terminal) {
+        char buffer[1024] = "";
+        if (construct_title(window_title_format, terminal, FALSE, buffer, sizeof(buffer)-1)) {
+            gtk_window_set_title(window, buffer);
+        }
+    }
+}
+
 gboolean refresh_all_terminals(gpointer data) {
     foreach_terminal((GFunc)update_terminal_ui, data);
+    foreach_window((GFunc)update_window_title, data);
     return TRUE;
 }
 
@@ -257,13 +272,13 @@ void create_timer(guint interval) {
     timer_id = g_timeout_add(interval, refresh_all_terminals, NULL);
 }
 
-void set_tab_title_format(char* string) {
-    free(tab_title_format.data);
-    tab_title_format.length = strlen(string);
-    tab_title_format.data = strdup(string);
+void parse_title_format(char* string, TitleFormat* dest) {
+    free(dest->data);
+    dest->length = strlen(string);
+    dest->data = strdup(string);
 
     // just replace all % with \0
-    char* p = tab_title_format.data;
+    char* p = dest->data;
     while (1) {
         p = strchr(p, '%');
         if (! p) break;
@@ -273,7 +288,15 @@ void set_tab_title_format(char* string) {
     }
 }
 
-GtkWidget* make_terminal(GtkWidget* grid, char* cwd, int argc, char** argv) {
+void set_tab_title_format(char* string) {
+    parse_title_format(string, &tab_title_format);
+}
+
+void set_window_title_format(char* string) {
+    parse_title_format(string, &window_title_format);
+}
+
+GtkWidget* make_terminal(GtkWidget* grid, const char* cwd, int argc, char** argv) {
     GtkWidget *terminal;
     GtkWidget *scrollbar;
     GtkWidget *label;
