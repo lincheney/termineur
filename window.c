@@ -65,15 +65,11 @@ void notebook_pages_changed(GtkNotebook* notebook) {
 }
 
 gint run_confirm_close_dialog(GtkWidget* window, char* message) {
-    GtkWidget* dialog = gtk_dialog_new_with_buttons(
-            "Confirm close", GTK_WINDOW(window),
-            GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
-            "_No", GTK_RESPONSE_NO, "_Yes", GTK_RESPONSE_YES, NULL);
-
-    GtkWidget* label = gtk_label_new(message);
-    g_object_set(G_OBJECT(label), "margin", 10, NULL);
-    gtk_container_add(GTK_CONTAINER(gtk_dialog_get_content_area(GTK_DIALOG(dialog))), label);
-    gtk_widget_show_all(dialog);
+    GtkWidget* dialog = gtk_message_dialog_new(
+            GTK_WINDOW(window), GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
+            GTK_MESSAGE_WARNING, GTK_BUTTONS_YES_NO,
+            message);
+    gtk_window_set_title(GTK_WINDOW(dialog), "Confirm close");
 
     gint response = gtk_dialog_run(GTK_DIALOG(dialog));
     gtk_widget_destroy(dialog);
