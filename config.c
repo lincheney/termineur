@@ -300,6 +300,213 @@ void reconfigure_window(GtkWindow* window) {
     }
 }
 
+void set_config_from_str(char* line, size_t len) {
+    if (line[0] == '#') return; // comment
+    if (line[0] == ';') return; // comment
+
+    char* value = strchr(line, '=');
+    if (! value) return; // invalid line
+
+    *value = '\0';
+    // whitespace trimming
+    char* c;
+    for (c = value-1; isspace(*c); c--) ;; c[1] = '\0';
+    value++;
+    while( isspace(*value) ) value++;
+    for (c = line+len-1; isspace(*c); c--) ;; c[1] = '\0';
+
+#define LINE_EQUALS(string) (strcmp(line, (#string)) == 0)
+#define MAP_LINE(string, body) \
+    if (LINE_EQUALS(string)) { \
+        body; \
+        return; \
+    }
+#define MAP_VALUE(var, ...) do { \
+        struct mapping {char* name; int value; } map[] = {__VA_ARGS__}; \
+        for(int i = 0; i < sizeof(map) / sizeof(struct mapping); i++) { \
+            if (g_ascii_strcasecmp(value, map[i].name) == 0) { \
+                var = map[i].value; \
+                break; \
+            } \
+        } \
+    } while(0)
+#define MAP_LINE_VALUE(string, ...) MAP_LINE(string, MAP_VALUE(__VA_ARGS__))
+
+    // palette colours
+    if (strncmp(line, "col", 3) == 0) {
+        errno = 0;
+        char* endptr = NULL;
+        int n = strtol(line+3, &endptr, 0);
+        if ((! errno) && *endptr == '\0' && 0 <= n && n < 16) {
+            gdk_rgba_parse(palette+2+n, value);
+            return;
+        }
+    }
+
+#define PARSE_BOOL(string) ( ! ( \
+    g_ascii_strcasecmp((string), "no") == 0 \
+    || g_ascii_strcasecmp((string), "n") == 0 \
+    || g_ascii_strcasecmp((string), "false") == 0 \
+    || strcmp((string), "") == 0 \
+    || strcmp((string), "0") == 0 \
+    ))
+
+    if (LINE_EQUALS(css-file)) {
+        gtk_css_provider_load_from_path(css_provider, value, NULL);
+        GdkScreen* screen = gdk_screen_get_default();
+        gtk_style_context_add_provider_for_screen(screen, GTK_STYLE_PROVIDER(css_provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+        return;
+    }
+
+    MAP_LINE(background,           gdk_rgba_parse(palette, value));
+    MAP_LINE(foreground,           gdk_rgba_parse(palette+1, value));
+    MAP_LINE(window-title-format,  set_window_title_format(value));
+    MAP_LINE(tab-title-format,     set_tab_title_format(value));
+    MAP_LINE(tab-fill,             tab_fill                      = PARSE_BOOL(value));
+    MAP_LINE(tab-expand,           tab_expand                    = PARSE_BOOL(value));
+    MAP_LINE(tab-enable-popup,     notebook_enable_popup         = PARSE_BOOL(value));
+    MAP_LINE(tab-scrollable,       notebook_scrollable           = PARSE_BOOL(value));
+    MAP_LINE(show-tabs,            notebook_show_tabs            = PARSE_BOOL(value));
+    MAP_LINE(ui-refresh-interval,  ui_refresh_interval           = atoi(value));
+    MAP_LINE(tab-title-markup,     tab_title_markup              = PARSE_BOOL(value));
+    MAP_LINE(inactivity-duration,  inactivity_duration           = atoi(value));
+    MAP_LINE(encoding,             terminal_encoding             = strdup(value));
+    MAP_LINE(font,                 terminal_font                 = pango_font_description_from_string(value));
+    MAP_LINE(font-scale,           terminal_font_scale           = strtod(value, NULL));
+    MAP_LINE(audible-bell,         terminal_audible_bell         = PARSE_BOOL(value));
+    MAP_LINE(allow-hyperlink,      terminal_allow_hyperlink      = PARSE_BOOL(value));
+    MAP_LINE(pointer-autohide,     terminal_pointer_autohide     = PARSE_BOOL(value));
+    MAP_LINE(rewrap-on-resize,     terminal_rewrap_on_resize     = PARSE_BOOL(value));
+    MAP_LINE(scroll-on-keystroke,  terminal_scroll_on_keystroke  = PARSE_BOOL(value));
+    MAP_LINE(scroll-on-output,     terminal_scroll_on_output     = PARSE_BOOL(value));
+    MAP_LINE(scrollback-lines,     terminal_scrollback_lines     = atoi(value));
+    MAP_LINE(word-char-exceptions, terminal_word_char_exceptions = strdup(value));
+    MAP_LINE(show-scrollbar,       show_scrollbar                = PARSE_BOOL(value));
+    MAP_LINE(window-icon,          window_icon                   = strdup(value));
+    MAP_LINE(window-close-confirm, window_close_confirm          = PARSE_BOOL(value));
+
+    if (LINE_EQUALS(tab-close-confirm)) {
+        if (g_ascii_strcasecmp(value, "smart") == 0) {
+            tab_close_confirm = CLOSE_CONFIRM_SMART;
+        } else if (PARSE_BOOL(value)) {
+            tab_close_confirm = CLOSE_CONFIRM_YES;
+        } else {
+            tab_close_confirm = CLOSE_CONFIRM_NO;
+        }
+        return;
+    }
+
+    if (LINE_EQUALS(default-args)) {
+        g_strfreev(default_args);
+        if (*value == '\0') {
+            default_args = NULL;
+        } else {
+            if (! g_shell_parse_argv(value, NULL, &default_args, NULL) ) {
+                g_warning("Failed to parse arg for %s: %s", line, value);
+            }
+        }
+        return;
+    }
+
+    MAP_LINE_VALUE(tab-pos, notebook_tab_pos,
+            {"top",    GTK_POS_TOP},
+            {"bottom", GTK_POS_BOTTOM},
+            {"left",   GTK_POS_LEFT},
+            {"right",  GTK_POS_RIGHT},
+    );
+
+    MAP_LINE_VALUE(tab-title-ellipsize-mode, tab_title_ellipsize_mode,
+            {"start",  PANGO_ELLIPSIZE_START},
+            {"middle", PANGO_ELLIPSIZE_MIDDLE},
+            {"end",    PANGO_ELLIPSIZE_END},
+    );
+
+    MAP_LINE_VALUE(tab-title-alignment, tab_title_alignment,
+            {"left",   0},
+            {"right",  1},
+            {"center", 0.5},
+    );
+
+    MAP_LINE_VALUE(cursor-blink-mode, terminal_cursor_blink_mode,
+            {"system", VTE_CURSOR_BLINK_SYSTEM},
+            {"on",     VTE_CURSOR_BLINK_ON},
+            {"off",    VTE_CURSOR_BLINK_OFF},
+    );
+
+    MAP_LINE_VALUE(cursor-shape, terminal_cursor_shape,
+            {"block",     VTE_CURSOR_SHAPE_BLOCK},
+            {"ibeam",     VTE_CURSOR_SHAPE_IBEAM},
+            {"underline", VTE_CURSOR_SHAPE_UNDERLINE},
+    );
+
+    if (strncmp(line, "key-", sizeof("key-")-1) == 0) {
+        char* shortcut = line + sizeof("key-")-1;
+        KeyComboCallback callback = NULL;
+
+        char* arg = strchr(value, ':');
+        if (arg) {
+            *arg = '\0';
+            arg++;
+        }
+        void* data = NULL;
+
+#define TRY_SET_SHORTCUT_WITH_DATA(name, processor) \
+        if (strcmp(value, #name) == 0) { \
+            callback = (KeyComboCallback)name; \
+            if (arg) { \
+                arg = str_unescape(arg); \
+                data = processor; \
+            } \
+            break; \
+        }
+#define TRY_SET_SHORTCUT(name) TRY_SET_SHORTCUT_WITH_DATA(name, NULL)
+
+        while (1) {
+            TRY_SET_SHORTCUT(paste_clipboard);
+            TRY_SET_SHORTCUT(copy_clipboard);
+            TRY_SET_SHORTCUT(increase_font_size);
+            TRY_SET_SHORTCUT(decrease_font_size);
+            TRY_SET_SHORTCUT(reset_terminal);
+            TRY_SET_SHORTCUT(scroll_up);
+            TRY_SET_SHORTCUT(scroll_down);
+            TRY_SET_SHORTCUT(scroll_page_up);
+            TRY_SET_SHORTCUT(scroll_page_down);
+            TRY_SET_SHORTCUT(scroll_top);
+            TRY_SET_SHORTCUT(scroll_bottom);
+            TRY_SET_SHORTCUT(select_all);
+            TRY_SET_SHORTCUT(unselect_all);
+            TRY_SET_SHORTCUT_WITH_DATA(feed_data, strdup(arg));
+            TRY_SET_SHORTCUT(new_tab);
+            TRY_SET_SHORTCUT(new_window);
+            TRY_SET_SHORTCUT(prev_tab);
+            TRY_SET_SHORTCUT(next_tab);
+            TRY_SET_SHORTCUT(move_tab_prev);
+            TRY_SET_SHORTCUT(move_tab_next);
+            TRY_SET_SHORTCUT(detach_tab);
+            TRY_SET_SHORTCUT(cut_tab);
+            TRY_SET_SHORTCUT(paste_tab);
+            TRY_SET_SHORTCUT_WITH_DATA(switch_to_tab, GINT_TO_POINTER(atoi(arg)));
+            TRY_SET_SHORTCUT(tab_popup_menu);
+            TRY_SET_SHORTCUT(reload_config);
+            TRY_SET_SHORTCUT(close_tab);
+            break;
+        }
+
+        if (callback) {
+            KeyCombo combo = {0, 0, callback, NULL};
+            gtk_accelerator_parse(shortcut, &(combo.key), &(combo.modifiers));
+            if (combo.modifiers & GDK_SHIFT_MASK) {
+                combo.key = gdk_keyval_to_upper(combo.key);
+            }
+            combo.data = data;
+            g_array_append_val(keyboard_shortcuts, combo);
+        } else {
+            g_warning("Unrecognised action: %s", value);
+        }
+        return;
+    }
+}
+
 void load_config() {
     if (! config_filename) return;
 
@@ -318,213 +525,10 @@ void load_config() {
     if (! css_provider) css_provider = gtk_css_provider_new();
 
     char* line = NULL;
-    char* value;
-    size_t len = 0;
-    ssize_t read;
-    while ((read = getline(&line, &len, config)) != -1) {
-        if (line[0] == '#') continue; // comment
-        if (line[0] == ';') continue; // comment
-
-        value = strchr(line, '=');
-        if (! value) continue; // invalid line
-
-        *value = '\0';
-        // whitespace trimming
-        char* c;
-        for (c = value-1; isspace(*c); c--) ;; c[1] = '\0';
-        value++;
-        while( isspace(*value) ) value++;
-        for (c = line+read-1; isspace(*c); c--) ;; c[1] = '\0';
-
-#define LINE_EQUALS(string) (strcmp(line, (#string)) == 0)
-#define MAP_LINE(string, body) \
-        if (LINE_EQUALS(string)) { \
-            body; \
-            continue; \
-        }
-#define MAP_VALUE(var, ...) do { \
-            struct mapping {char* name; int value; } map[] = {__VA_ARGS__}; \
-            for(int i = 0; i < sizeof(map) / sizeof(struct mapping); i++) { \
-                if (g_ascii_strcasecmp(value, map[i].name) == 0) { \
-                    var = map[i].value; \
-                    break; \
-                } \
-            } \
-        } while(0)
-#define MAP_LINE_VALUE(string, ...) MAP_LINE(string, MAP_VALUE(__VA_ARGS__))
-
-        // palette colours
-        if (strncmp(line, "col", 3) == 0) {
-            errno = 0;
-            char* endptr = NULL;
-            int n = strtol(line+3, &endptr, 0);
-            if ((! errno) && *endptr == '\0' && 0 <= n && n < 16) {
-                gdk_rgba_parse(palette+2+n, value);
-                continue;
-            }
-        }
-#define PARSE_BOOL(string) ( ! ( \
-        g_ascii_strcasecmp((string), "no") == 0 \
-        || g_ascii_strcasecmp((string), "n") == 0 \
-        || g_ascii_strcasecmp((string), "false") == 0 \
-        || strcmp((string), "") == 0 \
-        || strcmp((string), "0") == 0 \
-        ))
-
-        if (LINE_EQUALS(css-file)) {
-            gtk_css_provider_load_from_path(css_provider, value, NULL);
-            GdkScreen* screen = gdk_screen_get_default();
-            gtk_style_context_add_provider_for_screen(screen, GTK_STYLE_PROVIDER(css_provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-            continue;
-        }
-
-        MAP_LINE(background,           gdk_rgba_parse(palette, value));
-        MAP_LINE(foreground,           gdk_rgba_parse(palette+1, value));
-        MAP_LINE(window-title-format,  set_window_title_format(value));
-        MAP_LINE(tab-title-format,     set_tab_title_format(value));
-        MAP_LINE(tab-fill,             tab_fill                      = PARSE_BOOL(value));
-        MAP_LINE(tab-expand,           tab_expand                    = PARSE_BOOL(value));
-        MAP_LINE(tab-enable-popup,     notebook_enable_popup         = PARSE_BOOL(value));
-        MAP_LINE(tab-scrollable,       notebook_scrollable           = PARSE_BOOL(value));
-        MAP_LINE(show-tabs,            notebook_show_tabs            = PARSE_BOOL(value));
-        MAP_LINE(ui-refresh-interval,  ui_refresh_interval           = atoi(value));
-        MAP_LINE(tab-title-markup,     tab_title_markup              = PARSE_BOOL(value));
-        MAP_LINE(inactivity-duration,  inactivity_duration           = atoi(value));
-        MAP_LINE(encoding,             terminal_encoding             = strdup(value));
-        MAP_LINE(font,                 terminal_font                 = pango_font_description_from_string(value));
-        MAP_LINE(font-scale,           terminal_font_scale           = strtod(value, NULL));
-        MAP_LINE(audible-bell,         terminal_audible_bell         = PARSE_BOOL(value));
-        MAP_LINE(allow-hyperlink,      terminal_allow_hyperlink      = PARSE_BOOL(value));
-        MAP_LINE(pointer-autohide,     terminal_pointer_autohide     = PARSE_BOOL(value));
-        MAP_LINE(rewrap-on-resize,     terminal_rewrap_on_resize     = PARSE_BOOL(value));
-        MAP_LINE(scroll-on-keystroke,  terminal_scroll_on_keystroke  = PARSE_BOOL(value));
-        MAP_LINE(scroll-on-output,     terminal_scroll_on_output     = PARSE_BOOL(value));
-        MAP_LINE(scrollback-lines,     terminal_scrollback_lines     = atoi(value));
-        MAP_LINE(word-char-exceptions, terminal_word_char_exceptions = strdup(value));
-        MAP_LINE(show-scrollbar,       show_scrollbar                = PARSE_BOOL(value));
-        MAP_LINE(window-icon,          window_icon                   = strdup(value));
-        MAP_LINE(window-close-confirm, window_close_confirm          = PARSE_BOOL(value));
-
-        if (LINE_EQUALS(tab-close-confirm)) {
-            if (g_ascii_strcasecmp(value, "smart") == 0) {
-                tab_close_confirm = CLOSE_CONFIRM_SMART;
-            } else if (PARSE_BOOL(value)) {
-                tab_close_confirm = CLOSE_CONFIRM_YES;
-            } else {
-                tab_close_confirm = CLOSE_CONFIRM_NO;
-            }
-            continue;
-        }
-
-        if (LINE_EQUALS(default-args)) {
-            g_strfreev(default_args);
-            if (*value == '\0') {
-                default_args = NULL;
-            } else {
-                if (! g_shell_parse_argv(value, NULL, &default_args, NULL) ) {
-                    g_warning("Failed to parse arg for %s: %s", line, value);
-                }
-            }
-            continue;
-        }
-
-        MAP_LINE_VALUE(tab-pos, notebook_tab_pos,
-                {"top",    GTK_POS_TOP},
-                {"bottom", GTK_POS_BOTTOM},
-                {"left",   GTK_POS_LEFT},
-                {"right",  GTK_POS_RIGHT},
-        );
-
-        MAP_LINE_VALUE(tab-title-ellipsize-mode, tab_title_ellipsize_mode,
-                {"start",  PANGO_ELLIPSIZE_START},
-                {"middle", PANGO_ELLIPSIZE_MIDDLE},
-                {"end",    PANGO_ELLIPSIZE_END},
-        );
-
-        MAP_LINE_VALUE(tab-title-alignment, tab_title_alignment,
-                {"left",   0},
-                {"right",  1},
-                {"center", 0.5},
-        );
-
-        MAP_LINE_VALUE(cursor-blink-mode, terminal_cursor_blink_mode,
-                {"system", VTE_CURSOR_BLINK_SYSTEM},
-                {"on",     VTE_CURSOR_BLINK_ON},
-                {"off",    VTE_CURSOR_BLINK_OFF},
-        );
-
-        MAP_LINE_VALUE(cursor-shape, terminal_cursor_shape,
-                {"block",     VTE_CURSOR_SHAPE_BLOCK},
-                {"ibeam",     VTE_CURSOR_SHAPE_IBEAM},
-                {"underline", VTE_CURSOR_SHAPE_UNDERLINE},
-        );
-
-        if (strncmp(line, "key-", sizeof("key-")-1) == 0) {
-            char* shortcut = line + sizeof("key-")-1;
-            KeyComboCallback callback = NULL;
-
-            char* arg = strchr(value, ':');
-            if (arg) {
-                *arg = '\0';
-                arg++;
-            }
-            void* data = NULL;
-
-#define TRY_SET_SHORTCUT_WITH_DATA(name, processor) \
-            if (strcmp(value, #name) == 0) { \
-                callback = (KeyComboCallback)name; \
-                if (arg) { \
-                    arg = str_unescape(arg); \
-                    data = processor; \
-                } \
-                break; \
-            }
-#define TRY_SET_SHORTCUT(name) TRY_SET_SHORTCUT_WITH_DATA(name, NULL)
-
-            while (1) {
-                TRY_SET_SHORTCUT(paste_clipboard);
-                TRY_SET_SHORTCUT(copy_clipboard);
-                TRY_SET_SHORTCUT(increase_font_size);
-                TRY_SET_SHORTCUT(decrease_font_size);
-                TRY_SET_SHORTCUT(reset_terminal);
-                TRY_SET_SHORTCUT(scroll_up);
-                TRY_SET_SHORTCUT(scroll_down);
-                TRY_SET_SHORTCUT(scroll_page_up);
-                TRY_SET_SHORTCUT(scroll_page_down);
-                TRY_SET_SHORTCUT(scroll_top);
-                TRY_SET_SHORTCUT(scroll_bottom);
-                TRY_SET_SHORTCUT(select_all);
-                TRY_SET_SHORTCUT(unselect_all);
-                TRY_SET_SHORTCUT_WITH_DATA(feed_data, strdup(arg));
-                TRY_SET_SHORTCUT(new_tab);
-                TRY_SET_SHORTCUT(new_window);
-                TRY_SET_SHORTCUT(prev_tab);
-                TRY_SET_SHORTCUT(next_tab);
-                TRY_SET_SHORTCUT(move_tab_prev);
-                TRY_SET_SHORTCUT(move_tab_next);
-                TRY_SET_SHORTCUT(detach_tab);
-                TRY_SET_SHORTCUT(cut_tab);
-                TRY_SET_SHORTCUT(paste_tab);
-                TRY_SET_SHORTCUT_WITH_DATA(switch_to_tab, GINT_TO_POINTER(atoi(arg)));
-                TRY_SET_SHORTCUT(tab_popup_menu);
-                TRY_SET_SHORTCUT(reload_config);
-                TRY_SET_SHORTCUT(close_tab);
-                break;
-            }
-
-            if (callback) {
-                KeyCombo combo = {0, 0, callback, NULL};
-                gtk_accelerator_parse(shortcut, &(combo.key), &(combo.modifiers));
-                if (combo.modifiers & GDK_SHIFT_MASK) {
-                    combo.key = gdk_keyval_to_upper(combo.key);
-                }
-                combo.data = data;
-                g_array_append_val(keyboard_shortcuts, combo);
-            } else {
-                g_warning("Unrecognised action: %s", value);
-            }
-            continue;
-        }
+    size_t size = 0;
+    ssize_t len;
+    while ((len = getline(&line, &size, config)) != -1) {
+        set_config_from_str(line, len);
     }
 
     fclose(config);
