@@ -507,6 +507,12 @@ void set_config_from_str(char* line, size_t len) {
     }
 }
 
+void reconfigure_all() {
+    // reload config everywhere
+    foreach_window((GFunc)reconfigure_window, NULL);
+    create_timer(ui_refresh_interval);
+}
+
 void load_config() {
     if (! config_filename) return;
 
@@ -534,7 +540,5 @@ void load_config() {
     fclose(config);
     if (line) free(line);
 
-    // reload config everywhere
-    foreach_window((GFunc)reconfigure_window, NULL);
-    create_timer(ui_refresh_interval);
+    reconfigure_all();
 }

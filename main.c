@@ -16,7 +16,19 @@ char* id = NULL;
 void activate(GtkApplication* app, GApplicationCommandLine* cmdline, gpointer data) {
     int argc;
     char** argv = g_application_command_line_get_arguments(cmdline, &argc);
-    make_new_window_full(NULL, g_application_command_line_get_cwd(cmdline), argc, argv);
+
+    gboolean set_config = FALSE;
+    GVariantDict* options = g_application_command_line_get_options_dict(cmdline);
+    g_variant_dict_lookup(options, "set", "b", &set_config);
+
+    if (set_config) {
+        for (int i = 1; i < argc; i++) {
+            set_config_from_str(argv[i], strlen(argv[i]));
+            reconfigure_all();
+        }
+    } else {
+        make_new_window_full(NULL, g_application_command_line_get_cwd(cmdline), argc, argv);
+    }
 }
 
 void startup(GtkApplication* app, gpointer data) {
@@ -25,8 +37,8 @@ void startup(GtkApplication* app, gpointer data) {
     }
     load_config();
 }
-
 gint handle_local_options(GApplication* app, GVariantDict* options, gpointer data) {
+
     char id_buffer[256];
     if (! id) {
         const char* display = gdk_display_get_name(gdk_display_get_default());
@@ -45,6 +57,7 @@ int main(int argc, char *argv[]) {
     GOptionEntry entries[] = {
         {"id",     'i', 0, G_OPTION_ARG_STRING,   &id,              "Application ID", "ID"},
         {"config", 'c', 0, G_OPTION_ARG_FILENAME, &config_filename, "Config file",    "FILE"},
+        {"set",    's', 0, G_OPTION_ARG_NONE,     NULL,             "Set config",     NULL},
         {NULL}
     };
 
