@@ -1,12 +1,4 @@
-#include <sys/wait.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-#include <errno.h>
 #include <gtk/gtk.h>
-#include <gdk/gdk.h>
-#include <unistd.h>
-#include <fcntl.h>
 
 #include "config.h"
 #include "window.h"
