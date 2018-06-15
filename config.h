@@ -25,6 +25,7 @@ typedef struct {
 GArray* keyboard_shortcuts;
 
 int set_config_from_str(char* line, size_t len);
+KeyCombo lookup_callback(char* value);
 void reconfigure_all();
 void load_config();
 void configure_terminal(GtkWidget*);

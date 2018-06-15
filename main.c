@@ -17,15 +17,23 @@ void activate(GtkApplication* app, GApplicationCommandLine* cmdline, gpointer da
     int argc;
     char** argv = g_application_command_line_get_arguments(cmdline, &argc);
 
-    gboolean set_config = FALSE;
+    gboolean run_commands = FALSE;
     GVariantDict* options = g_application_command_line_get_options_dict(cmdline);
-    g_variant_dict_lookup(options, "set", "b", &set_config);
+    g_variant_dict_lookup(options, "command", "b", &run_commands);
 
-    if (set_config) {
+    if (run_commands) {
         for (int i = 1; i < argc; i++) {
-            set_config_from_str(argv[i], strlen(argv[i]));
-            reconfigure_all();
+            if (set_config_from_str(argv[i], strlen(argv[i]))) continue;
+
+            KeyCombo combo = lookup_callback(argv[i]);
+            if (combo.callback) {
+                VteTerminal* terminal = get_active_terminal(NULL);
+                combo.callback(terminal, combo.data);
+                continue;
+            }
         }
+        reconfigure_all();
+
     } else {
         make_new_window_full(NULL, g_application_command_line_get_cwd(cmdline), argc, argv);
     }
@@ -55,9 +63,9 @@ int main(int argc, char *argv[]) {
     gtk_init(&argc, &argv);
 
     GOptionEntry entries[] = {
-        {"id",     'i', 0, G_OPTION_ARG_STRING,   &id,              "Application ID", "ID"},
-        {"config", 'c', 0, G_OPTION_ARG_FILENAME, &config_filename, "Config file",    "FILE"},
-        {"set",    's', 0, G_OPTION_ARG_NONE,     NULL,             "Set config",     NULL},
+        {"id",      'i', 0, G_OPTION_ARG_STRING,   &id,              "Application ID", "ID"},
+        {"config",  'c', 0, G_OPTION_ARG_FILENAME, &config_filename, "Config file",    "FILE"},
+        {"command", 'C', 0, G_OPTION_ARG_NONE,     NULL,             "Run commands",   NULL},
         {NULL}
     };
 
