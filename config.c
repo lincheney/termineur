@@ -352,12 +352,12 @@ KeyCombo lookup_callback(char* value) {
     return combo;
 }
 
-void set_config_from_str(char* line, size_t len) {
-    if (line[0] == '#') return; // comment
-    if (line[0] == ';') return; // comment
+int set_config_from_str(char* line, size_t len) {
+    if (line[0] == '#') return 1; // comment
+    if (line[0] == ';') return 1; // comment
 
     char* value = strchr(line, '=');
-    if (! value) return; // invalid line
+    if (! value) return 0; // invalid line
 
     *value = '\0';
     // whitespace trimming
@@ -371,7 +371,7 @@ void set_config_from_str(char* line, size_t len) {
 #define MAP_LINE(string, body) \
     if (LINE_EQUALS(string)) { \
         body; \
-        return; \
+        return 1; \
     }
 #define MAP_VALUE(var, ...) do { \
         struct mapping {char* name; int value; } map[] = {__VA_ARGS__}; \
@@ -391,7 +391,7 @@ void set_config_from_str(char* line, size_t len) {
         int n = strtol(line+3, &endptr, 0);
         if ((! errno) && *endptr == '\0' && 0 <= n && n < 16) {
             gdk_rgba_parse(palette+2+n, value);
-            return;
+            return 1;
         }
     }
 
@@ -407,7 +407,7 @@ void set_config_from_str(char* line, size_t len) {
         gtk_css_provider_load_from_path(css_provider, value, NULL);
         GdkScreen* screen = gdk_screen_get_default();
         gtk_style_context_add_provider_for_screen(screen, GTK_STYLE_PROVIDER(css_provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-        return;
+        return 1;
     }
 
     MAP_LINE(background,           gdk_rgba_parse(palette, value));
@@ -445,7 +445,7 @@ void set_config_from_str(char* line, size_t len) {
         } else {
             tab_close_confirm = CLOSE_CONFIRM_NO;
         }
-        return;
+        return 1;
     }
 
     if (LINE_EQUALS(default-args)) {
@@ -457,7 +457,7 @@ void set_config_from_str(char* line, size_t len) {
                 g_warning("Failed to parse arg for %s: %s", line, value);
             }
         }
-        return;
+        return 1;
     }
 
     MAP_LINE_VALUE(tab-pos, notebook_tab_pos,
@@ -508,7 +508,7 @@ void set_config_from_str(char* line, size_t len) {
                     g_array_remove_index(keyboard_shortcuts, i);
                 }
             }
-            return;
+            return 1;
         }
 
         KeyCombo kc = lookup_callback(value);
@@ -519,8 +519,10 @@ void set_config_from_str(char* line, size_t len) {
         } else {
             g_warning("Unrecognised action: %s", value);
         }
-        return;
+        return 1;
     }
+
+    return 0;
 }
 
 void reconfigure_all() {
