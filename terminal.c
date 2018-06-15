@@ -141,6 +141,7 @@ gboolean get_foreground_name(VteTerminal* terminal, char* buffer, size_t length)
 
     // don't touch buffer until the very end
     strncpy(buffer, start+1, nl-start-1);
+    buffer[nl-start-1] = '\0';
     return TRUE;
 }
 
