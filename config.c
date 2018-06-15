@@ -65,6 +65,19 @@ int inactivity_duration = 10000;
 gboolean window_close_confirm = TRUE;
 gint tab_close_confirm = CLOSE_CONFIRM_SMART;
 
+char** shell_split(char* string, gint* argc) {
+    if (! string || *string == '\0') {
+        if (argc) *argc = 0;
+        return NULL;
+    }
+
+    char** array = NULL;
+    if (! g_shell_parse_argv(string, argc, &array, NULL) ) {
+        g_warning("Failed to shell split: %s", string);
+    }
+    return array;
+}
+
 /* CALLBACKS */
 
 KeyComboCallbackFunc \
@@ -113,11 +126,15 @@ void scroll_bottom(VteTerminal* terminal) {
 void feed_data(VteTerminal* terminal, gchar* data) {
     vte_terminal_feed_child_binary(terminal, (guint8*)data, strlen(data));
 }
-void new_tab(VteTerminal* terminal) {
-    add_terminal(GTK_WIDGET(get_active_window()));
+void new_tab(VteTerminal* terminal, gchar* data) {
+    gint argc;
+    char** argv = shell_split(data, &argc);
+    add_terminal_full(GTK_WIDGET(get_active_window()), NULL, argc, argv);
 }
-void new_window(VteTerminal* terminal) {
-    make_new_window(NULL);
+void new_window(VteTerminal* terminal, gchar* data) {
+    gint argc;
+    char** argv = shell_split(data, &argc);
+    make_new_window_full(NULL, NULL, argc, argv);
 }
 void jump_tab(VteTerminal* terminal, int delta) {
     GtkNotebook* notebook = GTK_NOTEBOOK(gtk_widget_get_parent(gtk_widget_get_parent(GTK_WIDGET(terminal))));
@@ -335,8 +352,8 @@ KeyComboCallback lookup_callback(char* value) {
         MATCH_CALLBACK(select_all);
         MATCH_CALLBACK(unselect_all);
         MATCH_CALLBACK_WITH_DATA(feed_data, strdup(arg), free);
-        MATCH_CALLBACK(new_tab);
-        MATCH_CALLBACK(new_window);
+        MATCH_CALLBACK_WITH_DATA(new_tab, strdup(arg), free);
+        MATCH_CALLBACK_WITH_DATA(new_window, strdup(arg), free);
         MATCH_CALLBACK(prev_tab);
         MATCH_CALLBACK(next_tab);
         MATCH_CALLBACK(move_tab_prev);
@@ -451,13 +468,7 @@ int set_config_from_str(char* line, size_t len) {
 
     if (LINE_EQUALS(default-args)) {
         g_strfreev(default_args);
-        if (*value == '\0') {
-            default_args = NULL;
-        } else {
-            if (! g_shell_parse_argv(value, NULL, &default_args, NULL) ) {
-                g_warning("Failed to parse arg for %s: %s", line, value);
-            }
-        }
+        default_args = shell_split(value, NULL);
         return 1;
     }
 

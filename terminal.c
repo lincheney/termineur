@@ -331,8 +331,8 @@ GtkWidget* make_terminal(GtkWidget* grid, const char* cwd, int argc, char** argv
     char *fallback_args[] = {NULL, NULL};
     char *user_shell = NULL;
 
-    if (argc > 1) {
-        args = argv + 1;
+    if (argc > 0) {
+        args = argv;
     } else if (default_args) {
         args = default_args;
     } else {

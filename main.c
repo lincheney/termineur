@@ -27,7 +27,7 @@ void activate(GtkApplication* app, GApplicationCommandLine* cmdline, gpointer da
         reconfigure_all();
 
     } else {
-        make_new_window_full(NULL, g_application_command_line_get_cwd(cmdline), argc, argv);
+        make_new_window_full(NULL, g_application_command_line_get_cwd(cmdline), argc-1, argv+1);
     }
 }
 
