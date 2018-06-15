@@ -423,7 +423,7 @@ int set_config_from_str(char* line, size_t len) {
     MAP_LINE(ui-refresh-interval,  ui_refresh_interval           = atoi(value));
     MAP_LINE(tab-title-markup,     tab_title_markup              = PARSE_BOOL(value));
     MAP_LINE(inactivity-duration,  inactivity_duration           = atoi(value));
-    MAP_LINE(encoding,             terminal_encoding             = strdup(value));
+    MAP_LINE(encoding,             free(terminal_encoding); terminal_encoding = strdup(value));
     MAP_LINE(font,                 terminal_font                 = pango_font_description_from_string(value));
     MAP_LINE(font-scale,           terminal_font_scale           = strtod(value, NULL));
     MAP_LINE(audible-bell,         terminal_audible_bell         = PARSE_BOOL(value));
@@ -433,9 +433,9 @@ int set_config_from_str(char* line, size_t len) {
     MAP_LINE(scroll-on-keystroke,  terminal_scroll_on_keystroke  = PARSE_BOOL(value));
     MAP_LINE(scroll-on-output,     terminal_scroll_on_output     = PARSE_BOOL(value));
     MAP_LINE(scrollback-lines,     terminal_scrollback_lines     = atoi(value));
-    MAP_LINE(word-char-exceptions, terminal_word_char_exceptions = strdup(value));
+    MAP_LINE(word-char-exceptions, free(terminal_word_char_exceptions); terminal_word_char_exceptions = strdup(value));
     MAP_LINE(show-scrollbar,       show_scrollbar                = PARSE_BOOL(value));
-    MAP_LINE(window-icon,          window_icon                   = strdup(value));
+    MAP_LINE(window-icon,          free(window_icon);  window_icon = strdup(value));
     MAP_LINE(window-close-confirm, window_close_confirm          = PARSE_BOOL(value));
 
     if (LINE_EQUALS(tab-close-confirm)) {
