@@ -441,7 +441,23 @@ void set_config_from_str(char* line, size_t len) {
 
     if (strncmp(line, "key-", sizeof("key-")-1) == 0) {
         char* shortcut = line + sizeof("key-")-1;
-        KeyComboCallback callback = NULL;
+
+        KeyCombo combo = {0, 0, NULL, NULL};
+        gtk_accelerator_parse(shortcut, &(combo.key), &(combo.modifiers));
+        if (combo.modifiers & GDK_SHIFT_MASK) {
+            combo.key = gdk_keyval_to_upper(combo.key);
+        }
+
+        if (strcmp(value, "") == 0) {
+            // unset this shortcut
+            for (int i = keyboard_shortcuts->len - 1; i >= 0; i--) {
+                KeyCombo* kc = &g_array_index(keyboard_shortcuts, KeyCombo, i);
+                if (kc->key == combo.key && kc->modifiers == combo.modifiers) {
+                    g_array_remove_index(keyboard_shortcuts, i);
+                }
+            }
+            return;
+        }
 
         char* arg = strchr(value, ':');
         if (arg) {
@@ -452,7 +468,7 @@ void set_config_from_str(char* line, size_t len) {
 
 #define TRY_SET_SHORTCUT_WITH_DATA(name, processor) \
         if (strcmp(value, #name) == 0) { \
-            callback = (KeyComboCallback)name; \
+            combo.callback = (KeyComboCallback)name; \
             if (arg) { \
                 arg = str_unescape(arg); \
                 data = processor; \
@@ -492,12 +508,7 @@ void set_config_from_str(char* line, size_t len) {
             break;
         }
 
-        if (callback) {
-            KeyCombo combo = {0, 0, callback, NULL};
-            gtk_accelerator_parse(shortcut, &(combo.key), &(combo.modifiers));
-            if (combo.modifiers & GDK_SHIFT_MASK) {
-                combo.key = gdk_keyval_to_upper(combo.key);
-            }
+        if (combo.callback) {
             combo.data = data;
             g_array_append_val(keyboard_shortcuts, combo);
         } else {
@@ -522,12 +533,12 @@ void load_config() {
         return;
     }
 
-#define CLEAR_ARRAY(array, type) \
-    if (array) g_array_remove_range(array, 0, array->len); \
-    else array = g_array_new(FALSE, FALSE, sizeof(type))
-
     // reset some things
-    CLEAR_ARRAY(keyboard_shortcuts, KeyCombo);
+
+    if (! keyboard_shortcuts) {
+        keyboard_shortcuts = g_array_new(FALSE, FALSE, sizeof(KeyCombo));
+    }
+
     if (! css_provider) css_provider = gtk_css_provider_new();
 
     char* line = NULL;
