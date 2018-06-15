@@ -300,6 +300,58 @@ void reconfigure_window(GtkWindow* window) {
     }
 }
 
+KeyCombo lookup_callback(char* value) {
+    char* arg = strchr(value, ':');
+    if (arg) {
+        *arg = '\0';
+        arg++;
+    }
+    KeyCombo combo = {0, 0, NULL, NULL};
+
+#define MATCH_CALLBACK_WITH_DATA(name, processor) \
+    if (strcmp(value, #name) == 0) { \
+        combo.callback = (KeyComboCallback)name; \
+        if (arg) { \
+            arg = str_unescape(arg); \
+            combo.data = processor; \
+        } \
+        break; \
+    }
+#define MATCH_CALLBACK(name) MATCH_CALLBACK_WITH_DATA(name, NULL)
+
+    while (1) {
+        MATCH_CALLBACK(paste_clipboard);
+        MATCH_CALLBACK(copy_clipboard);
+        MATCH_CALLBACK(increase_font_size);
+        MATCH_CALLBACK(decrease_font_size);
+        MATCH_CALLBACK(reset_terminal);
+        MATCH_CALLBACK(scroll_up);
+        MATCH_CALLBACK(scroll_down);
+        MATCH_CALLBACK(scroll_page_up);
+        MATCH_CALLBACK(scroll_page_down);
+        MATCH_CALLBACK(scroll_top);
+        MATCH_CALLBACK(scroll_bottom);
+        MATCH_CALLBACK(select_all);
+        MATCH_CALLBACK(unselect_all);
+        MATCH_CALLBACK_WITH_DATA(feed_data, strdup(arg));
+        MATCH_CALLBACK(new_tab);
+        MATCH_CALLBACK(new_window);
+        MATCH_CALLBACK(prev_tab);
+        MATCH_CALLBACK(next_tab);
+        MATCH_CALLBACK(move_tab_prev);
+        MATCH_CALLBACK(move_tab_next);
+        MATCH_CALLBACK(detach_tab);
+        MATCH_CALLBACK(cut_tab);
+        MATCH_CALLBACK(paste_tab);
+        MATCH_CALLBACK_WITH_DATA(switch_to_tab, GINT_TO_POINTER(atoi(arg)));
+        MATCH_CALLBACK(tab_popup_menu);
+        MATCH_CALLBACK(reload_config);
+        MATCH_CALLBACK(close_tab);
+        break;
+    }
+    return combo;
+}
+
 void set_config_from_str(char* line, size_t len) {
     if (line[0] == '#') return; // comment
     if (line[0] == ';') return; // comment
@@ -459,57 +511,10 @@ void set_config_from_str(char* line, size_t len) {
             return;
         }
 
-        char* arg = strchr(value, ':');
-        if (arg) {
-            *arg = '\0';
-            arg++;
-        }
-        void* data = NULL;
-
-#define TRY_SET_SHORTCUT_WITH_DATA(name, processor) \
-        if (strcmp(value, #name) == 0) { \
-            combo.callback = (KeyComboCallback)name; \
-            if (arg) { \
-                arg = str_unescape(arg); \
-                data = processor; \
-            } \
-            break; \
-        }
-#define TRY_SET_SHORTCUT(name) TRY_SET_SHORTCUT_WITH_DATA(name, NULL)
-
-        while (1) {
-            TRY_SET_SHORTCUT(paste_clipboard);
-            TRY_SET_SHORTCUT(copy_clipboard);
-            TRY_SET_SHORTCUT(increase_font_size);
-            TRY_SET_SHORTCUT(decrease_font_size);
-            TRY_SET_SHORTCUT(reset_terminal);
-            TRY_SET_SHORTCUT(scroll_up);
-            TRY_SET_SHORTCUT(scroll_down);
-            TRY_SET_SHORTCUT(scroll_page_up);
-            TRY_SET_SHORTCUT(scroll_page_down);
-            TRY_SET_SHORTCUT(scroll_top);
-            TRY_SET_SHORTCUT(scroll_bottom);
-            TRY_SET_SHORTCUT(select_all);
-            TRY_SET_SHORTCUT(unselect_all);
-            TRY_SET_SHORTCUT_WITH_DATA(feed_data, strdup(arg));
-            TRY_SET_SHORTCUT(new_tab);
-            TRY_SET_SHORTCUT(new_window);
-            TRY_SET_SHORTCUT(prev_tab);
-            TRY_SET_SHORTCUT(next_tab);
-            TRY_SET_SHORTCUT(move_tab_prev);
-            TRY_SET_SHORTCUT(move_tab_next);
-            TRY_SET_SHORTCUT(detach_tab);
-            TRY_SET_SHORTCUT(cut_tab);
-            TRY_SET_SHORTCUT(paste_tab);
-            TRY_SET_SHORTCUT_WITH_DATA(switch_to_tab, GINT_TO_POINTER(atoi(arg)));
-            TRY_SET_SHORTCUT(tab_popup_menu);
-            TRY_SET_SHORTCUT(reload_config);
-            TRY_SET_SHORTCUT(close_tab);
-            break;
-        }
-
-        if (combo.callback) {
-            combo.data = data;
+        KeyCombo kc = lookup_callback(value);
+        if (kc.callback) {
+            combo.callback = kc.callback;
+            combo.data = kc.data;
             g_array_append_val(keyboard_shortcuts, combo);
         } else {
             g_warning("Unrecognised action: %s", value);
@@ -525,21 +530,20 @@ void reconfigure_all() {
 }
 
 void load_config() {
-    if (! config_filename) return;
+    // init some things
+    if (! keyboard_shortcuts) {
+        keyboard_shortcuts = g_array_new(FALSE, FALSE, sizeof(KeyCombo));
+    }
+    if (! css_provider) {
+        css_provider = gtk_css_provider_new();
+    }
 
+    if (! config_filename) return;
     FILE* config = fopen(config_filename, "r");
     if (!config) {
         /* if (error) g_warning("Error loading key file: %s", error->message); */
         return;
     }
-
-    // reset some things
-
-    if (! keyboard_shortcuts) {
-        keyboard_shortcuts = g_array_new(FALSE, FALSE, sizeof(KeyCombo));
-    }
-
-    if (! css_provider) css_provider = gtk_css_provider_new();
 
     char* line = NULL;
     size_t size = 0;
