@@ -67,11 +67,11 @@ gint tab_close_confirm = CLOSE_CONFIRM_SMART;
 
 /* CALLBACKS */
 
-KeyComboCallback \
-    paste_clipboard = (KeyComboCallback)vte_terminal_paste_clipboard
-    , select_all = (KeyComboCallback)vte_terminal_select_all
-    , unselect_all = (KeyComboCallback)vte_terminal_unselect_all
-    , reload_config = (KeyComboCallback)load_config
+KeyComboCallbackFunc \
+    paste_clipboard = (KeyComboCallbackFunc)vte_terminal_paste_clipboard
+    , select_all = (KeyComboCallbackFunc)vte_terminal_select_all
+    , unselect_all = (KeyComboCallbackFunc)vte_terminal_unselect_all
+    , reload_config = (KeyComboCallbackFunc)load_config
 ;
 
 void copy_clipboard(VteTerminal* terminal) {
@@ -300,24 +300,25 @@ void reconfigure_window(GtkWindow* window) {
     }
 }
 
-KeyCombo lookup_callback(char* value) {
+KeyComboCallback lookup_callback(char* value) {
     char* arg = strchr(value, ':');
     if (arg) {
         *arg = '\0';
         arg++;
     }
-    KeyCombo combo = {0, 0, NULL, NULL};
+    KeyComboCallback callback = {NULL, NULL, NULL};
 
-#define MATCH_CALLBACK_WITH_DATA(name, processor) \
+#define MATCH_CALLBACK_WITH_DATA(name, processor, _cleanup) \
     if (strcmp(value, #name) == 0) { \
-        combo.callback = (KeyComboCallback)name; \
+        callback.func = (KeyComboCallbackFunc)name; \
         if (arg) { \
             arg = str_unescape(arg); \
-            combo.data = processor; \
+            callback.data = processor; \
+            callback.cleanup = _cleanup; \
         } \
         break; \
     }
-#define MATCH_CALLBACK(name) MATCH_CALLBACK_WITH_DATA(name, NULL)
+#define MATCH_CALLBACK(name) MATCH_CALLBACK_WITH_DATA(name, NULL, NULL)
 
     while (1) {
         MATCH_CALLBACK(paste_clipboard);
@@ -333,7 +334,7 @@ KeyCombo lookup_callback(char* value) {
         MATCH_CALLBACK(scroll_bottom);
         MATCH_CALLBACK(select_all);
         MATCH_CALLBACK(unselect_all);
-        MATCH_CALLBACK_WITH_DATA(feed_data, strdup(arg));
+        MATCH_CALLBACK_WITH_DATA(feed_data, strdup(arg), free);
         MATCH_CALLBACK(new_tab);
         MATCH_CALLBACK(new_window);
         MATCH_CALLBACK(prev_tab);
@@ -343,13 +344,13 @@ KeyCombo lookup_callback(char* value) {
         MATCH_CALLBACK(detach_tab);
         MATCH_CALLBACK(cut_tab);
         MATCH_CALLBACK(paste_tab);
-        MATCH_CALLBACK_WITH_DATA(switch_to_tab, GINT_TO_POINTER(atoi(arg)));
+        MATCH_CALLBACK_WITH_DATA(switch_to_tab, GINT_TO_POINTER(atoi(arg)), NULL);
         MATCH_CALLBACK(tab_popup_menu);
         MATCH_CALLBACK(reload_config);
         MATCH_CALLBACK(close_tab);
         break;
     }
-    return combo;
+    return callback;
 }
 
 int set_config_from_str(char* line, size_t len) {
@@ -494,7 +495,7 @@ int set_config_from_str(char* line, size_t len) {
     if (strncmp(line, "key-", sizeof("key-")-1) == 0) {
         char* shortcut = line + sizeof("key-")-1;
 
-        KeyCombo combo = {0, 0, NULL, NULL};
+        KeyCombo combo = {0, 0, {NULL, NULL, NULL}};
         gtk_accelerator_parse(shortcut, &(combo.key), &(combo.modifiers));
         if (combo.modifiers & GDK_SHIFT_MASK) {
             combo.key = gdk_keyval_to_upper(combo.key);
@@ -511,10 +512,9 @@ int set_config_from_str(char* line, size_t len) {
             return 1;
         }
 
-        KeyCombo kc = lookup_callback(value);
-        if (kc.callback) {
-            combo.callback = kc.callback;
-            combo.data = kc.data;
+        KeyComboCallback callback = lookup_callback(value);
+        if (callback.func) {
+            combo.callback = callback;
             g_array_append_val(keyboard_shortcuts, combo);
         } else {
             g_warning("Unrecognised action: %s", value);
@@ -531,10 +531,16 @@ void reconfigure_all() {
     create_timer(ui_refresh_interval);
 }
 
+void free_key_combo(KeyCombo* kc) {
+    if (kc->callback.cleanup)
+        kc->callback.cleanup(kc->callback.data);
+}
+
 void load_config() {
     // init some things
     if (! keyboard_shortcuts) {
         keyboard_shortcuts = g_array_new(FALSE, FALSE, sizeof(KeyCombo));
+        g_array_set_clear_func(keyboard_shortcuts, (GDestroyNotify)free_key_combo);
     }
     if (! css_provider) {
         css_provider = gtk_css_provider_new();

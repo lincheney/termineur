@@ -29,7 +29,7 @@ gboolean key_pressed(GtkWidget* window, GdkEventKey* event, gpointer data) {
             KeyCombo* combo = &g_array_index(keyboard_shortcuts, KeyCombo, i);
             if (combo->key == event->keyval && combo->modifiers == modifiers) {
                 VteTerminal* terminal = get_active_terminal(window);
-                combo->callback(terminal, combo->data);
+                combo->callback.func(terminal, combo->callback.data);
                 handled = TRUE;
             }
         }

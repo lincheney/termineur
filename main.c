@@ -17,10 +17,10 @@ void activate(GtkApplication* app, GApplicationCommandLine* cmdline, gpointer da
         for (int i = 1; i < argc; i++) {
             if (set_config_from_str(argv[i], strlen(argv[i]))) continue;
 
-            KeyCombo combo = lookup_callback(argv[i]);
-            if (combo.callback) {
+            KeyComboCallback callback = lookup_callback(argv[i]);
+            if (callback.func) {
                 VteTerminal* terminal = get_active_terminal(NULL);
-                combo.callback(terminal, combo.data);
+                callback.func(terminal, callback.data);
                 continue;
             }
         }

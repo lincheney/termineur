@@ -14,18 +14,24 @@ gboolean window_close_confirm;
 #define CLOSE_CONFIRM_SMART 2
 gint tab_close_confirm;
 
-typedef void(*KeyComboCallback)(VteTerminal*, gpointer);
+typedef void(*KeyComboCallbackFunc)(VteTerminal*, gpointer);
+
+typedef struct {
+    KeyComboCallbackFunc func;
+    gpointer data;
+    GDestroyNotify cleanup;
+} KeyComboCallback;
+
 typedef struct {
     guint key;
     GdkModifierType modifiers;
     KeyComboCallback callback;
-    gpointer data;
 } KeyCombo;
 
 GArray* keyboard_shortcuts;
 
 int set_config_from_str(char* line, size_t len);
-KeyCombo lookup_callback(char* value);
+KeyComboCallback lookup_callback(char* value);
 void reconfigure_all();
 void load_config();
 void configure_terminal(GtkWidget*);
