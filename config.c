@@ -78,6 +78,17 @@ char** shell_split(char* string, gint* argc) {
     return array;
 }
 
+inline void* float_to_ptr(float x) {
+    void* ptr;
+    memcpy(&ptr, &x, sizeof(float));
+    return ptr;
+}
+inline float ptr_to_float(void* x) {
+    float flt;
+    memcpy(&flt, &x, sizeof(float));
+    return flt;
+}
+
 /* CALLBACKS */
 
 KeyComboCallbackFunc \
@@ -91,11 +102,8 @@ void copy_clipboard(VteTerminal* terminal) {
     vte_terminal_copy_clipboard_format(terminal, VTE_FORMAT_TEXT);
 }
 
-void increase_font_size(VteTerminal* terminal) {
-    vte_terminal_set_font_scale(terminal, vte_terminal_get_font_scale(terminal)+0.2);
-}
-void decrease_font_size(VteTerminal* terminal) {
-    vte_terminal_set_font_scale(terminal, vte_terminal_get_font_scale(terminal)-0.2);
+void change_font_size(VteTerminal* terminal, void* delta) {
+    vte_terminal_set_font_scale(terminal, vte_terminal_get_font_scale(terminal)+ptr_to_float(delta));
 }
 void reset_terminal(VteTerminal* terminal) {
     vte_terminal_reset(terminal, 1, 1);
@@ -340,8 +348,7 @@ KeyComboCallback lookup_callback(char* value) {
     while (1) {
         MATCH_CALLBACK(paste_clipboard);
         MATCH_CALLBACK(copy_clipboard);
-        MATCH_CALLBACK(increase_font_size);
-        MATCH_CALLBACK(decrease_font_size);
+        MATCH_CALLBACK_WITH_DATA(change_font_size, float_to_ptr(strtof(arg, NULL)), NULL);
         MATCH_CALLBACK(reset_terminal);
         MATCH_CALLBACK(scroll_up);
         MATCH_CALLBACK(scroll_down);
