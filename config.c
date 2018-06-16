@@ -220,6 +220,29 @@ void close_tab(VteTerminal* terminal) {
         gtk_container_remove(notebook, tab);
     }
 }
+void run(VteTerminal* terminal, gchar* data) {
+    gint argc;
+    char** argv = shell_split(data, &argc);
+
+    GError* error = NULL;
+    GBytes* stdout_buf;
+    GSubprocess* proc = g_subprocess_newv((const char**)argv, G_SUBPROCESS_FLAGS_STDOUT_PIPE, &error);
+    if (!proc) {
+        g_warning("Failed to run (%s): %s\n", error->message, data);
+        return;
+    }
+
+    error = NULL;
+    if (! g_subprocess_communicate(proc, NULL, NULL, &stdout_buf, NULL, &error)) {
+        g_warning("IO failed (%s): %s\n", error->message, data);
+    } else {
+        gsize size;
+        const char* buf_data = g_bytes_get_data(stdout_buf, &size);
+        vte_terminal_feed_child_binary(terminal, (guint8*)buf_data, size);
+    }
+
+    g_subprocess_wait(proc, NULL, NULL);
+}
 
 char* str_unescape(char* string) {
     char* p = string;
@@ -372,6 +395,7 @@ KeyComboCallback lookup_callback(char* value) {
         MATCH_CALLBACK(tab_popup_menu);
         MATCH_CALLBACK(reload_config);
         MATCH_CALLBACK(close_tab);
+        MATCH_CALLBACK_WITH_DATA(run, strdup(arg), free);
         break;
     }
     return callback;
