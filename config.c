@@ -95,7 +95,6 @@ KeyComboCallbackFunc \
     paste_clipboard = (KeyComboCallbackFunc)vte_terminal_paste_clipboard
     , select_all = (KeyComboCallbackFunc)vte_terminal_select_all
     , unselect_all = (KeyComboCallbackFunc)vte_terminal_unselect_all
-    , reload_config = (KeyComboCallbackFunc)load_config
 ;
 
 void copy_clipboard(VteTerminal* terminal) {
@@ -219,6 +218,12 @@ void close_tab(VteTerminal* terminal) {
         GtkContainer* notebook = GTK_CONTAINER(gtk_widget_get_parent(tab));
         gtk_container_remove(notebook, tab);
     }
+}
+void reload_config() {
+    if (keyboard_shortcuts) {
+        g_array_remove_range(keyboard_shortcuts, 0, keyboard_shortcuts->len);
+    }
+    load_config();
 }
 void run(VteTerminal* terminal, gchar* data) {
     gint argc;
