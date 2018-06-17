@@ -234,12 +234,14 @@ void run(VteTerminal* terminal, gchar* data) {
     GSubprocess* proc = g_subprocess_newv((const char**)argv, G_SUBPROCESS_FLAGS_STDOUT_PIPE, &error);
     if (!proc) {
         g_warning("Failed to run (%s): %s\n", error->message, data);
+        g_error_free(error);
         return;
     }
 
     error = NULL;
     if (! g_subprocess_communicate(proc, NULL, NULL, &stdout_buf, NULL, &error)) {
         g_warning("IO failed (%s): %s\n", error->message, data);
+        g_error_free(error);
     } else {
         gsize size;
         const char* buf_data = g_bytes_get_data(stdout_buf, &size);

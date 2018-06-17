@@ -45,6 +45,7 @@ void term_destroyed(VteTerminal* terminal) {
 void term_spawn_callback(GtkWidget* terminal, GPid pid, GError *error, gpointer user_data) {
     if (error) {
         fprintf(stderr, "Could not start terminal: %s\n", error->message);
+        g_error_free(error);
         // TODO don't flat out exit
         exit(ERROR_EXIT_CODE);
     }
