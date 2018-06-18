@@ -55,9 +55,9 @@ GtkNotebook* notebook_create_window(GtkNotebook* notebook, GtkWidget* page, gint
 }
 
 void notebook_switch_page(GtkNotebook* notebook, GtkWidget* tab, guint num) {
-    GtkWidget* term = g_object_get_data(G_OBJECT(tab), "terminal");
-    gtk_widget_grab_focus(term);
-    update_window_title(GTK_WINDOW(gtk_widget_get_toplevel(GTK_WIDGET(notebook))), NULL);
+    VteTerminal* terminal = g_object_get_data(G_OBJECT(tab), "terminal");
+    gtk_widget_grab_focus(GTK_WIDGET(terminal));
+    update_window_title(GTK_WINDOW(gtk_widget_get_toplevel(GTK_WIDGET(notebook))), terminal);
 }
 
 void notebook_pages_changed(GtkNotebook* notebook) {

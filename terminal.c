@@ -259,8 +259,8 @@ void update_terminal_ui(VteTerminal* terminal) {
     update_terminal_label_class(terminal);
 }
 
-void update_window_title(GtkWindow* window, gpointer data) {
-    VteTerminal* terminal = get_active_terminal(GTK_WIDGET(window));
+void update_window_title(GtkWindow* window, VteTerminal* terminal) {
+    terminal = terminal ? terminal : get_active_terminal(GTK_WIDGET(window));
     if (terminal) {
         char buffer[1024] = "";
         if (construct_title(window_title_format, terminal, FALSE, buffer, sizeof(buffer)-1)) {
@@ -271,7 +271,7 @@ void update_window_title(GtkWindow* window, gpointer data) {
 
 gboolean refresh_all_terminals(gpointer data) {
     foreach_terminal((GFunc)update_terminal_ui, data);
-    foreach_window((GFunc)update_window_title, data);
+    foreach_window((GFunc)update_window_title, NULL);
     return TRUE;
 }
 
