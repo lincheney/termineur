@@ -231,7 +231,15 @@ void run(VteTerminal* terminal, gchar* data) {
 
     GError* error = NULL;
     GBytes* stdout_buf;
-    GSubprocess* proc = g_subprocess_newv((const char**)argv, G_SUBPROCESS_FLAGS_STDOUT_PIPE, &error);
+    GSubprocessLauncher* launcher = g_subprocess_launcher_new(G_SUBPROCESS_FLAGS_STDOUT_PIPE);
+
+    char buffer[1024];
+    sprintf(buffer, "%i", get_pid(terminal));
+    g_subprocess_launcher_setenv(launcher, APP_PREFIX "_PID", buffer, TRUE);
+    sprintf(buffer, "%i", get_foreground_pid(terminal));
+    g_subprocess_launcher_setenv(launcher, APP_PREFIX "_FGPID", buffer, TRUE);
+
+    GSubprocess* proc = g_subprocess_launcher_spawnv(launcher, (const char**)argv, &error);
     if (!proc) {
         g_warning("Failed to run (%s): %s\n", error->message, data);
         g_error_free(error);

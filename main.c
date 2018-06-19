@@ -42,7 +42,7 @@ gint handle_local_options(GApplication* app, GVariantDict* options, gpointer dat
     char id_buffer[256];
     if (! id) {
         const char* display = gdk_display_get_name(gdk_display_get_default());
-        snprintf(id_buffer, sizeof(id_buffer), "vte_terminal.x%s", display+1);
+        snprintf(id_buffer, sizeof(id_buffer), APP_PREFIX ".x%s", display+1);
         id = id_buffer;
     } else if (strcmp(id, "") == 0) {
         id = NULL;

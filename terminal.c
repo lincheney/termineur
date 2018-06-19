@@ -95,7 +95,6 @@ void terminal_activity(VteTerminal* terminal) {
     }
 }
 
-#define get_pid(terminal) GPOINTER_TO_INT(g_object_get_data(G_OBJECT(terminal), "pid"))
 
 gboolean get_current_dir(VteTerminal* terminal, char* buffer, size_t length) {
     int pid = get_pid(terminal);
