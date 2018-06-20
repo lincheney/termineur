@@ -3,8 +3,6 @@
 #include "config.h"
 #include "window.h"
 
-char* id = NULL;
-
 void activate(GtkApplication* app, GApplicationCommandLine* cmdline, gpointer data) {
     int argc;
     char** argv = g_application_command_line_get_arguments(cmdline, &argc);
@@ -38,16 +36,23 @@ void startup(GtkApplication* app, gpointer data) {
     load_config();
 }
 gint handle_local_options(GApplication* app, GVariantDict* options, gpointer data) {
-
     char id_buffer[256];
-    if (! id) {
+    if (! app_id) {
+        app_id = g_getenv(APP_PREFIX "_ID");
+    }
+
+    if (! app_id) {
         const char* display = gdk_display_get_name(gdk_display_get_default());
         snprintf(id_buffer, sizeof(id_buffer), APP_PREFIX ".x%s", display+1);
-        id = id_buffer;
-    } else if (strcmp(id, "") == 0) {
-        id = NULL;
+        app_id = id_buffer;
+    } else if (strcmp(app_id, "") == 0) {
+        app_id = NULL;
     }
-    g_application_set_application_id(app, id);
+    g_application_set_application_id(app, app_id);
+
+    if (app_id) {
+        g_setenv(APP_PREFIX "_ID", app_id, TRUE);
+    }
     return -1;
 }
 
@@ -55,7 +60,7 @@ int main(int argc, char *argv[]) {
     gtk_init(&argc, &argv);
 
     GOptionEntry entries[] = {
-        {"id",      'i', 0, G_OPTION_ARG_STRING,   &id,              "Application ID", "ID"},
+        {"id",      'i', 0, G_OPTION_ARG_STRING,   &app_id,          "Application ID", "ID"},
         {"config",  'c', 0, G_OPTION_ARG_FILENAME, &config_filename, "Config file",    "FILE"},
         {"command", 'C', 0, G_OPTION_ARG_NONE,     NULL,             "Run commands",   NULL},
         {NULL}

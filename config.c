@@ -7,6 +7,7 @@
 #include "terminal.h"
 
 char* config_filename = NULL;
+const char* app_id = NULL;
 
 #define PALETTE_SIZE (16)
 extern GdkRGBA palette[PALETTE_SIZE+2];

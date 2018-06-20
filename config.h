@@ -5,6 +5,7 @@
 
 #define APP_PREFIX "VTE_TERMINAL"
 
+const char* app_id;
 char* config_filename;
 gboolean show_scrollbar;
 char** default_args;
