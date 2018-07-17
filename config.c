@@ -418,9 +418,6 @@ KeyComboCallback lookup_callback(char* value) {
 }
 
 int set_config_from_str(char* line, size_t len) {
-    if (line[0] == '#') return 1; // comment
-    if (line[0] == ';') return 1; // comment
-
     char* value = strchr(line, '=');
     if (! value) return 0; // invalid line
 
@@ -468,8 +465,8 @@ int set_config_from_str(char* line, size_t len) {
     || strcmp((string), "0") == 0 \
     ))
 
-    if (LINE_EQUALS(css-file)) {
-        gtk_css_provider_load_from_path(css_provider, value, NULL);
+    if (LINE_EQUALS(css)) {
+        gtk_css_provider_load_from_data(css_provider, value, -1, NULL);
         GdkScreen* screen = gdk_screen_get_default();
         gtk_style_context_add_provider_for_screen(screen, GTK_STYLE_PROVIDER(css_provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
         return 1;
@@ -612,9 +609,27 @@ void load_config() {
     }
 
     char* line = NULL;
+    char* buffer = NULL;
     size_t size = 0;
-    ssize_t len;
+    ssize_t len, l;
     while ((len = getline(&line, &size, config)) != -1) {
+        // multilines
+        if (len >= 4 && strcmp(line+len-4, "\"\"\"\n") == 0) {
+            len -= 4;
+            while ((l = getline(&buffer, &size, config)) != 1) {
+                len += l;
+                line = realloc(line, len + 1);
+                memcpy(line+len-l, buffer, l);
+                line[len+1] = '\0';
+
+                if (strcmp(line+len-4, "\"\"\"\n") == 0) {
+                    line[len-4] = '\0';
+                    break;
+                }
+            }
+        }
+
+        if (line[0] == '#' || line[0] == ';') continue; // comment
         set_config_from_str(line, len);
     }
 
