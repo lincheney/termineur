@@ -173,10 +173,12 @@ void detach_tab(VteTerminal* terminal) {
     GtkWidget* tab = gtk_widget_get_parent(GTK_WIDGET(terminal));
     GtkContainer* notebook = GTK_CONTAINER(gtk_widget_get_parent(tab));
 
-    g_object_ref(tab);
-    gtk_container_remove(notebook, tab);
-    make_new_window(tab);
-    g_object_unref(tab);
+    if (gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook)) > 1) {
+        g_object_ref(tab);
+        gtk_container_remove(notebook, tab);
+        make_new_window(tab);
+        g_object_unref(tab);
+    }
 }
 void cut_tab(VteTerminal* terminal) {
     if (detaching_tab) g_object_remove_weak_pointer(G_OBJECT(detaching_tab), (void*)&detaching_tab);
