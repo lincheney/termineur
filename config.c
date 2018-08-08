@@ -226,13 +226,18 @@ void reload_config() {
     }
     load_config();
 }
-void run(VteTerminal* terminal, gchar* data) {
+void spawn_subprocess(VteTerminal* terminal, gchar* data, GBytes* stdin_bytes) {
     gint argc;
     char** argv = shell_split(data, &argc);
 
+    GSubprocessFlags flags = G_SUBPROCESS_FLAGS_STDOUT_PIPE;
+    if (stdin_bytes) {
+        flags |= G_SUBPROCESS_FLAGS_STDIN_PIPE;
+    }
+
     GError* error = NULL;
     GBytes* stdout_buf;
-    GSubprocessLauncher* launcher = g_subprocess_launcher_new(G_SUBPROCESS_FLAGS_STDOUT_PIPE);
+    GSubprocessLauncher* launcher = g_subprocess_launcher_new(flags);
 
     char buffer[1024];
     sprintf(buffer, "%i", get_pid(terminal));
@@ -248,7 +253,7 @@ void run(VteTerminal* terminal, gchar* data) {
     }
 
     error = NULL;
-    if (! g_subprocess_communicate(proc, NULL, NULL, &stdout_buf, NULL, &error)) {
+    if (! g_subprocess_communicate(proc, stdin_bytes, NULL, &stdout_buf, NULL, &error)) {
         g_warning("IO failed (%s): %s\n", error->message, data);
         g_error_free(error);
     } else {
@@ -258,6 +263,28 @@ void run(VteTerminal* terminal, gchar* data) {
     }
 
     g_subprocess_wait(proc, NULL, NULL);
+}
+void run(VteTerminal* terminal, gchar* data) {
+    spawn_subprocess(terminal, data, NULL);
+}
+void pipe_screen(VteTerminal* terminal, gchar* data) {
+    char* stdin_buf = vte_terminal_get_text_include_trailing_spaces(terminal, NULL, NULL, NULL);
+    GBytes* stdin_bytes = g_bytes_new_take(stdin_buf, strlen(stdin_buf));
+    spawn_subprocess(terminal, data, stdin_bytes);
+}
+void pipe_all(VteTerminal* terminal, gchar* data) {
+    GError* error = NULL;
+    GOutputStream* stream = g_memory_output_stream_new_resizable();
+    gboolean success = vte_terminal_write_contents_sync(terminal, stream, VTE_WRITE_DEFAULT, NULL, &error);
+    if (!success) {
+        g_warning("Failed to get data: %s\n", error->message);
+        g_error_free(error);
+        return;
+    }
+    g_output_stream_close(stream, NULL, NULL);
+    GBytes* stdin_bytes = g_memory_output_stream_steal_as_bytes(G_MEMORY_OUTPUT_STREAM(stream));
+
+    spawn_subprocess(terminal, data, stdin_bytes);
 }
 
 char* str_unescape(char* string) {
@@ -412,6 +439,8 @@ KeyComboCallback lookup_callback(char* value) {
         MATCH_CALLBACK(reload_config);
         MATCH_CALLBACK(close_tab);
         MATCH_CALLBACK_WITH_DATA(run, strdup(arg), free);
+        MATCH_CALLBACK_WITH_DATA(pipe_screen, strdup(arg), free);
+        MATCH_CALLBACK_WITH_DATA(pipe_all, strdup(arg), free);
         break;
     }
     return callback;
