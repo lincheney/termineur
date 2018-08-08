@@ -272,6 +272,13 @@ void pipe_screen(VteTerminal* terminal, gchar* data) {
     GBytes* stdin_bytes = g_bytes_new_take(stdin_buf, strlen(stdin_buf));
     spawn_subprocess(terminal, data, stdin_bytes);
 }
+void pipe_line(VteTerminal* terminal, gchar* data) {
+    glong col, row;
+    vte_terminal_get_cursor_position(terminal, &col, &row);
+    char* stdin_buf = vte_terminal_get_text_range(terminal, row, 0, row+1, -1, NULL, NULL, NULL);
+    GBytes* stdin_bytes = g_bytes_new_take(stdin_buf, strlen(stdin_buf));
+    spawn_subprocess(terminal, data, stdin_bytes);
+}
 void pipe_all(VteTerminal* terminal, gchar* data) {
     GError* error = NULL;
     GOutputStream* stream = g_memory_output_stream_new_resizable();
@@ -440,6 +447,7 @@ KeyComboCallback lookup_callback(char* value) {
         MATCH_CALLBACK(close_tab);
         MATCH_CALLBACK_WITH_DATA(run, strdup(arg), free);
         MATCH_CALLBACK_WITH_DATA(pipe_screen, strdup(arg), free);
+        MATCH_CALLBACK_WITH_DATA(pipe_line, strdup(arg), free);
         MATCH_CALLBACK_WITH_DATA(pipe_all, strdup(arg), free);
         break;
     }
