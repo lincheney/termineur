@@ -79,12 +79,12 @@ char** shell_split(char* string, gint* argc) {
     return array;
 }
 
-inline void* float_to_ptr(float x) {
+void* float_to_ptr(float x) {
     void* ptr;
     memcpy(&ptr, &x, sizeof(float));
     return ptr;
 }
-inline float ptr_to_float(void* x) {
+float ptr_to_float(void* x) {
     float flt;
     memcpy(&flt, &x, sizeof(float));
     return flt;
@@ -649,15 +649,18 @@ void load_config() {
 
     char* line = NULL;
     char* buffer = NULL;
-    size_t size = 0;
+    size_t size = 0, bufsize = 0;
     ssize_t len, l;
     while ((len = getline(&line, &size, config)) != -1) {
         // multilines
         if (len >= 4 && strcmp(line+len-4, "\"\"\"\n") == 0) {
             len -= 4;
-            while ((l = getline(&buffer, &size, config)) != 1) {
+            while ((l = getline(&buffer, &bufsize, config)) != -1) {
                 len += l;
-                line = realloc(line, len + 1);
+                if (len >= size) {
+                    size = len+1;
+                    line = realloc(line, size);
+                }
                 memcpy(line+len-l, buffer, l);
                 line[len+1] = '\0';
 
