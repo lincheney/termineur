@@ -53,6 +53,7 @@ int run_slave(GSocket* sock) {
                 memmove(buffer.data, end+1, buffer.size);
                 break;
             }
+            buffer.size = 0;
         }
     }
     return 0;
