@@ -5,7 +5,7 @@
 
 #define APP_PREFIX "VTE_TERMINAL"
 
-const char* app_id;
+char* app_id;
 char* config_filename;
 gboolean show_scrollbar;
 char** default_args;
@@ -17,7 +17,7 @@ gboolean window_close_confirm;
 #define CLOSE_CONFIRM_SMART 2
 gint tab_close_confirm;
 
-typedef void(*KeyComboCallbackFunc)(VteTerminal*, gpointer);
+typedef void(*KeyComboCallbackFunc)(VteTerminal*, gpointer, gpointer);
 
 typedef struct {
     KeyComboCallbackFunc func;
@@ -36,6 +36,7 @@ GArray* keyboard_shortcuts;
 int set_config_from_str(char* line, size_t len);
 KeyComboCallback lookup_callback(char* value);
 void reconfigure_all();
+void* execute_line(char* line, int size, gboolean reconfigure);
 void load_config();
 void configure_terminal(GtkWidget*);
 void configure_tab(GtkContainer*, GtkWidget*);

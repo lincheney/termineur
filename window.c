@@ -5,6 +5,7 @@
 #include "terminal.h"
 
 GtkWidget* make_window();
+GList* toplevel_windows = NULL;
 
 VteTerminal* get_nth_terminal(GtkWidget* window, int index) {
     GtkWidget* notebook = g_object_get_data(G_OBJECT(window), "notebook");
@@ -13,8 +14,19 @@ VteTerminal* get_nth_terminal(GtkWidget* window, int index) {
     return VTE_TERMINAL(terminal);
 }
 
+GtkWidget* get_active_window() {
+    for (GList* node = toplevel_windows; node; node = node->next) {
+        if (gtk_window_is_active(GTK_WINDOW(node->data))) {
+            return node->data;
+        }
+    }
+    return NULL;
+}
+
 VteTerminal* get_active_terminal(GtkWidget* window) {
-    if (! window) window = GTK_WIDGET(get_active_window());
+    if (! window) window = get_active_window();
+    if (! window) return NULL;
+
     GtkWidget* notebook = g_object_get_data(G_OBJECT(window), "notebook");
     int index = gtk_notebook_get_current_page(GTK_NOTEBOOK(notebook));
     if (index < 0) return NULL;
@@ -29,7 +41,7 @@ gboolean key_pressed(GtkWidget* window, GdkEventKey* event, gpointer data) {
             KeyCombo* combo = &g_array_index(keyboard_shortcuts, KeyCombo, i);
             if (combo->key == event->keyval && combo->modifiers == modifiers) {
                 VteTerminal* terminal = get_active_terminal(window);
-                combo->callback.func(terminal, combo->callback.data);
+                combo->callback.func(terminal, combo->callback.data, NULL);
                 handled = TRUE;
             }
         }
@@ -88,6 +100,13 @@ gboolean prevent_window_close(GtkWidget* window, GdkEvent* event, gpointer data)
     return response != GTK_RESPONSE_YES;
 }
 
+void window_destroyed(GtkWindow* window) {
+    toplevel_windows = g_list_remove(toplevel_windows, window);
+    if (toplevel_windows == NULL) {
+        gtk_main_quit();
+    }
+}
+
 gboolean prevent_tab_close(VteTerminal* terminal) {
     if (! tab_close_confirm) return FALSE;
     if (tab_close_confirm == CLOSE_CONFIRM_SMART && !is_running_foreground_process(terminal)) {
@@ -124,13 +143,14 @@ void add_terminal_full(GtkWidget* window, const char* cwd, int argc, char** argv
 
 GtkWidget* make_window() {
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    gtk_application_add_window(app, GTK_WINDOW(window));
+    toplevel_windows = g_list_prepend(toplevel_windows, window);
 
     GtkWidget *notebook = gtk_notebook_new();
     gtk_widget_set_can_focus(notebook, FALSE);
     gtk_notebook_set_group_name(GTK_NOTEBOOK(notebook), "terminals");
     g_object_set_data(G_OBJECT(window), "notebook", notebook);
     g_signal_connect(window, "delete-event", G_CALLBACK(prevent_window_close), NULL);
+    g_signal_connect(window, "destroy", G_CALLBACK(window_destroyed), NULL);
 
     gtk_notebook_set_show_border(GTK_NOTEBOOK(notebook), FALSE);
     g_signal_connect(notebook, "page-removed", G_CALLBACK(notebook_tab_removed), NULL);
@@ -160,8 +180,7 @@ GtkWidget* make_new_window_full(GtkWidget* tab, const char* cwd, int argc, char*
 }
 
 void foreach_window(GFunc callback, gpointer data) {
-    GList* windows = gtk_application_get_windows(app);
-    g_list_foreach(windows, callback, data);
+    g_list_foreach(toplevel_windows, callback, data);
 }
 void foreach_terminal_in_window(GtkWidget* window, GFunc callback, gpointer data) {
     GtkWidget* terminal;
@@ -173,7 +192,7 @@ void foreach_terminal_in_window(GtkWidget* window, GFunc callback, gpointer data
     }
 }
 void foreach_terminal(GFunc callback, gpointer data) {
-    for (GList* windows = gtk_application_get_windows(app); windows; windows = windows->next) {
-        foreach_terminal_in_window(GTK_WIDGET(windows->data), callback, data);
+    for (GList* node = toplevel_windows; node; node = node->next) {
+        foreach_terminal_in_window(GTK_WIDGET(node->data), callback, data);
     }
 }

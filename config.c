@@ -2,12 +2,13 @@
 #include <vte/vte.h>
 #include <ctype.h>
 #include <errno.h>
+#include <gio/gunixoutputstream.h>
 #include "config.h"
 #include "window.h"
 #include "terminal.h"
 
 char* config_filename = NULL;
-const char* app_id = NULL;
+char* app_id = NULL;
 
 #define PALETTE_SIZE (16)
 extern GdkRGBA palette[PALETTE_SIZE+2];
@@ -228,9 +229,18 @@ void reload_config() {
     }
     load_config();
 }
-void spawn_subprocess(VteTerminal* terminal, gchar* data, GBytes* stdin_bytes) {
+void spawn_subprocess(VteTerminal* terminal, gchar* data, GBytes* stdin_bytes, void** result) {
     gint argc;
     char** argv = shell_split(data, &argc);
+
+    if (argc == 0) {
+        if (stdin_bytes && result) {
+            // put in result instead
+            gsize size;
+            *result = (void*)g_bytes_get_data(stdin_bytes, &size);
+        }
+        return;
+    }
 
     GSubprocessFlags flags = G_SUBPROCESS_FLAGS_STDOUT_PIPE;
     if (stdin_bytes) {
@@ -267,21 +277,21 @@ void spawn_subprocess(VteTerminal* terminal, gchar* data, GBytes* stdin_bytes) {
     g_subprocess_wait(proc, NULL, NULL);
 }
 void run(VteTerminal* terminal, gchar* data) {
-    spawn_subprocess(terminal, data, NULL);
+    spawn_subprocess(terminal, data, NULL, NULL);
 }
-void pipe_screen(VteTerminal* terminal, gchar* data) {
+void pipe_screen(VteTerminal* terminal, gchar* data, void* result) {
     char* stdin_buf = vte_terminal_get_text_include_trailing_spaces(terminal, NULL, NULL, NULL);
     GBytes* stdin_bytes = g_bytes_new_take(stdin_buf, strlen(stdin_buf));
-    spawn_subprocess(terminal, data, stdin_bytes);
+    spawn_subprocess(terminal, data, stdin_bytes, result);
 }
-void pipe_line(VteTerminal* terminal, gchar* data) {
+void pipe_line(VteTerminal* terminal, gchar* data, void* result) {
     glong col, row;
     vte_terminal_get_cursor_position(terminal, &col, &row);
     char* stdin_buf = vte_terminal_get_text_range(terminal, row, 0, row+1, -1, NULL, NULL, NULL);
     GBytes* stdin_bytes = g_bytes_new_take(stdin_buf, strlen(stdin_buf));
-    spawn_subprocess(terminal, data, stdin_bytes);
+    spawn_subprocess(terminal, data, stdin_bytes, result);
 }
-void pipe_all(VteTerminal* terminal, gchar* data) {
+void pipe_all(VteTerminal* terminal, gchar* data, void* result) {
     GError* error = NULL;
     GOutputStream* stream = g_memory_output_stream_new_resizable();
     gboolean success = vte_terminal_write_contents_sync(terminal, stream, VTE_WRITE_DEFAULT, NULL, &error);
@@ -293,7 +303,7 @@ void pipe_all(VteTerminal* terminal, gchar* data) {
     g_output_stream_close(stream, NULL, NULL);
     GBytes* stdin_bytes = g_memory_output_stream_steal_as_bytes(G_MEMORY_OUTPUT_STREAM(stream));
 
-    spawn_subprocess(terminal, data, stdin_bytes);
+    spawn_subprocess(terminal, data, stdin_bytes, result);
 }
 
 char* str_unescape(char* string) {
@@ -630,6 +640,28 @@ void free_key_combo(KeyCombo* kc) {
         kc->callback.cleanup(kc->callback.data);
 }
 
+void* execute_line(char* line, int size, gboolean reconfigure) {
+    if (set_config_from_str(line, size)) {
+        if (reconfigure) {
+            reconfigure_all();
+        }
+        return NULL;
+    }
+
+    KeyComboCallback callback = lookup_callback(line);
+    if (callback.func) {
+        VteTerminal* terminal = get_active_terminal(NULL);
+        if (terminal) {
+            void* data = NULL;
+            callback.func(terminal, callback.data, &data);
+            return data;
+        }
+        return NULL;
+    }
+
+    return NULL;
+}
+
 void load_config() {
     // init some things
     if (! keyboard_shortcuts) {
@@ -672,7 +704,7 @@ void load_config() {
         }
 
         if (line[0] == '#' || line[0] == ';') continue; // comment
-        set_config_from_str(line, len);
+        free(execute_line(line, len, FALSE));
     }
 
     fclose(config);

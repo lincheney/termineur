@@ -1,9 +1,7 @@
 #ifndef WINDOW_H
 #define WINDOW_H
 
-GtkApplication* app;
-
-#define get_active_window() gtk_application_get_active_window(app)
+GtkWidget* get_active_window();
 VteTerminal* get_active_terminal();
 gint get_tab_number(VteTerminal* terminal);
 
