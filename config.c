@@ -459,6 +459,8 @@ KeyComboCallback lookup_callback(char* value) {
         MATCH_CALLBACK(tab_popup_menu);
         MATCH_CALLBACK(reload_config);
         MATCH_CALLBACK(close_tab);
+        MATCH_CALLBACK_WITH_DATA(add_label_class, strdup(arg), free);
+        MATCH_CALLBACK_WITH_DATA(remove_label_class, strdup(arg), free);
         MATCH_CALLBACK_WITH_DATA(run, strdup(arg), free);
         MATCH_CALLBACK_WITH_DATA(pipe_screen, strdup(arg), free);
         MATCH_CALLBACK_WITH_DATA(pipe_line, strdup(arg), free);

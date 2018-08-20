@@ -14,5 +14,7 @@ void update_terminal_ui(VteTerminal* terminal);
 void update_window_title(GtkWindow*, VteTerminal* terminal);
 gboolean refresh_all_terminals(gpointer);
 void enable_terminal_scrollbar(GtkWidget* terminal, gboolean enable);
+void add_label_class(GtkWidget* terminal, char* class);
+void remove_label_class(GtkWidget* terminal, char* class);
 
 #endif

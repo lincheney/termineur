@@ -232,9 +232,22 @@ void update_terminal_title(VteTerminal* terminal) {
     }
 }
 
-void update_terminal_label_class(VteTerminal* terminal) {
+GtkStyleContext* get_label_context(GtkWidget* terminal) {
     GtkWidget* label = GTK_WIDGET(g_object_get_data(G_OBJECT(terminal), "label"));
     GtkStyleContext* context = gtk_widget_get_style_context(label);
+    return context;
+}
+
+void add_label_class(GtkWidget* terminal, char* class) {
+    gtk_style_context_add_class(get_label_context(terminal), class);
+}
+
+void remove_label_class(GtkWidget* terminal, char* class) {
+    gtk_style_context_remove_class(get_label_context(terminal), class);
+}
+
+void update_terminal_label_class(VteTerminal* terminal) {
+    GtkStyleContext* context = get_label_context(GTK_WIDGET(terminal));
     int state = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(terminal), "activity_state"));
 
     switch (state) {
