@@ -232,8 +232,23 @@ void reload_config() {
     }
     load_config();
 }
-void spawn_subprocess(VteTerminal* terminal, gchar* data, GBytes* stdin_bytes, void** result) {
+void subprocess_finish(GObject* proc, GAsyncResult* res, void* data) {
+    GError* error = NULL;
+    GBytes* stdout_buf;
+    if (! g_subprocess_communicate_finish(G_SUBPROCESS(proc), res, &stdout_buf, NULL, &error)) {
+        g_warning("IO failed (%s): %s\n", error->message, data ? (char*)data : "");
+        g_error_free(error);
+        return;
+    }
+
+    gsize size;
+    const char* buf_data = g_bytes_get_data(stdout_buf, &size);
+    VteTerminal* terminal = g_object_get_data(proc, "terminal");
+    vte_terminal_feed_child_binary(terminal, (guint8*)buf_data, size);
+}
+void spawn_subprocess(VteTerminal* terminal, gchar* data_, GBytes* stdin_bytes, void** result) {
     gint argc;
+    char* data = data_ ? strdup(data_) : NULL;
     char** argv = shell_split(data, &argc);
 
     if (argc == 0) {
@@ -251,7 +266,6 @@ void spawn_subprocess(VteTerminal* terminal, gchar* data, GBytes* stdin_bytes, v
     }
 
     GError* error = NULL;
-    GBytes* stdout_buf;
     GSubprocessLauncher* launcher = g_subprocess_launcher_new(flags);
 
     char buffer[1024];
@@ -267,17 +281,8 @@ void spawn_subprocess(VteTerminal* terminal, gchar* data, GBytes* stdin_bytes, v
         return;
     }
 
-    error = NULL;
-    if (! g_subprocess_communicate(proc, stdin_bytes, NULL, &stdout_buf, NULL, &error)) {
-        g_warning("IO failed (%s): %s\n", error->message, data);
-        g_error_free(error);
-    } else {
-        gsize size;
-        const char* buf_data = g_bytes_get_data(stdout_buf, &size);
-        vte_terminal_feed_child_binary(terminal, (guint8*)buf_data, size);
-    }
-
-    g_subprocess_wait(proc, NULL, NULL);
+    g_object_set_data(G_OBJECT(proc), "terminal", g_object_ref(terminal));
+    g_subprocess_communicate_async(proc, stdin_bytes, NULL, subprocess_finish, data);
 }
 void run(VteTerminal* terminal, gchar* data) {
     spawn_subprocess(terminal, data, NULL, NULL);
