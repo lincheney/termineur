@@ -696,7 +696,6 @@ void load_config() {
                     line = realloc(line, size);
                 }
                 memcpy(line+len-l, buffer, l);
-                line[len+1] = '\0';
 
                 if (strncmp(line+len-4, "\"\"\"\n", 4) == 0) {
                     line[len-4] = '\0';
@@ -711,6 +710,7 @@ void load_config() {
 
     fclose(config);
     if (line) free(line);
+    if (buffer) free(buffer);
 
     reconfigure_all();
 }
