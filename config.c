@@ -135,6 +135,9 @@ void scroll_bottom(VteTerminal* terminal) {
 void feed_data(VteTerminal* terminal, gchar* data) {
     vte_terminal_feed_child_binary(terminal, (guint8*)data, strlen(data));
 }
+void feed_term(VteTerminal* terminal, char* data) {
+    vte_terminal_feed(terminal, (char*)data, -1);
+}
 void new_tab(VteTerminal* terminal, gchar* data) {
     gint argc;
     char** argv = shell_split(data, &argc);
@@ -446,6 +449,7 @@ KeyComboCallback lookup_callback(char* value) {
         MATCH_CALLBACK(select_all);
         MATCH_CALLBACK(unselect_all);
         MATCH_CALLBACK_WITH_DATA(feed_data, strdup(arg), free);
+        MATCH_CALLBACK_WITH_DATA(feed_term, strdup(arg), free);
         MATCH_CALLBACK_WITH_DATA(new_tab, strdup(arg), free);
         MATCH_CALLBACK_WITH_DATA(new_window, strdup(arg), free);
         MATCH_CALLBACK(prev_tab);
