@@ -303,9 +303,24 @@ void set_window_title_format(char* string) {
     parse_title_format(string, &window_title_format);
 }
 
+void enable_terminal_scrollbar(GtkWidget* terminal, gboolean enable) {
+    GtkWidget* grid = GTK_WIDGET(gtk_widget_get_parent(terminal));
+    GtkWidget* scrollbar = g_object_get_data(G_OBJECT(grid), "scrollbar");
+
+    if (enable) {
+        if (! scrollbar) {
+            scrollbar = gtk_scrollbar_new(GTK_ORIENTATION_VERTICAL, gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(terminal)));
+            g_object_set_data(G_OBJECT(grid), "scrollbar", scrollbar);
+            gtk_container_add(GTK_CONTAINER(grid), GTK_WIDGET(scrollbar));
+        }
+        gtk_widget_show(scrollbar);
+    } else if (! enable && scrollbar) {
+        gtk_widget_hide(scrollbar);
+    }
+}
+
 GtkWidget* make_terminal(GtkWidget* grid, const char* cwd, int argc, char** argv) {
     GtkWidget *terminal;
-    GtkWidget *scrollbar;
     GtkWidget *label;
 
     terminal = vte_terminal_new();
@@ -366,9 +381,5 @@ GtkWidget* make_terminal(GtkWidget* grid, const char* cwd, int argc, char** argv
     );
     free(user_shell);
 
-    if (show_scrollbar) {
-        scrollbar = gtk_scrollbar_new(GTK_ORIENTATION_VERTICAL, gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(terminal)));
-        gtk_container_add(GTK_CONTAINER(grid), GTK_WIDGET(scrollbar));
-    }
     return terminal;
 }

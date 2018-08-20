@@ -7,7 +7,6 @@
 
 char* app_id;
 char* config_filename;
-gboolean show_scrollbar;
 char** default_args;
 int inactivity_duration;
 

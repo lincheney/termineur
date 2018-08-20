@@ -375,6 +375,8 @@ void configure_terminal(GtkWidget* terminal) {
             "xalign",     tab_title_alignment,
             "use-markup", tab_title_markup,
             NULL);
+
+    enable_terminal_scrollbar(terminal, show_scrollbar);
 }
 
 void configure_tab(GtkContainer* notebook, GtkWidget* tab) {
