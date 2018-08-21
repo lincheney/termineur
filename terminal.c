@@ -47,7 +47,12 @@ void terminal_bell(VteTerminal* terminal) {
 }
 
 void terminal_hyperlink_hover(VteTerminal* terminal) {
-    trigger_callback(terminal, -1, HYPERLINK_HOVER_EVENT);
+    char* uri;
+    g_object_get(G_OBJECT(terminal), "hyperlink-hover-uri", &uri, NULL);
+    if (uri) {
+        puts(uri);
+        trigger_callback(terminal, -1, HYPERLINK_HOVER_EVENT);
+    }
 }
 
 void term_spawn_callback(GtkWidget* terminal, GPid pid, GError *error, GtkWidget* grid) {
