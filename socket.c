@@ -21,25 +21,29 @@ int sock_recv(GSocket* sock, GIOCondition io, Buffer* buffer) {
                 buffer->data[buffer->size] = 0;
             }
 
+            int search_ahead = len;
             while (buffer->size > 0) {
                 char* end;
                 // search for \0 or \n
-                for (end = buffer->data + buffer->size - len; end < buffer->data + buffer->size && *end != 0 && *end != '\n'; end++) ;
+                for (end = buffer->data + buffer->size - search_ahead; end < buffer->data + buffer->size && *end != 0 && *end != '\n'; end++) ;
                 if (end >= buffer->data + len) break;
 
-                *end = '\0';
-
-                buffer->data[buffer->size] = 0;
-                void* data = execute_line(buffer->data, buffer->size-1, TRUE);
+                *end = '\0'; // end of line
+                buffer->data[buffer->size] = 0; // end of buffer
+                // strlen = end - buffer->data
+                void* data = execute_line(buffer->data, end - buffer->data, TRUE);
                 if (data) {
                     sock_send_all(sock, data, strlen(data)+1);
                 } else {
-                    sock_send_all(sock, "\0", 1);
+                    sock_send_all(sock, "", 1);
                 }
                 free(data);
 
-                buffer->size = buffer->data + buffer->size - end - 1;
+                // shift by length of line
+                buffer->size -= end - buffer->data + 1;
                 memmove(buffer->data, end+1, buffer->size);
+                // search from beginning now
+                search_ahead = buffer->size;
             }
 
 
