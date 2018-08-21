@@ -69,7 +69,7 @@ int run_slave(GSocket* sock, int argc, char** argv) {
         quoted_argv[argc+2] = NULL;
 
         // command
-        quoted_argv[0] = "new_tab";
+        quoted_argv[0] = default_open_action;
 
         // cwd
         char* cwd = g_get_current_dir();

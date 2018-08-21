@@ -9,6 +9,7 @@ char* app_id;
 char* config_filename;
 char** default_args;
 int inactivity_duration;
+char* default_open_action;
 
 gboolean window_close_confirm;
 #define CLOSE_CONFIRM_NO 0

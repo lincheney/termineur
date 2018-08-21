@@ -37,6 +37,7 @@ gboolean show_scrollbar = 1;
 GtkCssProvider* css_provider = NULL;
 char** default_args = NULL;
 char* window_icon = NULL;
+char* default_open_action = "new_window";
 
 // terminal props
 VteCursorBlinkMode terminal_cursor_blink_mode = VTE_CURSOR_BLINK_SYSTEM;
@@ -148,7 +149,11 @@ void new_term(GtkWidget* window, gchar* data) {
         argc --;
         argv ++;
     }
-    add_terminal_full(window, cwd, argc, argv);
+    if (window) {
+        add_terminal_full(window, cwd, argc, argv);
+    } else {
+        make_new_window_full(NULL, cwd, argc, argv);
+    }
 
     if (original) g_strfreev(original);
 }
@@ -527,8 +532,8 @@ int set_config_from_str(char* line, size_t len) {
         body; \
         return 1; \
     }
-#define MAP_VALUE(var, ...) do { \
-        struct mapping {char* name; int value; } map[] = {__VA_ARGS__}; \
+#define MAP_VALUE(type, var, ...) do { \
+        struct mapping {char* name; type value; } map[] = {__VA_ARGS__}; \
         for(int i = 0; i < sizeof(map) / sizeof(struct mapping); i++) { \
             if (g_ascii_strcasecmp(value, map[i].name) == 0) { \
                 var = map[i].value; \
@@ -536,7 +541,7 @@ int set_config_from_str(char* line, size_t len) {
             } \
         } \
     } while(0)
-#define MAP_LINE_VALUE(string, ...) MAP_LINE(string, MAP_VALUE(__VA_ARGS__))
+#define MAP_LINE_VALUE(string, type, ...) MAP_LINE(string, MAP_VALUE(type, __VA_ARGS__))
 
     // palette colours
     if (strncmp(line, "col", 3) == 0) {
@@ -608,35 +613,46 @@ int set_config_from_str(char* line, size_t len) {
         return 1;
     }
 
-    MAP_LINE_VALUE(tab-pos, notebook_tab_pos,
+    MAP_LINE_VALUE(tab-pos, int, notebook_tab_pos,
             {"top",    GTK_POS_TOP},
             {"bottom", GTK_POS_BOTTOM},
             {"left",   GTK_POS_LEFT},
             {"right",  GTK_POS_RIGHT},
     );
 
-    MAP_LINE_VALUE(tab-title-ellipsize-mode, tab_title_ellipsize_mode,
+    MAP_LINE_VALUE(tab-title-ellipsize-mode, int, tab_title_ellipsize_mode,
             {"start",  PANGO_ELLIPSIZE_START},
             {"middle", PANGO_ELLIPSIZE_MIDDLE},
             {"end",    PANGO_ELLIPSIZE_END},
     );
 
-    MAP_LINE_VALUE(tab-title-alignment, tab_title_alignment,
+    MAP_LINE_VALUE(tab-title-alignment, int, tab_title_alignment,
             {"left",   0},
             {"right",  1},
             {"center", 0.5},
     );
 
-    MAP_LINE_VALUE(cursor-blink-mode, terminal_cursor_blink_mode,
+    MAP_LINE_VALUE(cursor-blink-mode, int, terminal_cursor_blink_mode,
             {"system", VTE_CURSOR_BLINK_SYSTEM},
             {"on",     VTE_CURSOR_BLINK_ON},
             {"off",    VTE_CURSOR_BLINK_OFF},
     );
 
-    MAP_LINE_VALUE(cursor-shape, terminal_cursor_shape,
+    MAP_LINE_VALUE(cursor-shape, int, terminal_cursor_shape,
             {"block",     VTE_CURSOR_SHAPE_BLOCK},
             {"ibeam",     VTE_CURSOR_SHAPE_IBEAM},
             {"underline", VTE_CURSOR_SHAPE_UNDERLINE},
+    );
+
+    MAP_LINE_VALUE(cursor-shape, int, terminal_cursor_shape,
+            {"block",     VTE_CURSOR_SHAPE_BLOCK},
+            {"ibeam",     VTE_CURSOR_SHAPE_IBEAM},
+            {"underline", VTE_CURSOR_SHAPE_UNDERLINE},
+    );
+
+    MAP_LINE_VALUE(default-open-action, char*, default_open_action,
+            {"tab",       "new_tab"},
+            {"window",    "new_window"},
     );
 
     // ONLY events/callbacks from here on
@@ -671,23 +687,24 @@ int set_config_from_str(char* line, size_t len) {
         }
     }
 
-    if (combo.key == 0) {
-        g_warning("Unrecognised event: %s", line);
-    } else if (strcmp(value, "") == 0) {
-        // unset this shortcut
-        unset_callback(combo.key, combo.metadata);
-        return 1;
-    } else {
-        Callback callback = lookup_callback(value);
-        if (callback.func) {
-            combo.callback = callback;
-            g_array_append_val(callbacks, combo);
+    if (combo.key) {
+        if (strcmp(value, "") == 0) {
+            // unset this shortcut
+            unset_callback(combo.key, combo.metadata);
+            return 1;
         } else {
-            g_warning("Unrecognised action: %s", value);
+            Callback callback = lookup_callback(value);
+            if (callback.func) {
+                combo.callback = callback;
+                g_array_append_val(callbacks, combo);
+            } else {
+                g_warning("Unrecognised action: %s", value);
+            }
+            return 1;
         }
-        return 1;
     }
 
+    /* g_warning("Unrecognised key: %s", line); */
     return 0;
 }
 
