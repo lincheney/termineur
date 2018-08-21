@@ -160,6 +160,11 @@ void new_term(GtkWidget* window, gchar* data) {
     gint argc;
     char* cwd = NULL;
     char **original, **argv = shell_split(data, &argc);
+    if (data && ! argv) {
+        g_warning("Failed to parse: %s", data);
+        return;
+    }
+
     original = argv;
     if (argc > 0 && strncmp(argv[0], "cwd=", 4) == 0) {
         cwd = argv[0] + 4;
