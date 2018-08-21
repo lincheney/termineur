@@ -26,8 +26,11 @@ int run_primary(int argc, char** argv) {
 
 int slave_send_line(GSocket* sock, char* line, Buffer* buffer) {
     GError* error = NULL;
+    line = g_strescape(line, NULL);
     int len = strlen(line) + 1;
-    if (! sock_send_all(sock, line, len) ) {
+    int result = sock_send_all(sock, line, len);
+    free(line);
+    if (! result) {
         return 1;
     }
 
