@@ -138,15 +138,22 @@ void feed_data(VteTerminal* terminal, gchar* data) {
 void feed_term(VteTerminal* terminal, char* data) {
     vte_terminal_feed(terminal, (char*)data, -1);
 }
-void new_tab(VteTerminal* terminal, gchar* data) {
+void new_term(GtkWidget* window, gchar* data) {
     gint argc;
+    char* cwd = NULL;
     char** argv = shell_split(data, &argc);
-    add_terminal_full(GTK_WIDGET(get_active_window()), NULL, argc, argv);
+    if (argc > 0 && strncmp(argv[0], "cwd=", 4) == 0) {
+        cwd = argv[0] + 4;
+        argc --;
+        argv ++;
+    }
+    add_terminal_full(window, cwd, argc, argv);
+}
+void new_tab(VteTerminal* terminal, gchar* data) {
+    new_term(GTK_WIDGET(get_active_window()), data);
 }
 void new_window(VteTerminal* terminal, gchar* data) {
-    gint argc;
-    char** argv = shell_split(data, &argc);
-    make_new_window_full(NULL, NULL, argc, argv);
+    new_term(NULL, data);
 }
 void jump_tab(VteTerminal* terminal, int delta) {
     GtkNotebook* notebook = GTK_NOTEBOOK(gtk_widget_get_parent(gtk_widget_get_parent(GTK_WIDGET(terminal))));
