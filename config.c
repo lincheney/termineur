@@ -96,12 +96,28 @@ float ptr_to_float(void* x) {
 /* CALLBACKS */
 
 CallbackFunc \
-    paste_clipboard = (CallbackFunc)vte_terminal_paste_clipboard
-    , select_all = (CallbackFunc)vte_terminal_select_all
+    select_all = (CallbackFunc)vte_terminal_select_all
     , unselect_all = (CallbackFunc)vte_terminal_unselect_all
 ;
 
-void copy_clipboard(VteTerminal* terminal) {
+void paste_text(VteTerminal* terminal, void* data) {
+    GtkClipboard* clipboard = NULL;
+    char* original = NULL;
+
+    if (data) {
+        clipboard = gtk_clipboard_get(GDK_SELECTION_CLIPBOARD);
+        original = gtk_clipboard_wait_for_text(clipboard);
+        gtk_clipboard_set_text(clipboard, data, -1);
+    }
+
+    vte_terminal_paste_clipboard(terminal);
+
+    if (data) {
+        gtk_clipboard_set_text(clipboard, original, -1);
+    }
+}
+
+void copy_text(VteTerminal* terminal) {
     vte_terminal_copy_clipboard_format(terminal, VTE_FORMAT_TEXT);
 }
 
@@ -470,8 +486,8 @@ Callback lookup_callback(char* value) {
 #define MATCH_CALLBACK(name) MATCH_CALLBACK_WITH_DATA(name, NULL, NULL)
 
     while (1) {
-        MATCH_CALLBACK(paste_clipboard);
-        MATCH_CALLBACK(copy_clipboard);
+        MATCH_CALLBACK_WITH_DATA(paste_text, strdup(arg), free);
+        MATCH_CALLBACK(copy_text);
         MATCH_CALLBACK_WITH_DATA(change_font_size, float_to_ptr(strtof(arg, NULL)), NULL);
         MATCH_CALLBACK(reset_terminal);
         MATCH_CALLBACK(scroll_up);
