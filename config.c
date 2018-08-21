@@ -93,10 +93,10 @@ float ptr_to_float(void* x) {
 
 /* CALLBACKS */
 
-KeyComboCallbackFunc \
-    paste_clipboard = (KeyComboCallbackFunc)vte_terminal_paste_clipboard
-    , select_all = (KeyComboCallbackFunc)vte_terminal_select_all
-    , unselect_all = (KeyComboCallbackFunc)vte_terminal_unselect_all
+CallbackFunc \
+    paste_clipboard = (CallbackFunc)vte_terminal_paste_clipboard
+    , select_all = (CallbackFunc)vte_terminal_select_all
+    , unselect_all = (CallbackFunc)vte_terminal_unselect_all
 ;
 
 void copy_clipboard(VteTerminal* terminal) {
@@ -234,8 +234,8 @@ void close_tab(VteTerminal* terminal) {
     }
 }
 void reload_config() {
-    if (keyboard_shortcuts) {
-        g_array_remove_range(keyboard_shortcuts, 0, keyboard_shortcuts->len);
+    if (callbacks) {
+        g_array_remove_range(callbacks, 0, callbacks->len);
     }
     load_config();
 }
@@ -433,17 +433,17 @@ void reconfigure_window(GtkWindow* window) {
     }
 }
 
-KeyComboCallback lookup_callback(char* value) {
+Callback lookup_callback(char* value) {
     char* arg = strchr(value, ':');
     if (arg) {
         *arg = '\0';
         arg++;
     }
-    KeyComboCallback callback = {NULL, NULL, NULL};
+    Callback callback = {NULL, NULL, NULL};
 
 #define MATCH_CALLBACK_WITH_DATA(name, processor, _cleanup) \
     if (strcmp(value, #name) == 0) { \
-        callback.func = (KeyComboCallbackFunc)name; \
+        callback.func = (CallbackFunc)name; \
         if (arg) { \
             arg = str_unescape(arg); \
             callback.data = processor; \
@@ -490,6 +490,15 @@ KeyComboCallback lookup_callback(char* value) {
         break;
     }
     return callback;
+}
+
+void unset_callback(guint key, int metadata) {
+    for (int i = callbacks->len - 1; i >= 0; i--) {
+        CallbackData* kc = &g_array_index(callbacks, CallbackData, i);
+        if (kc->key == key && kc->metadata == metadata) {
+            g_array_remove_index(callbacks, i);
+        }
+    }
 }
 
 int set_config_from_str(char* line, size_t len) {
@@ -622,30 +631,49 @@ int set_config_from_str(char* line, size_t len) {
             {"underline", VTE_CURSOR_SHAPE_UNDERLINE},
     );
 
+    // ONLY events/callbacks from here on
+
+    CallbackData combo = {0, 0, {NULL, NULL, NULL}};
+
+    if (strncmp(line, "on-", sizeof("on-")-1) == 0) {
+        char* event = line + sizeof("on-")-1;
+        combo.key = -1;
+
+#define MAP_EVENT(string, value) \
+        if (strcmp(event, #string) == 0) { \
+            combo.metadata = value ## _EVENT; \
+            break; \
+        }
+
+        while (1) {
+            MAP_EVENT(bell, BELL);
+            MAP_EVENT(hyperlink-hover, HYPERLINK_HOVER);
+            MAP_EVENT(hyperlink-click, HYPERLINK_CLICK);
+            break;
+        }
+
+    }
+
     if (strncmp(line, "key-", sizeof("key-")-1) == 0) {
         char* shortcut = line + sizeof("key-")-1;
 
-        KeyCombo combo = {0, 0, {NULL, NULL, NULL}};
-        gtk_accelerator_parse(shortcut, &(combo.key), &(combo.modifiers));
-        if (combo.modifiers & GDK_SHIFT_MASK) {
+        gtk_accelerator_parse(shortcut, &(combo.key), (GdkModifierType*) &(combo.metadata));
+        if (combo.metadata & GDK_SHIFT_MASK) {
             combo.key = gdk_keyval_to_upper(combo.key);
         }
+    }
 
-        if (strcmp(value, "") == 0) {
-            // unset this shortcut
-            for (int i = keyboard_shortcuts->len - 1; i >= 0; i--) {
-                KeyCombo* kc = &g_array_index(keyboard_shortcuts, KeyCombo, i);
-                if (kc->key == combo.key && kc->modifiers == combo.modifiers) {
-                    g_array_remove_index(keyboard_shortcuts, i);
-                }
-            }
-            return 1;
-        }
-
-        KeyComboCallback callback = lookup_callback(value);
+    if (combo.key == 0) {
+        g_warning("Unrecognised event: %s", line);
+    } else if (strcmp(value, "") == 0) {
+        // unset this shortcut
+        unset_callback(combo.key, combo.metadata);
+        return 1;
+    } else {
+        Callback callback = lookup_callback(value);
         if (callback.func) {
             combo.callback = callback;
-            g_array_append_val(keyboard_shortcuts, combo);
+            g_array_append_val(callbacks, combo);
         } else {
             g_warning("Unrecognised action: %s", value);
         }
@@ -661,7 +689,21 @@ void reconfigure_all() {
     create_timer(ui_refresh_interval);
 }
 
-void free_key_combo(KeyCombo* kc) {
+int trigger_callback(VteTerminal* terminal, guint key, int metadata) {
+    int handled = 0;
+    if (callbacks) {
+        for (int i = 0; i < callbacks->len; i++) {
+            CallbackData* cb = &g_array_index(callbacks, CallbackData, i);
+            if (cb->key == key && cb->metadata == metadata) {
+                cb->callback.func(terminal, cb->callback.data, NULL);
+                handled = 1;
+            }
+        }
+    }
+    return handled;
+}
+
+void free_callback_data(CallbackData* kc) {
     if (kc->callback.cleanup)
         kc->callback.cleanup(kc->callback.data);
 }
@@ -678,7 +720,7 @@ void* execute_line(char* line, int size, gboolean reconfigure) {
     }
 
     line_copy = strdup(line);
-    KeyComboCallback callback = lookup_callback(line_copy);
+    Callback callback = lookup_callback(line_copy);
     free(line_copy);
     if (callback.func) {
         VteTerminal* terminal = get_active_terminal(NULL);
@@ -695,9 +737,9 @@ void* execute_line(char* line, int size, gboolean reconfigure) {
 
 void load_config() {
     // init some things
-    if (! keyboard_shortcuts) {
-        keyboard_shortcuts = g_array_new(FALSE, FALSE, sizeof(KeyCombo));
-        g_array_set_clear_func(keyboard_shortcuts, (GDestroyNotify)free_key_combo);
+    if (! callbacks) {
+        callbacks = g_array_new(FALSE, FALSE, sizeof(CallbackData));
+        g_array_set_clear_func(callbacks, (GDestroyNotify)free_callback_data);
     }
     if (! css_provider) {
         css_provider = gtk_css_provider_new();

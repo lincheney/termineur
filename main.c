@@ -77,7 +77,7 @@ int run_slave(GSocket* sock, int argc, char** argv) {
         free(cwd);
         quoted_argv[1] = alloca(sizeof(char) * (strlen(quoted_cwd) + 5));
         strcpy(quoted_argv[1], "cwd=");
-        strcpy(quoted_argv[1]+4, quoted_cwd);
+        strcpy(quoted_argv[1]+sizeof("cwd=")-1, quoted_cwd);
         free(quoted_cwd);
 
         // argv

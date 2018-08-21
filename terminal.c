@@ -42,6 +42,14 @@ void term_destroyed(VteTerminal* terminal) {
     g_object_unref(label);
 }
 
+void terminal_bell(VteTerminal* terminal) {
+    trigger_callback(terminal, -1, BELL_EVENT);
+}
+
+void terminal_hyperlink_hover(VteTerminal* terminal) {
+    trigger_callback(terminal, -1, HYPERLINK_HOVER_EVENT);
+}
+
 void term_spawn_callback(GtkWidget* terminal, GPid pid, GError *error, GtkWidget* grid) {
     if (error) {
         g_warning("Could not start terminal: %s", error->message);
@@ -351,6 +359,8 @@ GtkWidget* make_terminal(GtkWidget* grid, const char* cwd, int argc, char** argv
     g_signal_connect(terminal, "destroy", G_CALLBACK(term_destroyed), grid);
     g_signal_connect(terminal, "window-title-changed", G_CALLBACK(update_terminal_title), NULL);
     g_signal_connect(terminal, "contents-changed", G_CALLBACK(terminal_activity), NULL);
+    g_signal_connect(terminal, "bell", G_CALLBACK(terminal_bell), NULL);
+    g_signal_connect(terminal, "hyperlink-hover-uri-changed", G_CALLBACK(terminal_hyperlink_hover), NULL);
     g_object_set(terminal, "expand", 1, NULL);
     g_object_set_data(G_OBJECT(terminal), "activity_state", GINT_TO_POINTER(TERMINAL_NO_STATE));
 

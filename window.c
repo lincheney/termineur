@@ -34,19 +34,9 @@ VteTerminal* get_active_terminal(GtkWidget* window) {
 }
 
 gboolean key_pressed(GtkWidget* window, GdkEventKey* event, gpointer data) {
-    gboolean handled = FALSE;
-    if (keyboard_shortcuts) {
-        guint modifiers = event->state & gtk_accelerator_get_default_mod_mask();
-        for (int i = 0; i < keyboard_shortcuts->len; i++) {
-            KeyCombo* combo = &g_array_index(keyboard_shortcuts, KeyCombo, i);
-            if (combo->key == event->keyval && combo->modifiers == modifiers) {
-                VteTerminal* terminal = get_active_terminal(window);
-                combo->callback.func(terminal, combo->callback.data, NULL);
-                handled = TRUE;
-            }
-        }
-    }
-    return handled;
+    guint modifiers = event->state & gtk_accelerator_get_default_mod_mask();
+    VteTerminal* terminal = get_active_terminal(window);
+    return trigger_callback(terminal, event->keyval, modifiers);
 }
 
 gint get_tab_number(VteTerminal* terminal) {

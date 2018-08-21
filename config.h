@@ -16,29 +16,34 @@ gboolean window_close_confirm;
 #define CLOSE_CONFIRM_SMART 2
 gint tab_close_confirm;
 
-typedef void(*KeyComboCallbackFunc)(VteTerminal*, gpointer, gpointer);
+typedef void(*CallbackFunc)(VteTerminal*, gpointer, gpointer);
+
+#define BELL_EVENT 1
+#define HYPERLINK_HOVER_EVENT 2
+#define HYPERLINK_CLICK_EVENT 3
 
 typedef struct {
-    KeyComboCallbackFunc func;
+    CallbackFunc func;
     gpointer data;
     GDestroyNotify cleanup;
-} KeyComboCallback;
+} Callback;
 
 typedef struct {
     guint key;
-    GdkModifierType modifiers;
-    KeyComboCallback callback;
-} KeyCombo;
+    int metadata;
+    Callback callback;
+} CallbackData;
 
-GArray* keyboard_shortcuts;
+GArray* callbacks;
 
 int set_config_from_str(char* line, size_t len);
-KeyComboCallback lookup_callback(char* value);
+Callback lookup_callback(char* value);
 void reconfigure_all();
 void* execute_line(char* line, int size, gboolean reconfigure);
 void load_config();
 void configure_terminal(GtkWidget*);
 void configure_tab(GtkContainer*, GtkWidget*);
 void configure_window(GtkWindow*);
+int trigger_callback(VteTerminal* terminal, guint key, int metadata);
 
 #endif
