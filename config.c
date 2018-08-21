@@ -112,7 +112,7 @@ void paste_text(VteTerminal* terminal, void* data) {
 
     vte_terminal_paste_clipboard(terminal);
 
-    if (data) {
+    if (original) {
         gtk_clipboard_set_text(clipboard, original, -1);
     }
 }
