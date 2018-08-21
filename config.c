@@ -141,13 +141,16 @@ void feed_term(VteTerminal* terminal, char* data) {
 void new_term(GtkWidget* window, gchar* data) {
     gint argc;
     char* cwd = NULL;
-    char** argv = shell_split(data, &argc);
+    char **original, **argv = shell_split(data, &argc);
+    original = argv;
     if (argc > 0 && strncmp(argv[0], "cwd=", 4) == 0) {
         cwd = argv[0] + 4;
         argc --;
         argv ++;
     }
     add_terminal_full(window, cwd, argc, argv);
+
+    if (original) g_strfreev(original);
 }
 void new_tab(VteTerminal* terminal, gchar* data) {
     new_term(GTK_WIDGET(get_active_window()), data);
