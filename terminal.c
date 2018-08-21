@@ -38,6 +38,7 @@ void term_destroyed(VteTerminal* terminal) {
         g_source_destroy(inactivity_timer);
         g_source_unref(inactivity_timer);
     }
+
     GtkLabel* label = GTK_LABEL(g_object_get_data(G_OBJECT(terminal), "label"));
     g_object_unref(label);
 }
@@ -87,7 +88,6 @@ void change_terminal_state(VteTerminal* terminal, int new_state) {
 
 gboolean term_focus_event(GtkWidget* terminal, GdkEvent* event, gpointer data) {
     // clear activity once terminal is focused
-    last_active_terminal = VTE_TERMINAL(terminal);
     change_terminal_state(VTE_TERMINAL(terminal), TERMINAL_NO_STATE);
     return FALSE;
 }

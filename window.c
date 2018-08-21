@@ -15,23 +15,23 @@ VteTerminal* get_nth_terminal(GtkWidget* window, int index) {
 }
 
 GtkWidget* get_active_window() {
-    for (GList* node = toplevel_windows; node; node = node->next) {
-        if (gtk_window_is_active(GTK_WINDOW(node->data))) {
-            return node->data;
-        }
-    }
-    return NULL;
+    return toplevel_windows ? toplevel_windows->data : NULL;
+    /* for (GList* node = toplevel_windows; node; node = node->next) { */
+        /* if (gtk_window_is_active(GTK_WINDOW(node->data))) { */
+            /* return node->data; */
+        /* } */
+    /* } */
+    /* return NULL; */
 }
 
 VteTerminal* get_active_terminal(GtkWidget* window) {
-    return last_active_terminal;
-    /* if (! window) window = get_active_window(); */
-    /* if (! window) return NULL; */
-/*  */
-    /* GtkWidget* notebook = g_object_get_data(G_OBJECT(window), "notebook"); */
-    /* int index = gtk_notebook_get_current_page(GTK_NOTEBOOK(notebook)); */
-    /* if (index < 0) return NULL; */
-    /* return get_nth_terminal(window, index); */
+    if (! window) window = get_active_window();
+    if (! window) return NULL;
+
+    GtkWidget* notebook = g_object_get_data(G_OBJECT(window), "notebook");
+    int index = gtk_notebook_get_current_page(GTK_NOTEBOOK(notebook));
+    if (index < 0) return NULL;
+    return get_nth_terminal(window, index);
 }
 
 gboolean key_pressed(GtkWidget* window, GdkEventKey* event, gpointer data) {
@@ -98,6 +98,13 @@ void window_destroyed(GtkWindow* window) {
     }
 }
 
+gboolean window_focus_event(GtkWindow* window) {
+    // move to start of list
+    toplevel_windows = g_list_remove(toplevel_windows, window);
+    toplevel_windows = g_list_prepend(toplevel_windows, window);
+    return FALSE;
+}
+
 gboolean prevent_tab_close(VteTerminal* terminal) {
     if (! tab_close_confirm) return FALSE;
     if (tab_close_confirm == CLOSE_CONFIRM_SMART && !is_running_foreground_process(terminal)) {
@@ -134,7 +141,7 @@ void add_terminal_full(GtkWidget* window, const char* cwd, int argc, char** argv
 
 GtkWidget* make_window() {
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    toplevel_windows = g_list_prepend(toplevel_windows, window);
+    /* toplevel_windows = g_list_prepend(toplevel_windows, window); */
 
     GtkWidget *notebook = gtk_notebook_new();
     gtk_widget_set_can_focus(notebook, FALSE);
@@ -142,6 +149,7 @@ GtkWidget* make_window() {
     g_object_set_data(G_OBJECT(window), "notebook", notebook);
     g_signal_connect(window, "delete-event", G_CALLBACK(prevent_window_close), NULL);
     g_signal_connect(window, "destroy", G_CALLBACK(window_destroyed), NULL);
+    g_signal_connect(window, "focus-in-event", G_CALLBACK(window_focus_event), NULL);
 
     gtk_notebook_set_show_border(GTK_NOTEBOOK(notebook), FALSE);
     g_signal_connect(notebook, "page-removed", G_CALLBACK(notebook_tab_removed), NULL);
