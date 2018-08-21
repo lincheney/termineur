@@ -44,10 +44,9 @@ void term_destroyed(VteTerminal* terminal) {
 
 void term_spawn_callback(GtkWidget* terminal, GPid pid, GError *error, gpointer user_data) {
     if (error) {
-        fprintf(stderr, "Could not start terminal: %s\n", error->message);
-        g_error_free(error);
-        // TODO don't flat out exit
-        exit(ERROR_EXIT_CODE);
+        g_warning("Could not start terminal: %s", error->message);
+        gtk_widget_destroy(user_data);
+        return;
     }
     g_object_set_data(G_OBJECT(terminal), "pid", GINT_TO_POINTER(pid));
 
@@ -390,7 +389,7 @@ GtkWidget* make_terminal(GtkWidget* grid, const char* cwd, int argc, char** argv
             -1, // timeout
             NULL, // cancellable
             (VteTerminalSpawnAsyncCallback) term_spawn_callback, // callback
-            NULL // user data
+            grid // user data
     );
     free(user_shell);
 
