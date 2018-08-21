@@ -660,14 +660,19 @@ void free_key_combo(KeyCombo* kc) {
 }
 
 void* execute_line(char* line, int size, gboolean reconfigure) {
-    if (set_config_from_str(line, size)) {
-        if (reconfigure) {
-            reconfigure_all();
-        }
+    char* line_copy;
+
+    line_copy = strdup(line);
+    int result = set_config_from_str(line_copy, size);
+    free(line_copy);
+    if (result) {
+        if (reconfigure) reconfigure_all();
         return NULL;
     }
 
-    KeyComboCallback callback = lookup_callback(line);
+    line_copy = strdup(line);
+    KeyComboCallback callback = lookup_callback(line_copy);
+    free(line_copy);
     if (callback.func) {
         VteTerminal* terminal = get_active_terminal(NULL);
         if (terminal) {
