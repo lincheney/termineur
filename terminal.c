@@ -42,10 +42,10 @@ void term_destroyed(VteTerminal* terminal) {
     g_object_unref(label);
 }
 
-void term_spawn_callback(GtkWidget* terminal, GPid pid, GError *error, gpointer user_data) {
+void term_spawn_callback(GtkWidget* terminal, GPid pid, GError *error, GtkWidget* grid) {
     if (error) {
         g_warning("Could not start terminal: %s", error->message);
-        gtk_widget_destroy(user_data);
+        gtk_widget_destroy(grid);
         return;
     }
     g_object_set_data(G_OBJECT(terminal), "pid", GINT_TO_POINTER(pid));
