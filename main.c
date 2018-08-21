@@ -140,6 +140,11 @@ int main(int argc, char *argv[]) {
     // remove arg0
     argc --;
     argv ++;
+    // remove --
+    if (argc > 0 && strcmp(argv[0], "--") == 0) {
+        argc --;
+        argv ++;
+    }
 
     if (! app_id) {
         run_primary(argc, argv);
