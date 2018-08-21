@@ -50,9 +50,19 @@ void terminal_hyperlink_hover(VteTerminal* terminal) {
     char* uri;
     g_object_get(G_OBJECT(terminal), "hyperlink-hover-uri", &uri, NULL);
     if (uri) {
-        puts(uri);
         trigger_callback(terminal, -1, HYPERLINK_HOVER_EVENT);
     }
+}
+
+gboolean terminal_button_press_event(VteTerminal* terminal, GdkEvent* event) {
+    if (gdk_event_get_event_type(event) == GDK_BUTTON_PRESS) {
+        char* uri;
+        g_object_get(G_OBJECT(terminal), "hyperlink-hover-uri", &uri, NULL);
+        if (uri) {
+            trigger_callback(terminal, -1, HYPERLINK_CLICK_EVENT);
+        }
+    }
+    return FALSE;
 }
 
 void term_spawn_callback(GtkWidget* terminal, GPid pid, GError *error, GtkWidget* grid) {
@@ -366,6 +376,7 @@ GtkWidget* make_terminal(GtkWidget* grid, const char* cwd, int argc, char** argv
     g_signal_connect(terminal, "contents-changed", G_CALLBACK(terminal_activity), NULL);
     g_signal_connect(terminal, "bell", G_CALLBACK(terminal_bell), NULL);
     g_signal_connect(terminal, "hyperlink-hover-uri-changed", G_CALLBACK(terminal_hyperlink_hover), NULL);
+    g_signal_connect(terminal, "button-press-event", G_CALLBACK(terminal_button_press_event), NULL);
     g_object_set(terminal, "expand", 1, NULL);
     g_object_set_data(G_OBJECT(terminal), "activity_state", GINT_TO_POINTER(TERMINAL_NO_STATE));
 
