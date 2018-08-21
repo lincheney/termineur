@@ -273,6 +273,12 @@ void spawn_subprocess(VteTerminal* terminal, gchar* data_, GBytes* stdin_bytes, 
     g_subprocess_launcher_setenv(launcher, APP_PREFIX "_PID", buffer, TRUE);
     sprintf(buffer, "%i", get_foreground_pid(terminal));
     g_subprocess_launcher_setenv(launcher, APP_PREFIX "_FGPID", buffer, TRUE);
+    glong cursorx, cursory;
+    vte_terminal_get_cursor_position(terminal, &cursorx, &cursory);
+    sprintf(buffer, "%li", cursorx);
+    g_subprocess_launcher_setenv(launcher, APP_PREFIX "_CURSORX", buffer, TRUE);
+    sprintf(buffer, "%li", cursory);
+    g_subprocess_launcher_setenv(launcher, APP_PREFIX "_CURSORY", buffer, TRUE);
 
     GSubprocess* proc = g_subprocess_launcher_spawnv(launcher, (const char**)argv, &error);
     if (!proc) {
