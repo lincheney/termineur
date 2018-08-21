@@ -276,16 +276,21 @@ void spawn_subprocess(VteTerminal* terminal, gchar* data_, GBytes* stdin_bytes, 
     GSubprocessLauncher* launcher = g_subprocess_launcher_new(flags);
 
     char buffer[1024];
-    sprintf(buffer, "%i", get_pid(terminal));
-    g_subprocess_launcher_setenv(launcher, APP_PREFIX "_PID", buffer, TRUE);
-    sprintf(buffer, "%i", get_foreground_pid(terminal));
-    g_subprocess_launcher_setenv(launcher, APP_PREFIX "_FGPID", buffer, TRUE);
     glong cursorx, cursory;
+    char* hyperlink = NULL;
+
+    // env vars
     vte_terminal_get_cursor_position(terminal, &cursorx, &cursory);
-    sprintf(buffer, "%li", cursorx);
-    g_subprocess_launcher_setenv(launcher, APP_PREFIX "_CURSORX", buffer, TRUE);
-    sprintf(buffer, "%li", cursory);
-    g_subprocess_launcher_setenv(launcher, APP_PREFIX "_CURSORY", buffer, TRUE);
+    g_object_get(G_OBJECT(terminal), "hyperlink-hover-uri", &hyperlink, NULL);
+
+#define SET_ENVIRON(name, format, value) \
+    ( sprintf(buffer, format, value), g_subprocess_launcher_setenv(launcher, APP_PREFIX "_" #name, buffer, TRUE) )
+
+    SET_ENVIRON(PID, "%i", get_pid(terminal));
+    SET_ENVIRON(FGPID, "%i", get_foreground_pid(terminal));
+    SET_ENVIRON(CURSORX, "%li", cursorx);
+    SET_ENVIRON(CURSORY, "%li", cursory);
+    SET_ENVIRON(HYPERLINK, "%s", hyperlink ? hyperlink : "");
 
     GSubprocess* proc = g_subprocess_launcher_spawnv(launcher, (const char**)argv, &error);
     if (!proc) {
