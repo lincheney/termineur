@@ -30,7 +30,7 @@ int sock_recv(GSocket* sock, GIOCondition io, Buffer* buffer) {
                 *end = '\0';
 
                 buffer->data[buffer->size] = 0;
-                void* data = execute_line(buffer->data, buffer->size, TRUE);
+                void* data = execute_line(buffer->data, buffer->size-1, TRUE);
                 if (data) {
                     sock_send_all(sock, data, strlen(data)+1);
                 } else {

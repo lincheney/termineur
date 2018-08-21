@@ -24,43 +24,76 @@ int run_primary(int argc, char** argv) {
     return 0;
 }
 
-int run_slave(GSocket* sock, int argc, char** argv) {
+int slave_send_line(GSocket* sock, char* line, Buffer* buffer) {
     GError* error = NULL;
+    int len = strlen(line) + 1;
+    if (! sock_send_all(sock, line, len) ) {
+        return 1;
+    }
+
+    while (1) {
+        len = g_socket_receive(sock, buffer->data + buffer->size, sizeof(buffer->data) - buffer->size - 1, NULL, &error);
+        if (len < 0) {
+            g_warning("Failed to recv(): %s\n", error->message);
+            g_error_free(error);
+            return 1;
+
+        }
+
+        printf("%s", buffer->data);
+        char* end = memchr(buffer->data + buffer->size, 0, len);
+        if (end) {
+            // end of payload
+            buffer->size = buffer->data + buffer->size + len - end - 1;
+            memmove(buffer->data, end+1, buffer->size);
+            break;
+        }
+        buffer->size = 0;
+    }
+    return 0;
+}
+
+int run_slave(GSocket* sock, int argc, char** argv) {
     Buffer buffer;
     buffer.size = 0;
     buffer.data[sizeof(buffer.data)-1] = 0;
 
-    if (! commands) {
-        // TODO
-        return 0;
-    }
-
-    for (char** line = commands; *line; line++) {
-        int len = strlen(*line) + 1;
-        if (! sock_send_all(sock, *line, len) ) {
-            return 1;
-        }
-
-        while (1) {
-            len = g_socket_receive(sock, buffer.data + buffer.size, sizeof(buffer.data) - buffer.size - 1, NULL, &error);
-            if (len < 0) {
-                g_warning("Failed to recv(): %s\n", error->message);
-                g_error_free(error);
-                return 1;
-
-            }
-
-            printf("%s", buffer.data);
-            char* end = memchr(buffer.data + buffer.size, 0, len);
-            if (end) {
-                // end of payload
-                buffer.size = buffer.data + buffer.size + len - end - 1;
-                memmove(buffer.data, end+1, buffer.size);
-                break;
-            }
-            buffer.size = 0;
+    if (commands) {
+        for (char** line = commands; *line; line++) {
+            slave_send_line(sock, *line, &buffer);
         }
     }
+
+    if (! commands || argc > 0) {
+        char* quoted_argv[argc+3];
+        quoted_argv[argc+2] = NULL;
+
+        // command
+        quoted_argv[0] = "new_tab";
+
+        // cwd
+        char* cwd = g_get_current_dir();
+        char* quoted_cwd = g_shell_quote(cwd);
+        free(cwd);
+        quoted_argv[1] = alloca(sizeof(char) * (strlen(quoted_cwd) + 5));
+        strcpy(quoted_argv[1], "cwd=");
+        strcpy(quoted_argv[1]+4, quoted_cwd);
+        free(quoted_cwd);
+
+        // argv
+        for (int i = 0; i < argc; i++) {
+            quoted_argv[i+2] = g_shell_quote(argv[i]);
+        }
+
+        char* line = g_strjoinv(" ", quoted_argv);
+        for (int i = 0; i < argc; i++) {
+            free(quoted_argv[i+2]); // first 2 strings are static
+        }
+        *strchr(line, ' ') = ':';
+        slave_send_line(sock, line, &buffer);
+        free(line);
+    }
+
     return 0;
 }
 
