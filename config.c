@@ -3,6 +3,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <gio/gunixoutputstream.h>
+#include <gdk/gdkx.h>
 #include "config.h"
 #include "window.h"
 #include "terminal.h"
@@ -290,6 +291,7 @@ void spawn_subprocess(VteTerminal* terminal, gchar* data_, GBytes* stdin_bytes, 
     // env vars
     vte_terminal_get_cursor_position(terminal, &cursorx, &cursory);
     g_object_get(G_OBJECT(terminal), "hyperlink-hover-uri", &hyperlink, NULL);
+    Window winid = gdk_x11_window_get_xid(gtk_widget_get_window(GTK_WIDGET(terminal)));
 
 #define SET_ENVIRON(name, format, value) \
     ( sprintf(buffer, format, value), g_subprocess_launcher_setenv(launcher, APP_PREFIX "_" #name, buffer, TRUE) )
@@ -298,7 +300,8 @@ void spawn_subprocess(VteTerminal* terminal, gchar* data_, GBytes* stdin_bytes, 
     SET_ENVIRON(FGPID, "%i", get_foreground_pid(terminal));
     SET_ENVIRON(CURSORX, "%li", cursorx);
     SET_ENVIRON(CURSORY, "%li", cursory);
-    SET_ENVIRON(HYPERLINK, "%s", hyperlink ? hyperlink : "");
+    if (hyperlink) SET_ENVIRON(HYPERLINK, "%s", hyperlink);
+    if (winid) SET_ENVIRON(WINID, "0x%lx", winid);
 
     GSubprocess* proc = g_subprocess_launcher_spawnv(launcher, (const char**)argv, &error);
     if (!proc) {
