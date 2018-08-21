@@ -87,6 +87,7 @@ void change_terminal_state(VteTerminal* terminal, int new_state) {
 
 gboolean term_focus_event(GtkWidget* terminal, GdkEvent* event, gpointer data) {
     // clear activity once terminal is focused
+    last_active_terminal = VTE_TERMINAL(terminal);
     change_terminal_state(VTE_TERMINAL(terminal), TERMINAL_NO_STATE);
     return FALSE;
 }

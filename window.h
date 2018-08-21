@@ -1,6 +1,8 @@
 #ifndef WINDOW_H
 #define WINDOW_H
 
+VteTerminal* last_active_terminal;
+
 GtkWidget* get_active_window();
 VteTerminal* get_active_terminal();
 gint get_tab_number(VteTerminal* terminal);

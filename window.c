@@ -24,13 +24,14 @@ GtkWidget* get_active_window() {
 }
 
 VteTerminal* get_active_terminal(GtkWidget* window) {
-    if (! window) window = get_active_window();
-    if (! window) return NULL;
-
-    GtkWidget* notebook = g_object_get_data(G_OBJECT(window), "notebook");
-    int index = gtk_notebook_get_current_page(GTK_NOTEBOOK(notebook));
-    if (index < 0) return NULL;
-    return get_nth_terminal(window, index);
+    return last_active_terminal;
+    /* if (! window) window = get_active_window(); */
+    /* if (! window) return NULL; */
+/*  */
+    /* GtkWidget* notebook = g_object_get_data(G_OBJECT(window), "notebook"); */
+    /* int index = gtk_notebook_get_current_page(GTK_NOTEBOOK(notebook)); */
+    /* if (index < 0) return NULL; */
+    /* return get_nth_terminal(window, index); */
 }
 
 gboolean key_pressed(GtkWidget* window, GdkEventKey* event, gpointer data) {
