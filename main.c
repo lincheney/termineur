@@ -13,22 +13,27 @@ static GOptionEntry entries[] = {
     {NULL}
 };
 
-int run_primary() {
+int run_primary(int argc, char** argv) {
     if (! config_filename) {
         config_filename = g_build_filename(g_get_user_config_dir(), "vte_terminal", "config.ini", NULL);
     }
     load_config();
 
-    make_new_window_full(NULL, NULL, 0, NULL);
+    make_new_window_full(NULL, NULL, argc, argv);
     gtk_main();
     return 0;
 }
 
-int run_slave(GSocket* sock) {
+int run_slave(GSocket* sock, int argc, char** argv) {
     GError* error = NULL;
     Buffer buffer;
     buffer.size = 0;
     buffer.data[sizeof(buffer.data)-1] = 0;
+
+    if (! commands) {
+        // TODO
+        return 0;
+    }
 
     for (char** line = commands; *line; line++) {
         int len = strlen(*line) + 1;
@@ -99,8 +104,12 @@ int main(int argc, char *argv[]) {
     }
     app_id = make_app_id();
 
+    // remove arg0
+    argc --;
+    argv ++;
+
     if (! app_id) {
-        run_primary();
+        run_primary(argc, argv);
         return 0;
     }
 
@@ -112,11 +121,11 @@ int main(int argc, char *argv[]) {
 
     status = commands ? 0 : try_bind_sock(sock, addr);
     if (status > 0) {
-        status = run_primary();
+        status = run_primary(argc, argv);
     } else if (status < 0) {
         return 1;
     } else if (connect_sock(sock, addr) >= 0) {
-        status = run_slave(sock);
+        status = run_slave(sock, argc, argv);
     }
     close_socket(sock);
 
