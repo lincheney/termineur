@@ -10,6 +10,7 @@ char* config_filename;
 char** default_args;
 int inactivity_duration;
 char* default_open_action;
+guint terminal_default_scrollback_lines;
 
 gboolean window_close_confirm;
 #define CLOSE_CONFIRM_NO 0

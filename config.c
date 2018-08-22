@@ -52,7 +52,7 @@ gboolean terminal_pointer_autohide = FALSE;
 gboolean terminal_rewrap_on_resize = TRUE;
 gboolean terminal_scroll_on_keystroke = TRUE;
 gboolean terminal_scroll_on_output = TRUE;
-guint terminal_scrollback_lines = 0;
+guint terminal_default_scrollback_lines = 0;
 char* terminal_word_char_exceptions = NULL;
 
 gboolean tab_expand = TRUE;
@@ -420,7 +420,6 @@ void configure_terminal(GtkWidget* terminal) {
             "rewrap-on-resize",    terminal_rewrap_on_resize,
             "scroll-on-keystroke", terminal_scroll_on_keystroke,
             "scroll-on-output",    terminal_scroll_on_output,
-            "scrollback-lines",    terminal_scrollback_lines,
             NULL
     );
     vte_terminal_set_word_char_exceptions(VTE_TERMINAL(terminal), terminal_word_char_exceptions);
@@ -593,32 +592,32 @@ int set_config_from_str(char* line, size_t len) {
         return 1;
     }
 
-    MAP_LINE(background,           gdk_rgba_parse(palette, value));
-    MAP_LINE(foreground,           gdk_rgba_parse(palette+1, value));
-    MAP_LINE(window-title-format,  set_window_title_format(value));
-    MAP_LINE(tab-title-format,     set_tab_title_format(value));
-    MAP_LINE(tab-fill,             tab_fill                      = PARSE_BOOL(value));
-    MAP_LINE(tab-expand,           tab_expand                    = PARSE_BOOL(value));
-    MAP_LINE(tab-enable-popup,     notebook_enable_popup         = PARSE_BOOL(value));
-    MAP_LINE(tab-scrollable,       notebook_scrollable           = PARSE_BOOL(value));
-    MAP_LINE(show-tabs,            notebook_show_tabs            = PARSE_BOOL(value));
-    MAP_LINE(ui-refresh-interval,  ui_refresh_interval           = atoi(value));
-    MAP_LINE(tab-title-markup,     tab_title_markup              = PARSE_BOOL(value));
-    MAP_LINE(inactivity-duration,  inactivity_duration           = atoi(value));
-    MAP_LINE(encoding,             free(terminal_encoding); terminal_encoding = strdup(value));
-    MAP_LINE(font,                 terminal_font                 = pango_font_description_from_string(value));
-    MAP_LINE(font-scale,           terminal_font_scale           = strtod(value, NULL));
-    MAP_LINE(audible-bell,         terminal_audible_bell         = PARSE_BOOL(value));
-    MAP_LINE(allow-hyperlink,      terminal_allow_hyperlink      = PARSE_BOOL(value));
-    MAP_LINE(pointer-autohide,     terminal_pointer_autohide     = PARSE_BOOL(value));
-    MAP_LINE(rewrap-on-resize,     terminal_rewrap_on_resize     = PARSE_BOOL(value));
-    MAP_LINE(scroll-on-keystroke,  terminal_scroll_on_keystroke  = PARSE_BOOL(value));
-    MAP_LINE(scroll-on-output,     terminal_scroll_on_output     = PARSE_BOOL(value));
-    MAP_LINE(scrollback-lines,     terminal_scrollback_lines     = atoi(value));
-    MAP_LINE(word-char-exceptions, free(terminal_word_char_exceptions); terminal_word_char_exceptions = strdup(value));
-    MAP_LINE(show-scrollbar,       show_scrollbar                = PARSE_BOOL(value));
-    MAP_LINE(window-icon,          free(window_icon);  window_icon = strdup(value));
-    MAP_LINE(window-close-confirm, window_close_confirm          = PARSE_BOOL(value));
+    MAP_LINE(background,               gdk_rgba_parse(palette, value));
+    MAP_LINE(foreground,               gdk_rgba_parse(palette+1, value));
+    MAP_LINE(window-title-format,      set_window_title_format(value));
+    MAP_LINE(tab-title-format,         set_tab_title_format(value));
+    MAP_LINE(tab-fill,                 tab_fill                      = PARSE_BOOL(value));
+    MAP_LINE(tab-expand,               tab_expand                    = PARSE_BOOL(value));
+    MAP_LINE(tab-enable-popup,         notebook_enable_popup         = PARSE_BOOL(value));
+    MAP_LINE(tab-scrollable,           notebook_scrollable           = PARSE_BOOL(value));
+    MAP_LINE(show-tabs,                notebook_show_tabs            = PARSE_BOOL(value));
+    MAP_LINE(ui-refresh-interval,      ui_refresh_interval           = atoi(value));
+    MAP_LINE(tab-title-markup,         tab_title_markup              = PARSE_BOOL(value));
+    MAP_LINE(inactivity-duration,      inactivity_duration           = atoi(value));
+    MAP_LINE(encoding,                 free(terminal_encoding); terminal_encoding = strdup(value));
+    MAP_LINE(font,                     terminal_font                 = pango_font_description_from_string(value));
+    MAP_LINE(font-scale,               terminal_font_scale           = strtod(value, NULL));
+    MAP_LINE(audible-bell,             terminal_audible_bell         = PARSE_BOOL(value));
+    MAP_LINE(allow-hyperlink,          terminal_allow_hyperlink      = PARSE_BOOL(value));
+    MAP_LINE(pointer-autohide,         terminal_pointer_autohide     = PARSE_BOOL(value));
+    MAP_LINE(rewrap-on-resize,         terminal_rewrap_on_resize     = PARSE_BOOL(value));
+    MAP_LINE(scroll-on-keystroke,      terminal_scroll_on_keystroke  = PARSE_BOOL(value));
+    MAP_LINE(scroll-on-output,         terminal_scroll_on_output     = PARSE_BOOL(value));
+    MAP_LINE(default-scrollback-lines, terminal_default_scrollback_lines     = atoi(value));
+    MAP_LINE(word-char-exceptions,     free(terminal_word_char_exceptions); terminal_word_char_exceptions = strdup(value));
+    MAP_LINE(show-scrollbar,           show_scrollbar                = PARSE_BOOL(value));
+    MAP_LINE(window-icon,              free(window_icon);  window_icon = strdup(value));
+    MAP_LINE(window-close-confirm,     window_close_confirm          = PARSE_BOOL(value));
 
     if (LINE_EQUALS(tab-close-confirm)) {
         if (g_ascii_strcasecmp(value, "smart") == 0) {

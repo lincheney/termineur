@@ -369,6 +369,8 @@ GtkWidget* make_terminal(GtkWidget* grid, const char* cwd, int argc, char** argv
     gtk_label_set_single_line_mode(GTK_LABEL(label), TRUE);
 
     configure_terminal(terminal);
+    g_object_set(terminal, "expand", 1, "scrollback-lines", terminal_default_scrollback_lines, NULL);
+    g_object_set_data(G_OBJECT(terminal), "activity_state", GINT_TO_POINTER(TERMINAL_NO_STATE));
 
     g_signal_connect(terminal, "focus-in-event", G_CALLBACK(term_focus_event), NULL);
     g_signal_connect(terminal, "child-exited", G_CALLBACK(term_exited), grid);
@@ -378,8 +380,6 @@ GtkWidget* make_terminal(GtkWidget* grid, const char* cwd, int argc, char** argv
     g_signal_connect(terminal, "bell", G_CALLBACK(terminal_bell), NULL);
     g_signal_connect(terminal, "hyperlink-hover-uri-changed", G_CALLBACK(terminal_hyperlink_hover), NULL);
     g_signal_connect(terminal, "button-press-event", G_CALLBACK(terminal_button_press_event), NULL);
-    g_object_set(terminal, "expand", 1, NULL);
-    g_object_set_data(G_OBJECT(terminal), "activity_state", GINT_TO_POINTER(TERMINAL_NO_STATE));
 
     char **args;
     char *fallback_args[] = {NULL, NULL};
