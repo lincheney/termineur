@@ -40,7 +40,12 @@ int slave_send_line(GSocket* sock, char* line, Buffer* buffer) {
             g_warning("Failed to recv(): %s\n", error->message);
             g_error_free(error);
             return 1;
+        }
 
+        if (len == 0) {
+            // unexpected eof
+            g_warning("Unexpected EOF");
+            return 1;
         }
 
         printf("%s", buffer->data);
@@ -51,6 +56,7 @@ int slave_send_line(GSocket* sock, char* line, Buffer* buffer) {
             buffer_shift_back(buffer, end - buffer->data + 1);
             break;
         }
+
         buffer->used = 0;
     }
     return 0;
