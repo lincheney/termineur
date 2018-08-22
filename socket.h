@@ -9,9 +9,12 @@
 #define SOCK_FAIL -1
 
 typedef struct buffer {
-    int size;
-    char data[2048];
+    int used;
+    int reserved;
+    char* data;
 } Buffer;
+
+Buffer* buffer_new(int size);
 
 gboolean make_sock(const char* path, GSocket** sock, GSocketAddress** addr);
 int try_bind_sock(GSocket* sock, GSocketAddress* addr);

@@ -35,7 +35,7 @@ int slave_send_line(GSocket* sock, char* line, Buffer* buffer) {
     }
 
     while (1) {
-        len = g_socket_receive(sock, buffer->data + buffer->size, sizeof(buffer->data) - buffer->size - 1, NULL, &error);
+        len = g_socket_receive(sock, buffer->data + buffer->used, buffer->reserved - buffer->used, NULL, &error);
         if (len < 0) {
             g_warning("Failed to recv(): %s\n", error->message);
             g_error_free(error);
@@ -44,26 +44,24 @@ int slave_send_line(GSocket* sock, char* line, Buffer* buffer) {
         }
 
         printf("%s", buffer->data);
-        char* end = memchr(buffer->data + buffer->size, 0, len);
+        char* end = memchr(buffer->data + buffer->used, 0, len);
         if (end) {
             // end of payload
-            buffer->size = buffer->data + buffer->size + len - end - 1;
-            memmove(buffer->data, end+1, buffer->size);
+            buffer->used += len;
+            buffer_shift_back(buffer, end - buffer->data + 1);
             break;
         }
-        buffer->size = 0;
+        buffer->used = 0;
     }
     return 0;
 }
 
 int run_slave(GSocket* sock, int argc, char** argv) {
-    Buffer buffer;
-    buffer.size = 0;
-    buffer.data[sizeof(buffer.data)-1] = 0;
+    Buffer* buffer = buffer_new(1024);
 
     if (commands) {
         for (char** line = commands; *line; line++) {
-            slave_send_line(sock, *line, &buffer);
+            slave_send_line(sock, *line, buffer);
         }
     }
 
@@ -93,7 +91,7 @@ int run_slave(GSocket* sock, int argc, char** argv) {
             free(quoted_argv[i+2]); // first 2 strings are static
         }
         *strchr(line, ' ') = ':';
-        slave_send_line(sock, line, &buffer);
+        slave_send_line(sock, line, buffer);
         free(line);
     }
 

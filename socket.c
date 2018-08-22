@@ -1,37 +1,61 @@
 #include "socket.h"
 #include "config.h"
 
+void buffer_shift_back(Buffer* buffer, int offset) {
+    int length = buffer->used - offset;
+    if (length > 0) {
+        memmove(buffer->data, buffer->data + offset, length);
+    }
+    memset(buffer->data + length, 0, buffer->used - length);
+    buffer->used = length;
+}
+
+void buffer_reserve(Buffer* buffer, int size) {
+    buffer->data = realloc(buffer->data, size+1);
+    if (buffer->reserved < size) {
+        memset(buffer->data + buffer->reserved+1, 0, size - buffer->reserved);
+    }
+    buffer->reserved = size;
+}
+
+Buffer* buffer_new(int size) {
+    Buffer* buffer = malloc(sizeof(Buffer));
+    buffer->used = 0;
+    buffer->reserved = 0;
+    buffer->data = NULL;
+    buffer_reserve(buffer, size);
+    return buffer;
+}
+
+#define READ_SIZE 1024
+
 int sock_recv(GSocket* sock, GIOCondition io, Buffer* buffer) {
     if (io & G_IO_IN) {
         GError* error = NULL;
-        int len = 0;
-        int size = sizeof(buffer->data) - buffer->size - 1;
-        if (size > 0) {
-            len = g_socket_receive(sock, buffer->data + buffer->size, size, NULL, &error);
+        if (buffer->reserved - buffer->used < READ_SIZE) {
+            buffer_reserve(buffer, buffer->reserved+READ_SIZE);
         }
+
+        int len = g_socket_receive(sock, buffer->data + buffer->used, READ_SIZE, NULL, &error);
+        buffer->used += len;
 
         if (len < 0) {
             g_warning("Failed to recv(): %s\n", error->message);
             g_error_free(error);
 
         } else if (len >= 0) {
-            buffer->size += len;
-            if (len == 0) {
-                // eof, always terminate buffer
-                buffer->data[buffer->size] = 0;
-            }
+            char* start = buffer->data + buffer->used - len;
 
-            int search_ahead = len;
-            while (buffer->size > 0) {
-                char* end;
+            while (buffer->used > 0) {
+                char* end = buffer->data + buffer->used;
                 // search for \0 or \n
-                for (end = buffer->data + buffer->size - search_ahead; end < buffer->data + buffer->size && *end != 0 && *end != '\n'; end++) ;
-                if (end >= buffer->data + len) break;
+                char* ptr;
+                for (ptr = start; ptr < end && *ptr != 0 && *ptr != '\n'; ptr++) ;
+                // no terminator found
+                if (ptr == end) break;
 
-                *end = '\0'; // end of line
-                buffer->data[buffer->size] = 0; // end of buffer
-                // strlen = end - buffer->data
-                void* data = execute_line(buffer->data, end - buffer->data, TRUE);
+                *ptr = '\0'; // end of line
+                void* data = execute_line(buffer->data, ptr - buffer->data, TRUE);
                 if (data) {
                     sock_send_all(sock, data, strlen(data)+1);
                 } else {
@@ -40,14 +64,16 @@ int sock_recv(GSocket* sock, GIOCondition io, Buffer* buffer) {
                 free(data);
 
                 // shift by length of line
-                buffer->size -= end - buffer->data + 1;
-                memmove(buffer->data, end+1, buffer->size);
+                buffer_shift_back(buffer, end - buffer->data + 1);
                 // search from beginning now
-                search_ahead = buffer->size;
+                start = buffer->data;
             }
 
-
             if (len == 0) {
+                // leftovers in the buffer
+                if (buffer->used > 0) {
+                    g_warning("Unprocessed buffer contents, %i bytes remaining", buffer->used);
+                }
                 close_socket(sock);
                 return G_SOURCE_REMOVE;
             }
@@ -67,9 +93,7 @@ int accept_connection(GSocket* sock, GIOCondition io) {
     sock = g_socket_accept(sock, NULL, &error);
 
     if (sock) {
-        Buffer* buffer = malloc(sizeof(Buffer));
-        buffer->size = 0;
-
+        Buffer* buffer = buffer_new(READ_SIZE);
         GSource* source = g_socket_create_source(sock, G_IO_IN | G_IO_ERR, NULL);
         g_source_set_callback(source, (GSourceFunc)sock_recv, buffer, free);
         g_source_attach(source, NULL);
