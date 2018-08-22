@@ -363,6 +363,18 @@ void pipe_all(VteTerminal* terminal, gchar* data, void* result) {
 
     spawn_subprocess(terminal, data, stdin_bytes, result);
 }
+void scrollback_lines(VteTerminal* terminal, int value, void** result) {
+    if (value >= -1) {
+        g_object_set(G_OBJECT(terminal), "scrollback-lines", value, NULL);
+    }
+
+    if (result) {
+        // return the value
+        g_object_get(G_OBJECT(terminal), "scrollback-lines", &value, NULL);
+        *result = malloc(sizeof(char) * 8);
+        sprintf(*result, "%i", value);
+    }
+}
 
 char* str_unescape(char* string) {
     char* p = string;
@@ -477,16 +489,19 @@ Callback lookup_callback(char* value) {
     }
     Callback callback = {NULL, NULL, NULL};
 
-#define MATCH_CALLBACK_WITH_DATA(name, processor, _cleanup) \
+#define MATCH_CALLBACK_WITH_DATA_DEFAULT(name, processor, _cleanup, default) \
     if (strcmp(value, #name) == 0) { \
         callback.func = (CallbackFunc)name; \
         if (arg) { \
             arg = str_unescape(arg); \
             callback.data = processor; \
             callback.cleanup = _cleanup; \
+        } else { \
+            callback.data = default; \
         } \
         break; \
     }
+#define MATCH_CALLBACK_WITH_DATA(name, processor, _cleanup) MATCH_CALLBACK_WITH_DATA_DEFAULT(name, processor, _cleanup, NULL)
 #define MATCH_CALLBACK(name) MATCH_CALLBACK_WITH_DATA(name, NULL, NULL)
 
     while (1) {
@@ -513,7 +528,7 @@ Callback lookup_callback(char* value) {
         MATCH_CALLBACK(detach_tab);
         MATCH_CALLBACK(cut_tab);
         MATCH_CALLBACK(paste_tab);
-        MATCH_CALLBACK_WITH_DATA(switch_to_tab, GINT_TO_POINTER(atoi(arg)), NULL);
+        MATCH_CALLBACK_WITH_DATA_DEFAULT(switch_to_tab, GINT_TO_POINTER(atoi(arg)), NULL, 0);
         MATCH_CALLBACK(tab_popup_menu);
         MATCH_CALLBACK(reload_config);
         MATCH_CALLBACK(close_tab);
@@ -523,6 +538,7 @@ Callback lookup_callback(char* value) {
         MATCH_CALLBACK_WITH_DATA(pipe_screen, strdup(arg), free);
         MATCH_CALLBACK_WITH_DATA(pipe_line, strdup(arg), free);
         MATCH_CALLBACK_WITH_DATA(pipe_all, strdup(arg), free);
+        MATCH_CALLBACK_WITH_DATA_DEFAULT(scrollback_lines, GINT_TO_POINTER(atoi(arg)), NULL, GINT_TO_POINTER(-2));
         break;
     }
     return callback;
