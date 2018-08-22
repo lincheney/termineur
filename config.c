@@ -263,11 +263,11 @@ void close_tab(VteTerminal* terminal) {
         gtk_container_remove(notebook, tab);
     }
 }
-void reload_config() {
+void reload_config(VteTerminal* terminal, char* filename) {
     if (callbacks) {
         g_array_remove_range(callbacks, 0, callbacks->len);
     }
-    load_config();
+    load_config(filename);
 }
 void subprocess_finish(GObject* proc, GAsyncResult* res, void* data) {
     GError* error = NULL;
@@ -530,7 +530,7 @@ Callback lookup_callback(char* value) {
         MATCH_CALLBACK(paste_tab);
         MATCH_CALLBACK_WITH_DATA_DEFAULT(switch_to_tab, GINT_TO_POINTER(atoi(arg)), NULL, 0);
         MATCH_CALLBACK(tab_popup_menu);
-        MATCH_CALLBACK(reload_config);
+        MATCH_CALLBACK_WITH_DATA(reload_config, strdup(arg), free);
         MATCH_CALLBACK(close_tab);
         MATCH_CALLBACK_WITH_DATA(add_label_class, strdup(arg), free);
         MATCH_CALLBACK_WITH_DATA(remove_label_class, strdup(arg), free);
@@ -799,7 +799,7 @@ void* execute_line(char* line, int size, gboolean reconfigure) {
     return NULL;
 }
 
-void load_config() {
+void load_config(char* filename) {
     // init some things
     if (! callbacks) {
         callbacks = g_array_new(FALSE, FALSE, sizeof(CallbackData));
@@ -809,8 +809,9 @@ void load_config() {
         css_provider = gtk_css_provider_new();
     }
 
-    if (! config_filename) return;
-    FILE* config = fopen(config_filename, "r");
+    if (! filename) filename = config_filename;
+    if (! filename) return;
+    FILE* config = fopen(filename, "r");
     if (!config) {
         /* if (error) g_warning("Error loading key file: %s", error->message); */
         return;

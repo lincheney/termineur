@@ -17,7 +17,7 @@ int run_primary(int argc, char** argv) {
     if (! config_filename) {
         config_filename = g_build_filename(g_get_user_config_dir(), "vte_terminal", "config.ini", NULL);
     }
-    load_config();
+    load_config(config_filename);
 
     make_new_window_full(NULL, NULL, argc, argv);
     gtk_main();

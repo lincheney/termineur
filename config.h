@@ -42,7 +42,7 @@ int set_config_from_str(char* line, size_t len);
 Callback lookup_callback(char* value);
 void reconfigure_all();
 void* execute_line(char* line, int size, gboolean reconfigure);
-void load_config();
+void load_config(char* filename);
 void configure_terminal(GtkWidget*);
 void configure_tab(GtkContainer*, GtkWidget*);
 void configure_window(GtkWindow*);
