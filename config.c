@@ -321,6 +321,10 @@ void spawn_subprocess(VteTerminal* terminal, gchar* data_, GBytes* stdin_bytes, 
 #define SET_ENVIRON(name, format, value) \
     ( sprintf(buffer, format, value), g_subprocess_launcher_setenv(launcher, APP_PREFIX "_" #name, buffer, TRUE) )
 
+    // figure out actual row by looking at the adjustment
+    GtkAdjustment* adj = gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(terminal));
+    cursory -= gtk_adjustment_get_value(adj);
+
     SET_ENVIRON(PID, "%i", get_pid(terminal));
     SET_ENVIRON(FGPID, "%i", get_foreground_pid(terminal));
     SET_ENVIRON(CURSORX, "%li", cursorx);
