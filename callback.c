@@ -114,6 +114,32 @@ void new_window(VteTerminal* terminal, gchar* data) {
     add_tab_to_window(window, widget, -1);
 }
 
+void make_split(VteTerminal* terminal, gchar* data, GtkOrientation orientation, gboolean after) {
+    GtkWidget* dest = term_get_grid(terminal);
+    GtkWidget* src = new_term(data);
+    split(dest, src, orientation, after);
+
+    // focus the new terminal
+    terminal = g_object_get_data(G_OBJECT(src), "terminal");
+    gtk_widget_grab_focus(GTK_WIDGET(terminal));
+}
+
+void split_left(VteTerminal* terminal, gchar* data) {
+    make_split(terminal, data, GTK_ORIENTATION_HORIZONTAL, FALSE);
+}
+
+void split_right(VteTerminal* terminal, gchar* data) {
+    make_split(terminal, data, GTK_ORIENTATION_HORIZONTAL, TRUE);
+}
+
+void split_above(VteTerminal* terminal, gchar* data) {
+    make_split(terminal, data, GTK_ORIENTATION_VERTICAL, FALSE);
+}
+
+void split_below(VteTerminal* terminal, gchar* data) {
+    make_split(terminal, data, GTK_ORIENTATION_VERTICAL, TRUE);
+}
+
 void jump_tab(VteTerminal* terminal, int delta) {
     GtkNotebook* notebook = GTK_NOTEBOOK(term_get_notebook(terminal));
     int n = gtk_notebook_get_current_page(notebook);
@@ -329,16 +355,6 @@ void scrollback_lines(VteTerminal* terminal, int value, void** result) {
     }
 }
 
-void split_right(VteTerminal* terminal) {
-    GtkWidget* dest = term_get_grid(terminal);
-    GtkWidget* src = make_terminal(NULL, 0, NULL);
-    split(dest, src, GTK_ORIENTATION_HORIZONTAL, 1);
-
-    // focus the new terminal
-    terminal = g_object_get_data(G_OBJECT(src), "terminal");
-    gtk_widget_grab_focus(GTK_WIDGET(terminal));
-}
-
 char* str_unescape(char* string) {
     // modifies in place
     char* p = string;
@@ -436,7 +452,10 @@ Callback make_callback(char* name, char* arg) {
         MATCH_CALLBACK_WITH_DATA(pipe_line, strdup(arg), free);
         MATCH_CALLBACK_WITH_DATA(pipe_all, strdup(arg), free);
         MATCH_CALLBACK_WITH_DATA_DEFAULT(scrollback_lines, GINT_TO_POINTER(atoi(arg)), NULL, GINT_TO_POINTER(-2));
-        MATCH_CALLBACK(split_right);
+        MATCH_CALLBACK_WITH_DATA(split_right, strdup(arg), free);
+        MATCH_CALLBACK_WITH_DATA(split_left, strdup(arg), free);
+        MATCH_CALLBACK_WITH_DATA(split_above, strdup(arg), free);
+        MATCH_CALLBACK_WITH_DATA(split_below, strdup(arg), free);
         break;
     }
     return callback;
