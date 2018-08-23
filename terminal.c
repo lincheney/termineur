@@ -1,5 +1,4 @@
 #include <gtk/gtk.h>
-#include <vte/vte.h>
 #include <sys/param.h>
 #include <unistd.h>
 #include <sys/stat.h>
@@ -42,10 +41,17 @@ GtkWidget* term_get_tab(VteTerminal* terminal) {
 }
 
 void term_exited(VteTerminal* terminal, gint status, GtkWidget* grid) {
+    split_remove_term_from_chain(terminal);
+    GtkWidget* active_terminal = split_get_active_term(term_get_tab(terminal));
+
     GtkWidget* paned = gtk_widget_get_parent(grid);
     gtk_container_remove(GTK_CONTAINER(paned), grid);
-    /* gtk_widget_destroy(GTK_WIDGET(grid)); */
     split_cleanup(paned);
+
+    if (active_terminal) {
+        // focus next terminal
+        gtk_widget_grab_focus(GTK_WIDGET(active_terminal));
+    }
 }
 
 void term_destroyed(VteTerminal* terminal, GtkWidget* grid) {
@@ -102,12 +108,10 @@ void change_terminal_state(VteTerminal* terminal, int new_state) {
     }
 }
 
-gboolean term_focus_event(GtkWidget* terminal, GdkEvent* event, gpointer data) {
-    GtkWidget* tab = term_get_tab(VTE_TERMINAL(terminal));
-    g_object_set_data(G_OBJECT(tab), "terminal", terminal);
-
+gboolean term_focus_event(VteTerminal* terminal, GdkEvent* event, gpointer data) {
+    split_set_active_term(terminal);
     // clear activity once terminal is focused
-    change_terminal_state(VTE_TERMINAL(terminal), TERMINAL_NO_STATE);
+    change_terminal_state(terminal, TERMINAL_NO_STATE);
     return FALSE;
 }
 

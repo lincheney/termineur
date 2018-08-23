@@ -494,7 +494,7 @@ void reconfigure_window(GtkWindow* window) {
     for (int i = 0; i < n; i ++) {
         tab = gtk_notebook_get_nth_page(notebook, i);
         configure_tab(GTK_CONTAINER(notebook), tab);
-        terminal = g_object_get_data(G_OBJECT(tab), "terminal");
+        terminal = split_get_active_term(tab);
         configure_terminal(terminal);
         update_terminal_ui(VTE_TERMINAL(terminal));
     }

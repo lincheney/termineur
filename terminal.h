@@ -1,6 +1,8 @@
 #ifndef TERMINAL_H
 #define TERMINAL_H
 
+#include <vte/vte.h>
+
 #define get_pid(terminal) GPOINTER_TO_INT(g_object_get_data(G_OBJECT(terminal), "pid"))
 
 GtkWidget* make_terminal(const char* cwd, int argc, char** argv);

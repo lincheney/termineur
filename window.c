@@ -10,8 +10,8 @@ GList* toplevel_windows = NULL;
 
 VteTerminal* get_nth_terminal(GtkWidget* window, int index) {
     GtkWidget* notebook = g_object_get_data(G_OBJECT(window), "notebook");
-    GtkWidget* grid = gtk_notebook_get_nth_page(GTK_NOTEBOOK(notebook), index);
-    GtkWidget* terminal = g_object_get_data(G_OBJECT(grid), "terminal");
+    GtkWidget* tab = gtk_notebook_get_nth_page(GTK_NOTEBOOK(notebook), index);
+    GtkWidget* terminal = split_get_active_term(tab);
     return VTE_TERMINAL(terminal);
 }
 
@@ -59,9 +59,9 @@ GtkNotebook* notebook_create_window(GtkNotebook* notebook, GtkWidget* page, gint
 }
 
 void notebook_switch_page(GtkNotebook* notebook, GtkWidget* tab, guint num) {
-    VteTerminal* terminal = g_object_get_data(G_OBJECT(tab), "terminal");
+    GtkWidget* terminal = split_get_active_term(tab);
     gtk_widget_grab_focus(GTK_WIDGET(terminal));
-    update_window_title(GTK_WINDOW(gtk_widget_get_toplevel(GTK_WIDGET(notebook))), terminal);
+    update_window_title(GTK_WINDOW(gtk_widget_get_toplevel(GTK_WIDGET(notebook))), VTE_TERMINAL(terminal));
 }
 
 void notebook_pages_changed(GtkNotebook* notebook) {
@@ -125,7 +125,7 @@ void add_tab_to_window(GtkWidget* window, GtkWidget* widget, int position) {
 
     GtkWidget* tab = split_new();
     gtk_container_add(GTK_CONTAINER(tab), widget);
-    g_object_set_data(G_OBJECT(tab), "terminal", terminal);
+    split_set_active_term(VTE_TERMINAL(terminal));
 
     GtkWidget* label = gtk_label_new("");
     g_object_set_data(G_OBJECT(tab), "label", label);
@@ -190,12 +190,15 @@ void foreach_window(GFunc callback, gpointer data) {
     g_list_foreach(toplevel_windows, callback, data);
 }
 void foreach_terminal_in_window(GtkWidget* window, GFunc callback, gpointer data) {
-    GtkWidget* terminal;
+    GtkWidget* tab;
     GtkNotebook* notebook = g_object_get_data(G_OBJECT(window), "notebook");
+
     int n = gtk_notebook_get_n_pages(notebook);
     for (int i = 0; i < n; i ++) {
-        terminal = g_object_get_data(G_OBJECT(gtk_notebook_get_nth_page(notebook, i)), "terminal");
-        callback(terminal, data);
+        tab = gtk_notebook_get_nth_page(notebook, i);
+        for (GSList* node = g_object_get_data(G_OBJECT(tab), TERMINAL_FOCUS_KEY); node ; node = node->next) {
+            callback(node->data, data);
+        }
     }
 }
 void foreach_terminal(GFunc callback, gpointer data) {
