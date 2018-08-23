@@ -3,7 +3,7 @@
 
 #define get_pid(terminal) GPOINTER_TO_INT(g_object_get_data(G_OBJECT(terminal), "pid"))
 
-GtkWidget* make_terminal(GtkWidget* grid, const char* cwd, int argc, char** argv);
+GtkWidget* make_terminal(const char* cwd, int argc, char** argv);
 void create_timer(guint interval);
 void set_tab_title_format(char*);
 void set_window_title_format(char*);
@@ -13,8 +13,12 @@ int is_running_foreground_process(VteTerminal* terminal);
 void update_terminal_ui(VteTerminal* terminal);
 void update_window_title(GtkWindow*, VteTerminal* terminal);
 gboolean refresh_all_terminals(gpointer);
-void enable_terminal_scrollbar(GtkWidget* terminal, gboolean enable);
+void enable_terminal_scrollbar(VteTerminal* terminal, gboolean enable);
 void add_label_class(GtkWidget* terminal, char* class);
 void remove_label_class(GtkWidget* terminal, char* class);
+GtkWidget* term_get_grid(VteTerminal* terminal);
+GtkWidget* term_get_notebook(VteTerminal* terminal);
+GtkWidget* term_get_tab(VteTerminal* terminal);
+#define term_get_window(terminal) gtk_widget_get_toplevel(GTK_WIDGET(terminal))
 
 #endif

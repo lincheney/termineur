@@ -8,6 +8,7 @@
 #include "config.h"
 #include "terminal.h"
 #include "window.h"
+#include "split.h"
 
 guint timer_id = 0;
 const gint ERROR_EXIT_CODE = 127;
@@ -28,19 +29,34 @@ void update_terminal_ui(VteTerminal* terminal);
 void update_terminal_title(VteTerminal* terminal);
 void update_terminal_label_class(VteTerminal* terminal);
 
-void term_exited(VteTerminal* terminal, gint status, GtkWidget* container) {
-    gtk_widget_destroy(GTK_WIDGET(container));
+GtkWidget* term_get_grid(VteTerminal* terminal) {
+    return gtk_widget_get_parent(GTK_WIDGET(terminal));
 }
 
-void term_destroyed(VteTerminal* terminal) {
+GtkWidget* term_get_notebook(VteTerminal* terminal) {
+    return split_get_container(gtk_widget_get_parent(term_get_grid(terminal)));
+}
+
+GtkWidget* term_get_tab(VteTerminal* terminal) {
+    return split_get_root(gtk_widget_get_parent(term_get_grid(terminal)));
+}
+
+void term_exited(VteTerminal* terminal, gint status, GtkWidget* grid) {
+    GtkWidget* paned = gtk_widget_get_parent(grid);
+    gtk_container_remove(GTK_CONTAINER(paned), grid);
+    /* gtk_widget_destroy(GTK_WIDGET(grid)); */
+    split_cleanup(paned);
+}
+
+void term_destroyed(VteTerminal* terminal, GtkWidget* grid) {
     GSource* inactivity_timer = g_object_get_data(G_OBJECT(terminal), "inactivity_timer");
     if (inactivity_timer) {
         g_source_destroy(inactivity_timer);
         g_source_unref(inactivity_timer);
     }
 
-    GtkLabel* label = GTK_LABEL(g_object_get_data(G_OBJECT(terminal), "label"));
-    g_object_unref(label);
+    /* GtkLabel* label = GTK_LABEL(g_object_get_data(G_OBJECT(terminal), "label")); */
+    /* g_object_unref(label); */
 }
 
 void terminal_bell(VteTerminal* terminal) {
@@ -87,6 +103,9 @@ void change_terminal_state(VteTerminal* terminal, int new_state) {
 }
 
 gboolean term_focus_event(GtkWidget* terminal, GdkEvent* event, gpointer data) {
+    GtkWidget* tab = term_get_tab(VTE_TERMINAL(terminal));
+    g_object_set_data(G_OBJECT(tab), "terminal", terminal);
+
     // clear activity once terminal is focused
     change_terminal_state(VTE_TERMINAL(terminal), TERMINAL_NO_STATE);
     return FALSE;
@@ -248,7 +267,8 @@ gboolean construct_title(TitleFormat format, VteTerminal* terminal, gboolean esc
 
 void update_terminal_title(VteTerminal* terminal) {
     char buffer[1024] = "";
-    GtkLabel* label = GTK_LABEL(g_object_get_data(G_OBJECT(terminal), "label"));
+    GtkWidget* tab = term_get_tab(terminal);
+    GtkLabel* label = GTK_LABEL(g_object_get_data(G_OBJECT(tab), "label"));
     gboolean escape_markup = gtk_label_get_use_markup(label);
     if (construct_title(tab_title_format, terminal, escape_markup, buffer, sizeof(buffer)-1)) {
         gtk_label_set_label(label, buffer);
@@ -256,7 +276,8 @@ void update_terminal_title(VteTerminal* terminal) {
 }
 
 GtkStyleContext* get_label_context(GtkWidget* terminal) {
-    GtkWidget* label = GTK_WIDGET(g_object_get_data(G_OBJECT(terminal), "label"));
+    GtkWidget* tab = term_get_tab(VTE_TERMINAL(terminal));
+    GtkWidget* label = g_object_get_data(G_OBJECT(tab), "label");
     GtkStyleContext* context = gtk_widget_get_style_context(label);
     return context;
 }
@@ -339,8 +360,8 @@ void set_window_title_format(char* string) {
     parse_title_format(string, &window_title_format);
 }
 
-void enable_terminal_scrollbar(GtkWidget* terminal, gboolean enable) {
-    GtkWidget* grid = GTK_WIDGET(gtk_widget_get_parent(terminal));
+void enable_terminal_scrollbar(VteTerminal* terminal, gboolean enable) {
+    GtkWidget* grid = term_get_grid(terminal);
     GtkWidget* scrollbar = g_object_get_data(G_OBJECT(grid), "scrollbar");
 
     if (enable) {
@@ -355,18 +376,11 @@ void enable_terminal_scrollbar(GtkWidget* terminal, gboolean enable) {
     }
 }
 
-GtkWidget* make_terminal(GtkWidget* grid, const char* cwd, int argc, char** argv) {
-    GtkWidget *terminal;
-    GtkWidget *label;
-
-    terminal = vte_terminal_new();
+GtkWidget* make_terminal(const char* cwd, int argc, char** argv) {
+    GtkWidget* grid = gtk_grid_new();
+    GtkWidget *terminal = vte_terminal_new();
     g_object_set_data(G_OBJECT(grid), "terminal", terminal);
     gtk_container_add(GTK_CONTAINER(grid), GTK_WIDGET(terminal));
-
-    label = gtk_label_new("");
-    g_object_ref(label);
-    g_object_set_data(G_OBJECT(terminal), "label", label);
-    gtk_label_set_single_line_mode(GTK_LABEL(label), TRUE);
 
     configure_terminal(terminal);
     g_object_set(terminal, "expand", 1, "scrollback-lines", terminal_default_scrollback_lines, NULL);
@@ -420,5 +434,5 @@ GtkWidget* make_terminal(GtkWidget* grid, const char* cwd, int argc, char** argv
     );
     free(user_shell);
 
-    return terminal;
+    return grid;
 }

@@ -7,6 +7,7 @@
 #include "config.h"
 #include "window.h"
 #include "terminal.h"
+#include "split.h"
 
 char* config_filename = NULL;
 char* app_id = NULL;
@@ -190,7 +191,7 @@ void new_window(VteTerminal* terminal, gchar* data) {
     new_term(NULL, data);
 }
 void jump_tab(VteTerminal* terminal, int delta) {
-    GtkNotebook* notebook = GTK_NOTEBOOK(gtk_widget_get_parent(gtk_widget_get_parent(GTK_WIDGET(terminal))));
+    GtkNotebook* notebook = GTK_NOTEBOOK(term_get_notebook(terminal));
     int n = gtk_notebook_get_current_page(notebook);
     int pages = gtk_notebook_get_n_pages(notebook);
     gtk_notebook_set_current_page(notebook, (n+delta) % pages);
@@ -202,8 +203,9 @@ void next_tab(VteTerminal* terminal) {
     jump_tab(terminal, 1);
 }
 void move_tab(VteTerminal* terminal, int delta) {
-    GtkWidget* tab = gtk_widget_get_parent(GTK_WIDGET(terminal));
+    GtkWidget* tab = term_get_tab(terminal);
     GtkNotebook* notebook = GTK_NOTEBOOK(gtk_widget_get_parent(tab));
+
     int n = gtk_notebook_get_current_page(notebook);
     int pages = gtk_notebook_get_n_pages(notebook);
     gtk_notebook_reorder_child(notebook, tab, (n+delta) % pages);
@@ -215,26 +217,26 @@ void move_tab_next(VteTerminal* terminal) {
     move_tab(terminal, 1);
 }
 void detach_tab(VteTerminal* terminal) {
-    GtkWidget* tab = gtk_widget_get_parent(GTK_WIDGET(terminal));
-    GtkContainer* notebook = GTK_CONTAINER(gtk_widget_get_parent(tab));
+    GtkWidget* tab = term_get_tab(terminal);
+    GtkWidget* notebook = gtk_widget_get_parent(tab);
 
     if (gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook)) > 1) {
         g_object_ref(tab);
-        gtk_container_remove(notebook, tab);
+        gtk_container_remove(GTK_CONTAINER(notebook), tab);
         make_new_window(tab);
         g_object_unref(tab);
     }
 }
 void cut_tab(VteTerminal* terminal) {
     if (detaching_tab) g_object_remove_weak_pointer(G_OBJECT(detaching_tab), (void*)&detaching_tab);
-    detaching_tab = gtk_widget_get_parent(GTK_WIDGET(terminal));
+    detaching_tab = term_get_tab(terminal);
     g_object_add_weak_pointer(G_OBJECT(detaching_tab), (void*)&detaching_tab);
 }
 void paste_tab(VteTerminal* terminal) {
     if (! detaching_tab) return;
 
     GtkNotebook* src_notebook = GTK_NOTEBOOK(gtk_widget_get_parent(detaching_tab));
-    GtkWidget* dest_window = gtk_widget_get_toplevel(GTK_WIDGET(terminal));
+    GtkWidget* dest_window = term_get_window(terminal);
     GtkNotebook* dest_notebook = g_object_get_data(G_OBJECT(dest_window), "notebook");
 
     int index = gtk_notebook_get_current_page(dest_notebook)+1;
@@ -251,18 +253,18 @@ void paste_tab(VteTerminal* terminal) {
     detaching_tab = NULL;
 }
 void switch_to_tab(VteTerminal* terminal, int data) {
-    GtkNotebook* notebook = GTK_NOTEBOOK(gtk_widget_get_parent(gtk_widget_get_parent(GTK_WIDGET(terminal))));
+    GtkNotebook* notebook = GTK_NOTEBOOK(term_get_notebook(terminal));
     int n = gtk_notebook_get_n_pages(notebook);
     gtk_notebook_set_current_page(notebook, data >= n ? -1 : data);
 }
 void tab_popup_menu(VteTerminal* terminal) {
-    GtkNotebook* notebook = GTK_NOTEBOOK(gtk_widget_get_parent(gtk_widget_get_parent(GTK_WIDGET(terminal))));
+    GtkNotebook* notebook = GTK_NOTEBOOK(term_get_notebook(terminal));
     gboolean value;
     g_signal_emit_by_name(notebook, "popup-menu", &value);
 }
 void close_tab(VteTerminal* terminal) {
     if (! prevent_tab_close(terminal)) {
-        GtkWidget* tab = gtk_widget_get_parent(GTK_WIDGET(terminal));
+        GtkWidget* tab = term_get_tab(terminal);
         GtkContainer* notebook = GTK_CONTAINER(gtk_widget_get_parent(tab));
         gtk_container_remove(notebook, tab);
     }
@@ -383,6 +385,15 @@ void scrollback_lines(VteTerminal* terminal, int value, void** result) {
         sprintf(*result, "%i", value);
     }
 }
+void split_right(VteTerminal* terminal) {
+    GtkWidget* dest = term_get_grid(terminal);
+    GtkWidget* src = make_terminal(NULL, 0, NULL);
+    split(dest, src, GTK_ORIENTATION_HORIZONTAL, 1);
+
+    // focus the new terminal
+    terminal = g_object_get_data(G_OBJECT(src), "terminal");
+    gtk_widget_grab_focus(GTK_WIDGET(terminal));
+}
 
 char* str_unescape(char* string) {
     char* p = string;
@@ -446,20 +457,20 @@ void configure_terminal(GtkWidget* terminal) {
     // populate palette
     vte_terminal_set_colors(VTE_TERMINAL(terminal), palette+1, palette, palette+2, PALETTE_SIZE);
 
-    GtkWidget* label = g_object_get_data(G_OBJECT(terminal), "label");
-    g_object_set(G_OBJECT(label),
-            "ellipsize",  tab_title_ellipsize_mode,
-            "xalign",     tab_title_alignment,
-            "use-markup", tab_title_markup,
-            NULL);
-
-    enable_terminal_scrollbar(terminal, show_scrollbar);
+    enable_terminal_scrollbar(VTE_TERMINAL(terminal), show_scrollbar);
 }
 
 void configure_tab(GtkContainer* notebook, GtkWidget* tab) {
     gtk_container_child_set(GTK_CONTAINER(notebook), tab,
             "tab-expand", tab_expand,
             "tab-fill",   tab_fill,
+            NULL);
+
+    GtkWidget* label = g_object_get_data(G_OBJECT(tab), "label");
+    g_object_set(G_OBJECT(label),
+            "ellipsize",  tab_title_ellipsize_mode,
+            "xalign",     tab_title_alignment,
+            "use-markup", tab_title_markup,
             NULL);
 }
 
@@ -547,6 +558,7 @@ Callback lookup_callback(char* value) {
         MATCH_CALLBACK_WITH_DATA(pipe_line, strdup(arg), free);
         MATCH_CALLBACK_WITH_DATA(pipe_all, strdup(arg), free);
         MATCH_CALLBACK_WITH_DATA_DEFAULT(scrollback_lines, GINT_TO_POINTER(atoi(arg)), NULL, GINT_TO_POINTER(-2));
+        MATCH_CALLBACK(split_right);
         break;
     }
     return callback;

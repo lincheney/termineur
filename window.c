@@ -3,6 +3,7 @@
 #include "window.h"
 #include "config.h"
 #include "terminal.h"
+#include "split.h"
 
 GtkWidget* make_window();
 GList* toplevel_windows = NULL;
@@ -41,7 +42,7 @@ gboolean key_pressed(GtkWidget* window, GdkEventKey* event, gpointer data) {
 }
 
 gint get_tab_number(VteTerminal* terminal) {
-    GtkWidget* tab = gtk_widget_get_parent(GTK_WIDGET(terminal));
+    GtkWidget* tab = term_get_tab(terminal);
     GtkNotebook* notebook = GTK_NOTEBOOK(gtk_widget_get_parent(tab));
     return gtk_notebook_page_num(notebook, tab);
 }
@@ -119,10 +120,18 @@ gboolean prevent_tab_close(VteTerminal* terminal) {
     return response != GTK_RESPONSE_YES;
 }
 
-void add_tab_to_window(GtkWidget* window, GtkWidget* tab, int position) {
+void add_tab_to_window(GtkWidget* window, GtkWidget* widget, int position) {
+    GtkWidget* terminal = g_object_get_data(G_OBJECT(widget), "terminal");
+
+    GtkWidget* tab = split_new();
+    gtk_container_add(GTK_CONTAINER(tab), widget);
+    g_object_set_data(G_OBJECT(tab), "terminal", terminal);
+
+    GtkWidget* label = gtk_label_new("");
+    g_object_set_data(G_OBJECT(tab), "label", label);
+    gtk_label_set_single_line_mode(GTK_LABEL(label), TRUE);
+
     GtkNotebook* notebook = GTK_NOTEBOOK(g_object_get_data(G_OBJECT(window), "notebook"));
-    GtkWidget* terminal = g_object_get_data(G_OBJECT(tab), "terminal");
-    GtkWidget* label = GTK_WIDGET(g_object_get_data(G_OBJECT(terminal), "label"));
     int page = gtk_notebook_insert_page(notebook, tab, label, position);
     configure_tab(GTK_CONTAINER(notebook), tab);
 
@@ -134,9 +143,8 @@ void add_tab_to_window(GtkWidget* window, GtkWidget* tab, int position) {
 }
 
 void add_terminal_full(GtkWidget* window, const char* cwd, int argc, char** argv) {
-    GtkWidget* tab = gtk_grid_new();
-    make_terminal(tab, cwd, argc, argv);
-    add_tab_to_window(window, tab, -1);
+    GtkWidget* grid = make_terminal(cwd, argc, argv);
+    add_tab_to_window(window, grid, -1);
 }
 
 GtkWidget* make_window() {
