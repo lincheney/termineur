@@ -1,8 +1,11 @@
 #include "split.h"
 #include "terminal.h"
 
+#define PANE_HANDLE_WIDTH 5
+
 GtkWidget* split_new() {
     GtkWidget* paned =  gtk_paned_new(GTK_ORIENTATION_VERTICAL);
+    gtk_paned_set_wide_handle(GTK_PANED(paned), PANE_HANDLE_WIDTH);
     g_object_set_data(G_OBJECT(paned), TERMINAL_FOCUS_KEY, NULL);
     return paned;
 }
@@ -30,6 +33,8 @@ void split(GtkWidget* dest, GtkWidget* src, GtkOrientation orientation, gboolean
     GtkWidget* child1 = gtk_paned_get_child1(dest_split);
 
     GtkPaned* new_split = GTK_PANED(gtk_paned_new(orientation));
+    gtk_paned_set_wide_handle(GTK_PANED(new_split), PANE_HANDLE_WIDTH);
+
     // swap dest with new split
     g_object_ref(dest);
     gtk_container_remove(GTK_CONTAINER(dest_split), dest);
