@@ -1,7 +1,8 @@
 #include "split.h"
 #include "terminal.h"
 
-#define PANE_HANDLE_WIDTH 5
+#define RESIZE TRUE
+#define SHRINK FALSE
 
 void gtk_paned_get_children(GtkPaned* paned, GtkWidget** child1, GtkWidget** child2) {
     *child1 = gtk_paned_get_child1(paned);
@@ -10,7 +11,7 @@ void gtk_paned_get_children(GtkPaned* paned, GtkWidget** child1, GtkWidget** chi
 
 GtkWidget* split_new() {
     GtkWidget* paned =  gtk_paned_new(GTK_ORIENTATION_VERTICAL);
-    gtk_paned_set_wide_handle(GTK_PANED(paned), PANE_HANDLE_WIDTH);
+    gtk_paned_set_wide_handle(GTK_PANED(paned), TRUE);
     g_object_set_data(G_OBJECT(paned), TERMINAL_FOCUS_KEY, NULL);
     return paned;
 }
@@ -44,12 +45,12 @@ void split(GtkWidget* dest, GtkWidget* src, GtkOrientation orientation, gboolean
     } else {
         // make a new split and swap it into the old split
         new_split = GTK_PANED(gtk_paned_new(orientation));
-        gtk_paned_set_wide_handle(GTK_PANED(new_split), PANE_HANDLE_WIDTH);
-        (child1 == dest ? gtk_paned_add1 : gtk_paned_add2)(dest_split, GTK_WIDGET(new_split));
+        gtk_paned_set_wide_handle(GTK_PANED(new_split), TRUE);
+        (child1 == dest ? gtk_paned_pack1 : gtk_paned_pack2)(dest_split, GTK_WIDGET(new_split), RESIZE, SHRINK);
     }
 
-    gtk_paned_pack1(new_split, after ? dest : src, TRUE, TRUE);
-    gtk_paned_pack2(new_split, after ? src : dest, TRUE, TRUE);
+    gtk_paned_pack1(new_split, after ? dest : src, RESIZE, SHRINK);
+    gtk_paned_pack2(new_split, after ? src : dest, RESIZE, SHRINK);
     g_object_unref(dest);
 
     gtk_widget_show_all(GTK_WIDGET(new_split));
@@ -75,7 +76,7 @@ void split_cleanup(GtkWidget* paned) {
             // remove the middle pane
             gtk_container_remove(GTK_CONTAINER(paned), widget);
             gtk_container_remove(GTK_CONTAINER(parent), paned);
-            (child1 == paned ? gtk_paned_pack1 : gtk_paned_pack2)(GTK_PANED(parent), widget, TRUE, TRUE);
+            (child1 == paned ? gtk_paned_pack1 : gtk_paned_pack2)(GTK_PANED(parent), widget, RESIZE, SHRINK);
             g_object_unref(widget);
         }
         return;
