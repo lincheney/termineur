@@ -13,6 +13,13 @@ GtkWidget* split_new() {
     GtkWidget* paned =  gtk_paned_new(GTK_ORIENTATION_VERTICAL);
     gtk_paned_set_wide_handle(GTK_PANED(paned), TRUE);
     g_object_set_data(G_OBJECT(paned), TERMINAL_FOCUS_KEY, NULL);
+
+    // label
+    GtkWidget* label = gtk_label_new("");
+    g_object_set_data(G_OBJECT(paned), "label", label);
+    gtk_label_set_single_line_mode(GTK_LABEL(label), TRUE);
+    g_object_ref(label);
+
     return paned;
 }
 
@@ -62,6 +69,8 @@ void split_cleanup(GtkWidget* paned) {
 
     if (!child1 && !child2) {
         // no children, this can only be the root, so destroy everything
+        GtkWidget* label = g_object_get_data(G_OBJECT(paned), "label");
+        g_object_unref(label);
         gtk_widget_destroy(paned);
         return;
     }

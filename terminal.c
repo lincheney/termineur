@@ -60,9 +60,6 @@ void term_destroyed(VteTerminal* terminal, GtkWidget* grid) {
         g_source_destroy(inactivity_timer);
         g_source_unref(inactivity_timer);
     }
-
-    /* GtkLabel* label = GTK_LABEL(g_object_get_data(G_OBJECT(terminal), "label")); */
-    /* g_object_unref(label); */
 }
 
 void terminal_bell(VteTerminal* terminal) {

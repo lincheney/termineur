@@ -120,16 +120,19 @@ gboolean prevent_tab_close(VteTerminal* terminal) {
 }
 
 void add_tab_to_window(GtkWidget* window, GtkWidget* widget, int position) {
-    GtkWidget* terminal = g_object_get_data(G_OBJECT(widget), "terminal");
+    GtkWidget *terminal, *tab;
+    if (GTK_IS_PANED(widget)) {
+        tab = widget;
+        terminal = split_get_active_term(tab);
+    } else {
+        terminal = g_object_get_data(G_OBJECT(widget), "terminal");
 
-    GtkWidget* tab = split_new();
-    gtk_paned_pack1(GTK_PANED(tab), widget, TRUE, TRUE);
-    split_set_active_term(VTE_TERMINAL(terminal));
+        tab = split_new();
+        gtk_paned_pack1(GTK_PANED(tab), widget, TRUE, TRUE);
+        split_set_active_term(VTE_TERMINAL(terminal));
+    }
 
-    GtkWidget* label = gtk_label_new("");
-    g_object_set_data(G_OBJECT(tab), "label", label);
-    gtk_label_set_single_line_mode(GTK_LABEL(label), TRUE);
-
+    GtkWidget* label = g_object_get_data(G_OBJECT(tab), "label");
     GtkNotebook* notebook = GTK_NOTEBOOK(g_object_get_data(G_OBJECT(window), "notebook"));
     int page = gtk_notebook_insert_page(notebook, tab, label, position);
     configure_tab(GTK_CONTAINER(notebook), tab);
