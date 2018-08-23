@@ -65,17 +65,20 @@ void split_cleanup(GtkWidget* paned) {
         g_object_ref(widget);
         gtk_container_remove(GTK_CONTAINER(paned), widget);
 
-        while (! child1 || ! child2) {
+        while (1) {
             parent = gtk_widget_get_parent(current);
             if (! GTK_IS_PANED(parent)) {
                 // root split
                 parent = current;
                 break;
             }
+            gtk_container_remove(GTK_CONTAINER(parent), current);
             child1 = gtk_paned_get_child1(GTK_PANED(parent));
             child2 = gtk_paned_get_child2(GTK_PANED(parent));
-            gtk_container_remove(GTK_CONTAINER(parent), current);
             current = parent;
+            if (child1 || child2) {
+                break;
+            }
         }
 
         (child2 ? gtk_paned_pack1 : gtk_paned_pack2)(GTK_PANED(parent), widget, TRUE, TRUE);
