@@ -5,7 +5,6 @@
 #include "terminal.h"
 #include "split.h"
 
-GtkWidget* make_window();
 GList* toplevel_windows = NULL;
 
 VteTerminal* get_nth_terminal(GtkWidget* window, int index) {
@@ -178,11 +177,10 @@ GtkWidget* make_window() {
 
 GtkWidget* make_new_window_full(GtkWidget* tab, const char* cwd, int argc, char** argv) {
     GtkWidget* window = make_window();
-    if (tab) {
-        add_tab_to_window(window, tab, -1);
-    } else {
-        add_terminal_full(window, cwd, argc, argv);
+    if (! tab) {
+        tab = make_terminal(cwd, argc, argv);
     }
+    add_tab_to_window(window, tab, -1);
     return window;
 }
 

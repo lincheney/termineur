@@ -82,13 +82,13 @@ void feed_term(VteTerminal* terminal, char* data) {
     vte_terminal_feed(terminal, (char*)data, -1);
 }
 
-void new_term(GtkWidget* window, gchar* data) {
+GtkWidget* new_term(gchar* data) {
     gint argc;
     char* cwd = NULL;
     char **original, **argv = shell_split(data, &argc);
     if (data && ! argv) {
         g_warning("Failed to parse: %s", data);
-        return;
+        return NULL;
     }
 
     original = argv;
@@ -97,21 +97,21 @@ void new_term(GtkWidget* window, gchar* data) {
         argc --;
         argv ++;
     }
-    if (window) {
-        add_terminal_full(window, cwd, argc, argv);
-    } else {
-        make_new_window_full(NULL, cwd, argc, argv);
-    }
 
+    GtkWidget* grid = make_terminal(cwd, argc, argv);
     if (original) g_strfreev(original);
+    return grid;
 }
 
 void new_tab(VteTerminal* terminal, gchar* data) {
-    new_term(GTK_WIDGET(get_active_window()), data);
+    GtkWidget* widget = new_term(data);
+    add_tab_to_window(GTK_WIDGET(get_active_window()), widget, -1);
 }
 
 void new_window(VteTerminal* terminal, gchar* data) {
-    new_term(NULL, data);
+    GtkWidget* widget = new_term(data);
+    GtkWidget* window = make_window();
+    add_tab_to_window(window, widget, -1);
 }
 
 void jump_tab(VteTerminal* terminal, int delta) {
