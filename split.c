@@ -3,6 +3,11 @@
 
 #define PANE_HANDLE_WIDTH 5
 
+void gtk_paned_get_children(GtkPaned* paned, GtkWidget** child1, GtkWidget** child2) {
+    *child1 = gtk_paned_get_child1(paned);
+    *child2 = gtk_paned_get_child2(paned);
+}
+
 GtkWidget* split_new() {
     GtkWidget* paned =  gtk_paned_new(GTK_ORIENTATION_VERTICAL);
     gtk_paned_set_wide_handle(GTK_PANED(paned), PANE_HANDLE_WIDTH);
@@ -24,21 +29,24 @@ GtkWidget* split_get_container(GtkWidget* widget) {
 }
 
 void split(GtkWidget* dest, GtkWidget* src, GtkOrientation orientation, gboolean after) {
-    /*
-     * swap dest for a new split
-     * then add dest and src to the new split
-     */
-
     GtkPaned* dest_split = GTK_PANED(gtk_widget_get_parent(dest));
-    GtkWidget* child1 = gtk_paned_get_child1(dest_split);
+    GtkWidget *child1, *child2;
+    gtk_paned_get_children(dest_split, &child1, &child2);
 
-    GtkPaned* new_split = GTK_PANED(gtk_paned_new(orientation));
-    gtk_paned_set_wide_handle(GTK_PANED(new_split), PANE_HANDLE_WIDTH);
-
-    // swap dest with new split
     g_object_ref(dest);
     gtk_container_remove(GTK_CONTAINER(dest_split), dest);
-    (child1 == dest ? gtk_paned_add1 : gtk_paned_add2)(dest_split, GTK_WIDGET(new_split));
+
+    GtkPaned* new_split;
+    if ((child1 == NULL) ^ (child2 == NULL)) {
+        // single child, so just reuse this split
+        new_split = dest_split;
+        gtk_orientable_set_orientation(GTK_ORIENTABLE(dest_split), orientation);
+    } else {
+        // make a new split and swap it into the old split
+        new_split = GTK_PANED(gtk_paned_new(orientation));
+        gtk_paned_set_wide_handle(GTK_PANED(new_split), PANE_HANDLE_WIDTH);
+        (child1 == dest ? gtk_paned_add1 : gtk_paned_add2)(dest_split, GTK_WIDGET(new_split));
+    }
 
     gtk_paned_pack1(new_split, after ? dest : src, TRUE, TRUE);
     gtk_paned_pack2(new_split, after ? src : dest, TRUE, TRUE);
@@ -48,50 +56,86 @@ void split(GtkWidget* dest, GtkWidget* src, GtkOrientation orientation, gboolean
 }
 
 void split_cleanup(GtkWidget* paned) {
-    // cleanup split tree structure
+    GtkWidget *child1, *child2;
+    gtk_paned_get_children(GTK_PANED(paned), &child1, &child2);
 
-    GtkWidget* child1 = gtk_paned_get_child1(GTK_PANED(paned));
-    GtkWidget* child2 = gtk_paned_get_child2(GTK_PANED(paned));
-    GtkWidget* parent = gtk_widget_get_parent(paned);
-
-    if (! child1 && ! child2) {
-        // destroy empty split and cleanup parent
+    if (!child1 && !child2) {
+        // no children, this can only be the root, so destroy everything
         gtk_widget_destroy(paned);
-        if (GTK_IS_PANED(parent)) {
-            split_cleanup(parent);
-        }
         return;
     }
 
-    if (! child1 || ! child2) {
+    if (!child1 || !child2) {
         // exactly one child
-        GtkWidget* widget = child1 ? child1 : child2;
-        GtkWidget* current = paned;
-        g_object_ref(widget);
-        gtk_container_remove(GTK_CONTAINER(paned), widget);
-
-        while (1) {
-            parent = gtk_widget_get_parent(current);
-            if (! GTK_IS_PANED(parent)) {
-                // root split
-                parent = current;
-                break;
-            }
-            gtk_container_remove(GTK_CONTAINER(parent), current);
-            child1 = gtk_paned_get_child1(GTK_PANED(parent));
-            child2 = gtk_paned_get_child2(GTK_PANED(parent));
-            current = parent;
-            if (child1 || child2) {
-                break;
-            }
+        GtkWidget* parent = gtk_widget_get_parent(paned);
+        if (GTK_IS_PANED(parent)) {
+            GtkWidget* widget = child1 ? child1 : child2;
+            g_object_ref(widget);
+            gtk_paned_get_children(GTK_PANED(parent), &child1, &child2);
+            // remove the middle pane
+            gtk_container_remove(GTK_CONTAINER(paned), widget);
+            gtk_container_remove(GTK_CONTAINER(parent), paned);
+            (child1 == paned ? gtk_paned_pack1 : gtk_paned_pack2)(GTK_PANED(parent), widget, TRUE, TRUE);
+            g_object_unref(widget);
         }
-
-        (child2 ? gtk_paned_pack1 : gtk_paned_pack2)(GTK_PANED(parent), widget, TRUE, TRUE);
-        g_object_unref(widget);
         return;
     }
 
     // 2 children
+}
+
+gboolean split_move(GtkWidget* widget, GtkOrientation orientation, gboolean forward) {
+    GtkWidget* paned = gtk_widget_get_parent(widget);
+    GtkWidget *child1, *child2;
+    gtk_paned_get_children(GTK_PANED(paned), &child1, &child2);
+
+    if (!child1 || !child2) {
+        // one child , must be only widget
+        return FALSE;
+    }
+
+    GtkWidget* current = widget;
+    GtkWidget* parent = paned;
+
+    // find a parent in the wrong position
+    while (1) {
+        if (gtk_orientable_get_orientation(GTK_ORIENTABLE(parent)) != orientation) {
+            // wrong orientation
+            break;
+        }
+
+        if (current != (forward ? child2 : child1)) {
+            // wrong position
+            current = (current == child1 ? child2 : child1);
+            break;
+        }
+
+        // ascend
+        current = parent;
+        parent = gtk_widget_get_parent(parent);
+        if (! GTK_IS_PANED(parent)) {
+            // hit root, can't move
+            return FALSE;
+        }
+        gtk_paned_get_children(GTK_PANED(parent), &child1, &child2);
+    }
+
+    if (current == widget) {
+        current = (widget == child1 ? child2 : child1);
+    }
+
+    // descend in opposite direction
+    // find child closest to the widget
+    while (GTK_IS_PANED(current)) {
+        current = (forward ? gtk_paned_get_child1 : gtk_paned_get_child2)(GTK_PANED(current));
+    }
+
+    g_object_ref(widget);
+    gtk_container_remove(GTK_CONTAINER(paned), widget);
+    split_cleanup(paned);
+    split(current, widget, orientation, forward);
+    g_object_unref(widget);
+    return TRUE;
 }
 
 GtkWidget* split_get_active_term(GtkWidget* paned) {

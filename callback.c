@@ -355,6 +355,26 @@ void scrollback_lines(VteTerminal* terminal, int value, void** result) {
     }
 }
 
+void move_right(VteTerminal* terminal) {
+    split_move(term_get_grid(terminal), GTK_ORIENTATION_HORIZONTAL, TRUE);
+    gtk_widget_grab_focus(GTK_WIDGET(terminal));
+}
+
+void move_left(VteTerminal* terminal) {
+    split_move(term_get_grid(terminal), GTK_ORIENTATION_HORIZONTAL, FALSE);
+    gtk_widget_grab_focus(GTK_WIDGET(terminal));
+}
+
+void move_above(VteTerminal* terminal) {
+    split_move(term_get_grid(terminal), GTK_ORIENTATION_VERTICAL, FALSE);
+    gtk_widget_grab_focus(GTK_WIDGET(terminal));
+}
+
+void move_below(VteTerminal* terminal) {
+    split_move(term_get_grid(terminal), GTK_ORIENTATION_VERTICAL, TRUE);
+    gtk_widget_grab_focus(GTK_WIDGET(terminal));
+}
+
 char* str_unescape(char* string) {
     // modifies in place
     char* p = string;
@@ -456,6 +476,10 @@ Callback make_callback(char* name, char* arg) {
         MATCH_CALLBACK_WITH_DATA(split_left, strdup(arg), free);
         MATCH_CALLBACK_WITH_DATA(split_above, strdup(arg), free);
         MATCH_CALLBACK_WITH_DATA(split_below, strdup(arg), free);
+        MATCH_CALLBACK(move_right);
+        MATCH_CALLBACK(move_left);
+        MATCH_CALLBACK(move_above);
+        MATCH_CALLBACK(move_below);
         break;
     }
     return callback;
