@@ -2,6 +2,7 @@
 #define CONFIG_H
 
 #include <vte/vte.h>
+#include "callback.h"
 
 #define APP_PREFIX "VTE_TERMINAL"
 
@@ -18,26 +19,13 @@ gboolean window_close_confirm;
 #define CLOSE_CONFIRM_SMART 2
 gint tab_close_confirm;
 
-typedef void(*CallbackFunc)(VteTerminal*, gpointer, gpointer);
-
 #define BELL_EVENT 1
 #define HYPERLINK_HOVER_EVENT 2
 #define HYPERLINK_CLICK_EVENT 3
 
-typedef struct {
-    CallbackFunc func;
-    gpointer data;
-    GDestroyNotify cleanup;
-} Callback;
-
-typedef struct {
-    guint key;
-    int metadata;
-    Callback callback;
-} CallbackData;
-
 GArray* callbacks;
 
+char** shell_split(char* string, gint* argc);
 int set_config_from_str(char* line, size_t len);
 Callback lookup_callback(char* value);
 void reconfigure_all();
