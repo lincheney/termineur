@@ -137,7 +137,13 @@ gboolean split_move(GtkWidget* widget, GtkOrientation orientation, gboolean forw
     // descend in opposite direction
     // find child closest to the widget
     while (GTK_IS_PANED(current)) {
-        current = (forward ? gtk_paned_get_child1 : gtk_paned_get_child2)(GTK_PANED(current));
+        parent = current;
+        current = (forward ? gtk_paned_get_child1 : gtk_paned_get_child2)(GTK_PANED(parent));
+        if (gtk_orientable_get_orientation(GTK_ORIENTABLE(parent)) != orientation) {
+            // wrong orientation, merge it in here instead
+            forward = !forward;
+            break;
+        }
     }
 
     g_object_ref(widget);
