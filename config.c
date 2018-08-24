@@ -178,12 +178,10 @@ int set_config_from_str(char* line, size_t len) {
     if (! value) return 0; // invalid line
 
     *value = '\0';
+    value ++;
     // whitespace trimming
-    char* c;
-    for (c = value-1; isspace(*c); c--) ;; c[1] = '\0';
-    value++;
-    while( isspace(*value) ) value++;
-    for (c = line+len-1; isspace(*c); c--) ;; c[1] = '\0';
+    g_strstrip(line);
+    g_strstrip(value);
 
 #define LINE_EQUALS(string) (strcmp(line, (#string)) == 0)
 #define MAP_LINE(string, body) \
