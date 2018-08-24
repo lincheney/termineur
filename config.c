@@ -11,8 +11,6 @@
 char* config_filename = NULL;
 char* app_id = NULL;
 
-#define PALETTE_SIZE (16)
-extern GdkRGBA palette[PALETTE_SIZE+2];
 GdkRGBA palette[PALETTE_SIZE+2] = {
     { 0., 0., 0., 1. }, // background
     { 1., 1., 1., 1. }, // foreground
@@ -110,7 +108,7 @@ void configure_terminal(GtkWidget* terminal) {
     );
     vte_terminal_set_word_char_exceptions(VTE_TERMINAL(terminal), terminal_word_char_exceptions);
     // populate palette
-    vte_terminal_set_colors(VTE_TERMINAL(terminal), palette+1, palette, palette+2, PALETTE_SIZE);
+    vte_terminal_set_colors(VTE_TERMINAL(terminal), &FOREGROUND, &BACKGROUND, palette+2, PALETTE_SIZE);
 
     enable_terminal_scrollbar(VTE_TERMINAL(terminal), show_scrollbar);
 }

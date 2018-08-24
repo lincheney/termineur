@@ -11,8 +11,14 @@ GtkWidget* detaching_tab = NULL;
 
 CallbackFunc select_all = (CallbackFunc)vte_terminal_select_all;
 CallbackFunc unselect_all = (CallbackFunc)vte_terminal_unselect_all;
-CallbackFunc add_css_class = (CallbackFunc)term_add_css_class;
-CallbackFunc remove_css_class = (CallbackFunc)term_remove_css_class;
+
+void add_css_class(VteTerminal* terminal, char* data) {
+    term_change_css_class(terminal, data, 1);
+}
+
+void remove_css_class(VteTerminal* terminal, char* data) {
+    term_change_css_class(terminal, data, 0);
+}
 
 void paste_text(VteTerminal* terminal, void* data) {
     GtkClipboard* clipboard = NULL;

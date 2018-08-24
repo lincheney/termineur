@@ -113,9 +113,9 @@ gboolean term_focus_in_event(VteTerminal* terminal, GdkEvent* event, gpointer da
     GtkWidget* tab = term_get_tab(terminal);
     VteTerminal* old_focus = VTE_TERMINAL(split_get_active_term(tab));
     if (old_focus && old_focus != terminal) {
-        term_remove_css_class(old_focus, "selected");
+        term_change_css_class(old_focus, "selected", 0);
     }
-    term_add_css_class(terminal, "selected");
+    term_change_css_class(terminal, "selected", 1);
 
     split_set_active_term(terminal);
     // clear activity once terminal is focused
@@ -297,32 +297,33 @@ GtkStyleContext* get_label_context(GtkWidget* terminal) {
     return NULL;
 }
 
-void term_add_css_class(VteTerminal* terminal, char* class) {
-    GtkStyleContext* context = get_label_context(GTK_WIDGET(terminal));
-    if (context) gtk_style_context_add_class(context, class);
-    gtk_style_context_add_class(gtk_widget_get_style_context(term_get_grid(terminal)), class);
-}
+void term_change_css_class(VteTerminal* terminal, char* class, gboolean add) {
+    void(*func)(GtkStyleContext*, const gchar*) = add ? gtk_style_context_add_class : gtk_style_context_remove_class;
 
-void term_remove_css_class(VteTerminal* terminal, char* class) {
     GtkStyleContext* context = get_label_context(GTK_WIDGET(terminal));
-    if (context) gtk_style_context_remove_class(context, class);
-    gtk_style_context_remove_class(gtk_widget_get_style_context(term_get_grid(terminal)), class);
+    if (context && (add ^ gtk_style_context_has_class(context, class))) {
+        func(context, class);
+    }
+    context = gtk_widget_get_style_context(term_get_grid(terminal));
+    if (add ^ gtk_style_context_has_class(context, class)) {
+        func(context, class);
+    }
 }
 
 void update_terminal_label_class(VteTerminal* terminal) {
     int state = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(terminal), "activity_state"));
     switch (state) {
         case TERMINAL_ACTIVE:
-            term_remove_css_class(terminal, "inactive");
-            term_add_css_class(terminal, "active");
+            term_change_css_class(terminal, "inactive", 0);
+            term_change_css_class(terminal, "active", 1);
             break;
         case TERMINAL_INACTIVE:
-            term_remove_css_class(terminal, "active");
-            term_add_css_class(terminal, "inactive");
+            term_change_css_class(terminal, "active", 0);
+            term_change_css_class(terminal, "inactive", 1);
             break;
         default:
-            term_remove_css_class(terminal, "active");
-            term_remove_css_class(terminal, "inactive");
+            term_change_css_class(terminal, "active", 0);
+            term_change_css_class(terminal, "inactive", 0);
             break;
     }
 }
@@ -396,6 +397,23 @@ void enable_terminal_scrollbar(VteTerminal* terminal, gboolean enable) {
     }
 }
 
+gboolean terminal_draw(GtkWidget* widget, cairo_t* cr) {
+    // draw terminal background
+    cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
+    cairo_set_source_rgba(cr, BACKGROUND.red, BACKGROUND.green, BACKGROUND.blue, BACKGROUND.alpha);
+    cairo_paint(cr);
+    return FALSE;
+}
+
+gboolean terminal_draw_finish(GtkWidget* widget, cairo_t* cr) {
+    // draw widget background (to support backdrops)
+    GdkRectangle rect;
+    gtk_widget_get_allocation(widget, &rect);
+    GtkStyleContext* context = gtk_widget_get_style_context(widget);
+    gtk_render_background(context, cr, 0, 0, rect.width, rect.height);
+    return FALSE;
+}
+
 GtkWidget* make_terminal(const char* cwd, int argc, char** argv) {
     GtkWidget* grid = gtk_grid_new();
     GtkWidget *terminal = vte_terminal_new();
@@ -405,6 +423,7 @@ GtkWidget* make_terminal(const char* cwd, int argc, char** argv) {
     configure_terminal(terminal);
     g_object_set(terminal, "expand", TRUE, "scrollback-lines", terminal_default_scrollback_lines, NULL);
     g_object_set_data(G_OBJECT(terminal), "activity_state", GINT_TO_POINTER(TERMINAL_NO_STATE));
+    vte_terminal_set_clear_background(VTE_TERMINAL(terminal), FALSE);
 
     g_signal_connect(terminal, "focus-in-event", G_CALLBACK(term_focus_in_event), NULL);
     g_signal_connect(terminal, "child-exited", G_CALLBACK(term_exited), grid);
@@ -414,6 +433,8 @@ GtkWidget* make_terminal(const char* cwd, int argc, char** argv) {
     g_signal_connect(terminal, "bell", G_CALLBACK(terminal_bell), NULL);
     g_signal_connect(terminal, "hyperlink-hover-uri-changed", G_CALLBACK(terminal_hyperlink_hover), NULL);
     g_signal_connect(terminal, "button-press-event", G_CALLBACK(terminal_button_press_event), NULL);
+    g_signal_connect(terminal, "draw", G_CALLBACK(terminal_draw), NULL);
+    g_signal_connect_after(terminal, "draw", G_CALLBACK(terminal_draw_finish), NULL);
 
     char **args;
     char *fallback_args[] = {NULL, NULL};

@@ -6,6 +6,11 @@
 
 #define APP_PREFIX "VTE_TERMINAL"
 
+#define PALETTE_SIZE (16)
+GdkRGBA palette[PALETTE_SIZE+2];
+#define BACKGROUND (palette[0])
+#define FOREGROUND (palette[1])
+
 char* app_id;
 char* config_filename;
 char** default_args;
