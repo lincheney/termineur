@@ -36,7 +36,7 @@ GtkWidget* split_get_container(GtkWidget* widget) {
     return gtk_widget_get_parent(split_get_root(widget));
 }
 
-void split(GtkWidget* dest, GtkWidget* src, GtkOrientation orientation, gboolean after) {
+GtkWidget* split(GtkWidget* dest, GtkWidget* src, GtkOrientation orientation, gboolean after) {
     GtkPaned* dest_split = GTK_PANED(gtk_widget_get_parent(dest));
     GtkWidget *child1, *child2;
     gtk_paned_get_children(dest_split, &child1, &child2);
@@ -61,6 +61,9 @@ void split(GtkWidget* dest, GtkWidget* src, GtkOrientation orientation, gboolean
     g_object_unref(dest);
 
     gtk_widget_show_all(GTK_WIDGET(new_split));
+    gtk_widget_show_all(GTK_WIDGET(dest));
+    gtk_widget_show_all(GTK_WIDGET(src));
+    return GTK_WIDGET(new_split);
 }
 
 void split_cleanup(GtkWidget* paned) {
@@ -209,4 +212,10 @@ void split_set_active_term(VteTerminal* terminal) {
     list = g_slist_remove(list, terminal);
     list = g_slist_prepend(list, terminal);
     g_object_set_data(G_OBJECT(paned), TERMINAL_FOCUS_KEY, list);
+}
+
+int split_get_separator_size(GtkWidget* paned) {
+    int size = 0;
+    gtk_widget_style_get(paned, "handle-size", &size, NULL);
+    return size;
 }

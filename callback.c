@@ -82,7 +82,7 @@ void feed_term(VteTerminal* terminal, char* data) {
     vte_terminal_feed(terminal, (char*)data, -1);
 }
 
-GtkWidget* new_term(gchar* data) {
+GtkWidget* new_term(gchar* data, char** size) {
     gint argc;
     char* cwd = NULL;
     char **original, **argv = shell_split(data, &argc);
@@ -92,8 +92,15 @@ GtkWidget* new_term(gchar* data) {
     }
 
     original = argv;
-    if (argc > 0 && strncmp(argv[0], "cwd=", 4) == 0) {
-        cwd = argv[0] + 4;
+    while (argc > 0) {
+        if (strncmp(argv[0], "cwd=", sizeof("cwd=")-1) == 0) {
+            cwd = argv[0] + sizeof("cwd=")-1;
+        } else if (strncmp(argv[0], "size=", sizeof("size=")-1) == 0) {
+            if (size) *size = strdup(argv[0] + sizeof("size=")-1);
+        } else {
+            break;
+        }
+
         argc --;
         argv ++;
     }
@@ -104,20 +111,45 @@ GtkWidget* new_term(gchar* data) {
 }
 
 void new_tab(VteTerminal* terminal, gchar* data) {
-    GtkWidget* widget = new_term(data);
+    GtkWidget* widget = new_term(data, NULL);
     add_tab_to_window(GTK_WIDGET(get_active_window()), widget, -1);
 }
 
 void new_window(VteTerminal* terminal, gchar* data) {
-    GtkWidget* widget = new_term(data);
+    GtkWidget* widget = new_term(data, NULL);
     GtkWidget* window = make_window();
     add_tab_to_window(window, widget, -1);
 }
 
 void make_split(VteTerminal* terminal, gchar* data, GtkOrientation orientation, gboolean after) {
     GtkWidget* dest = term_get_grid(terminal);
-    GtkWidget* src = new_term(data);
-    split(dest, src, orientation, after);
+    char* size_str = NULL;
+    GtkWidget* src = new_term(data, &size_str);
+    GtkWidget* paned = split(dest, src, orientation, after);
+
+    if (size_str) {
+        char* suffix;
+        int size = strtol(size_str, &suffix, 10);
+        if (size) {
+            GdkRectangle rect;
+            gtk_widget_get_allocation(paned, &rect);
+            int split_size = orientation == GTK_ORIENTATION_HORIZONTAL ? rect.width : rect.height;
+
+            if (strcmp(suffix, "%") == 0) {
+                size = split_size*size/100;
+            } else if (strcmp(suffix, "px") == 0) {
+                //
+            } else {
+                size *= vte_terminal_get_char_height(terminal);
+            }
+
+            if (after) {
+                size = split_size - size - split_get_separator_size(paned);
+            }
+            gtk_paned_set_position(GTK_PANED(paned), size);
+        }
+        free(size_str);
+    }
 
     // focus the new terminal
     terminal = g_object_get_data(G_OBJECT(src), "terminal");
