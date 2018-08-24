@@ -48,7 +48,6 @@ int slave_send_line(GSocket* sock, char* line, Buffer* buffer) {
             return 1;
         }
 
-        printf("%s", buffer->data);
         char* end = memchr(buffer->data + buffer->used, 0, len);
         if (end) {
             // end of payload

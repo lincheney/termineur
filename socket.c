@@ -64,7 +64,7 @@ int sock_recv(GSocket* sock, GIOCondition io, Buffer* buffer) {
                 free(data);
 
                 // shift by length of line
-                buffer_shift_back(buffer, end - buffer->data + 1);
+                buffer_shift_back(buffer, ptr - buffer->data + 1);
                 // search from beginning now
                 start = buffer->data;
             }
