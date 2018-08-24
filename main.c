@@ -19,6 +19,12 @@ int run_primary(int argc, char** argv) {
     }
     load_config(config_filename);
 
+    // make sure terminal background is transparent by default
+    GtkCssProvider* css_provider = gtk_css_provider_new();
+    gtk_css_provider_load_from_data(css_provider, "vte-terminal { background: none; }", -1, NULL);
+    GdkScreen* screen = gdk_screen_get_default();
+    gtk_style_context_add_provider_for_screen(screen, GTK_STYLE_PROVIDER(css_provider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
+
     make_new_window_full(NULL, NULL, argc, argv);
     gtk_main();
     return 0;
