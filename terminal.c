@@ -40,13 +40,16 @@ GtkWidget* term_get_tab(VteTerminal* terminal) {
     return split_get_root(gtk_widget_get_parent(term_get_grid(terminal)));
 }
 
-void term_exited(VteTerminal* terminal, gint status, GtkWidget* grid) {
-    split_remove_term_from_chain(terminal);
-    GtkWidget* active_terminal = split_get_active_term(term_get_tab(terminal));
-
+void grid_cleanup(GtkWidget* grid) {
     GtkWidget* paned = gtk_widget_get_parent(grid);
     gtk_container_remove(GTK_CONTAINER(paned), grid);
     split_cleanup(paned);
+}
+
+void term_exited(VteTerminal* terminal, gint status, GtkWidget* grid) {
+    split_remove_term_from_chain(terminal);
+    GtkWidget* active_terminal = split_get_active_term(term_get_tab(terminal));
+    grid_cleanup(grid);
 
     if (active_terminal) {
         // focus next terminal
@@ -88,7 +91,7 @@ gboolean terminal_button_press_event(VteTerminal* terminal, GdkEvent* event) {
 void term_spawn_callback(GtkWidget* terminal, GPid pid, GError *error, GtkWidget* grid) {
     if (error) {
         g_warning("Could not start terminal: %s", error->message);
-        gtk_widget_destroy(grid);
+        grid_cleanup(grid);
         return;
     }
     g_object_set_data(G_OBJECT(terminal), "pid", GINT_TO_POINTER(pid));
