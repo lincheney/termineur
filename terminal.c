@@ -281,35 +281,40 @@ void update_terminal_title(VteTerminal* terminal) {
 
 GtkStyleContext* get_label_context(GtkWidget* terminal) {
     GtkWidget* tab = term_get_tab(VTE_TERMINAL(terminal));
-    GtkWidget* label = g_object_get_data(G_OBJECT(tab), "label");
-    GtkStyleContext* context = gtk_widget_get_style_context(label);
-    return context;
+    if (terminal == split_get_active_term(tab)) {
+        GtkWidget* label = g_object_get_data(G_OBJECT(tab), "label");
+        GtkStyleContext* context = gtk_widget_get_style_context(label);
+        return context;
+    }
+    return NULL;
 }
 
-void add_label_class(GtkWidget* terminal, char* class) {
-    gtk_style_context_add_class(get_label_context(terminal), class);
+void term_add_css_class(VteTerminal* terminal, char* class) {
+    GtkStyleContext* context = get_label_context(GTK_WIDGET(terminal));
+    if (context) gtk_style_context_add_class(context, class);
+    gtk_style_context_add_class(gtk_widget_get_style_context(GTK_WIDGET(terminal)), class);
 }
 
-void remove_label_class(GtkWidget* terminal, char* class) {
-    gtk_style_context_remove_class(get_label_context(terminal), class);
+void term_remove_css_class(VteTerminal* terminal, char* class) {
+    GtkStyleContext* context = get_label_context(GTK_WIDGET(terminal));
+    if (context) gtk_style_context_remove_class(context, class);
+    gtk_style_context_remove_class(gtk_widget_get_style_context(GTK_WIDGET(terminal)), class);
 }
 
 void update_terminal_label_class(VteTerminal* terminal) {
-    GtkStyleContext* context = get_label_context(GTK_WIDGET(terminal));
     int state = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(terminal), "activity_state"));
-
     switch (state) {
         case TERMINAL_ACTIVE:
-            gtk_style_context_remove_class(context, "inactive");
-            gtk_style_context_add_class(context, "active");
+            term_remove_css_class(terminal, "inactive");
+            term_add_css_class(terminal, "active");
             break;
         case TERMINAL_INACTIVE:
-            gtk_style_context_remove_class(context, "active");
-            gtk_style_context_add_class(context, "inactive");
+            term_remove_css_class(terminal, "active");
+            term_add_css_class(terminal, "inactive");
             break;
         default:
-            gtk_style_context_remove_class(context, "active");
-            gtk_style_context_remove_class(context, "inactive");
+            term_remove_css_class(terminal, "active");
+            term_remove_css_class(terminal, "inactive");
             break;
     }
 }
@@ -390,7 +395,7 @@ GtkWidget* make_terminal(const char* cwd, int argc, char** argv) {
     gtk_container_add(GTK_CONTAINER(grid), GTK_WIDGET(terminal));
 
     configure_terminal(terminal);
-    g_object_set(terminal, "expand", 1, "scrollback-lines", terminal_default_scrollback_lines, NULL);
+    g_object_set(terminal, "expand", TRUE, "scrollback-lines", terminal_default_scrollback_lines, NULL);
     g_object_set_data(G_OBJECT(terminal), "activity_state", GINT_TO_POINTER(TERMINAL_NO_STATE));
 
     g_signal_connect(terminal, "focus-in-event", G_CALLBACK(term_focus_event), NULL);

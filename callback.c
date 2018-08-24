@@ -11,6 +11,8 @@ GtkWidget* detaching_tab = NULL;
 
 CallbackFunc select_all = (CallbackFunc)vte_terminal_select_all;
 CallbackFunc unselect_all = (CallbackFunc)vte_terminal_unselect_all;
+CallbackFunc add_css_class = (CallbackFunc)term_add_css_class;
+CallbackFunc remove_css_class = (CallbackFunc)term_remove_css_class;
 
 void paste_text(VteTerminal* terminal, void* data) {
     GtkClipboard* clipboard = NULL;
@@ -519,8 +521,8 @@ Callback make_callback(char* name, char* arg) {
         MATCH_CALLBACK(tab_popup_menu);
         MATCH_CALLBACK_WITH_DATA(reload_config, strdup(arg), free);
         MATCH_CALLBACK(close_tab);
-        MATCH_CALLBACK_WITH_DATA(add_label_class, strdup(arg), free);
-        MATCH_CALLBACK_WITH_DATA(remove_label_class, strdup(arg), free);
+        MATCH_CALLBACK_WITH_DATA(add_css_class, strdup(arg), free);
+        MATCH_CALLBACK_WITH_DATA(remove_css_class, strdup(arg), free);
         MATCH_CALLBACK_WITH_DATA(run, strdup(arg), free);
         MATCH_CALLBACK_WITH_DATA(pipe_screen, strdup(arg), free);
         MATCH_CALLBACK_WITH_DATA(pipe_line, strdup(arg), free);
