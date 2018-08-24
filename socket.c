@@ -27,6 +27,11 @@ Buffer* buffer_new(int size) {
     return buffer;
 }
 
+void buffer_free(Buffer* buffer) {
+    free(buffer->data);
+    free(buffer);
+}
+
 #define READ_SIZE 1024
 
 int sock_recv(GSocket* sock, GIOCondition io, Buffer* buffer) {
@@ -95,7 +100,7 @@ int accept_connection(GSocket* sock, GIOCondition io) {
     if (sock) {
         Buffer* buffer = buffer_new(READ_SIZE);
         GSource* source = g_socket_create_source(sock, G_IO_IN | G_IO_ERR, NULL);
-        g_source_set_callback(source, (GSourceFunc)sock_recv, buffer, free);
+        g_source_set_callback(source, (GSourceFunc)sock_recv, buffer, (GDestroyNotify)buffer_free);
         g_source_attach(source, NULL);
     } else {
         g_warning("Failed on accept(): %s\n", error->message);

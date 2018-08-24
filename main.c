@@ -100,6 +100,7 @@ int run_slave(GSocket* sock, int argc, char** argv) {
         free(line);
     }
 
+    buffer_free(buffer);
     return 0;
 }
 

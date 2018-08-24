@@ -16,6 +16,7 @@ typedef struct buffer {
 
 void buffer_shift_back(Buffer* buffer, int offset);
 Buffer* buffer_new(int size);
+void buffer_free(Buffer*);
 
 gboolean make_sock(const char* path, GSocket** sock, GSocketAddress** addr);
 int try_bind_sock(GSocket* sock, GSocketAddress* addr);
