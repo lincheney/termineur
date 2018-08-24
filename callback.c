@@ -375,6 +375,22 @@ void move_split_below(VteTerminal* terminal) {
     gtk_widget_grab_focus(GTK_WIDGET(terminal));
 }
 
+void focus_split_right(VteTerminal* terminal) {
+    split_move_focus(term_get_grid(terminal), GTK_ORIENTATION_HORIZONTAL, TRUE);
+}
+
+void focus_split_left(VteTerminal* terminal) {
+    split_move_focus(term_get_grid(terminal), GTK_ORIENTATION_HORIZONTAL, FALSE);
+}
+
+void focus_split_above(VteTerminal* terminal) {
+    split_move_focus(term_get_grid(terminal), GTK_ORIENTATION_VERTICAL, FALSE);
+}
+
+void focus_split_below(VteTerminal* terminal) {
+    split_move_focus(term_get_grid(terminal), GTK_ORIENTATION_VERTICAL, TRUE);
+}
+
 char* str_unescape(char* string) {
     // modifies in place
     char* p = string;
@@ -480,6 +496,10 @@ Callback make_callback(char* name, char* arg) {
         MATCH_CALLBACK(move_split_left);
         MATCH_CALLBACK(move_split_above);
         MATCH_CALLBACK(move_split_below);
+        MATCH_CALLBACK(focus_split_right);
+        MATCH_CALLBACK(focus_split_left);
+        MATCH_CALLBACK(focus_split_above);
+        MATCH_CALLBACK(focus_split_below);
         break;
     }
     return callback;

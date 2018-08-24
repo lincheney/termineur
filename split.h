@@ -12,6 +12,7 @@ GtkWidget* split_get_container(GtkWidget* widget);
 void split(GtkWidget* dest, GtkWidget* src, GtkOrientation orientation, gboolean after);
 void split_cleanup(GtkWidget* paned);
 gboolean split_move(GtkWidget* widget, GtkOrientation orientation, gboolean forward);
+gboolean split_move_focus(GtkWidget* widget, GtkOrientation orientation, gboolean forward);
 
 GtkWidget* split_get_active_term(GtkWidget* paned);
 void split_remove_term_from_chain(VteTerminal* terminal);

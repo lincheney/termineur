@@ -154,6 +154,43 @@ gboolean split_move(GtkWidget* widget, GtkOrientation orientation, gboolean forw
     return TRUE;
 }
 
+gboolean split_move_focus(GtkWidget* widget, GtkOrientation orientation, gboolean forward) {
+    GtkWidget* root = split_get_root(widget);
+    GtkWidget* closest = NULL;
+    GdkRectangle base, other;
+    int best_dist = -1, other_dist;
+
+    gtk_widget_get_allocation(widget, &base);
+
+    for (GSList* node = g_object_get_data(G_OBJECT(root), TERMINAL_FOCUS_KEY); node; node = node->next) {
+        GtkWidget* other_widget = term_get_grid(VTE_TERMINAL(node->data));
+        if (widget == other_widget) {
+            continue;
+        }
+
+        gtk_widget_get_allocation(other_widget, &other);
+        gtk_widget_translate_coordinates(other_widget, widget, other.x, other.y, &other.x, &other.y);
+
+        if (orientation == GTK_ORIENTATION_VERTICAL) {
+            other_dist = (other.y - base.y + (forward ? -base.height : other.height));
+        } else {
+            other_dist = (other.x - base.x + (forward ? -base.width : other.width));
+        }
+        other_dist *= forward ? 1 : -1;
+
+        if (0 <= other_dist && (other_dist < best_dist || !closest)) {
+            closest = node->data;
+            best_dist = other_dist;
+        }
+    }
+
+    if (closest) {
+        gtk_widget_grab_focus(closest);
+        return TRUE;
+    }
+    return FALSE;
+}
+
 GtkWidget* split_get_active_term(GtkWidget* paned) {
     GSList* node = g_object_get_data(G_OBJECT(paned), TERMINAL_FOCUS_KEY);
     return node ? GTK_WIDGET(node->data) : NULL;
