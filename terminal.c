@@ -312,8 +312,11 @@ void update_terminal_label_class(VteTerminal* terminal) {
 }
 
 void update_terminal_ui(VteTerminal* terminal) {
-    update_terminal_title(terminal);
-    update_terminal_label_class(terminal);
+    GtkWidget* root = term_get_tab(terminal);
+    if (split_get_active_term(root) == GTK_WIDGET(terminal)) {
+        update_terminal_title(terminal);
+        update_terminal_label_class(terminal);
+    }
 }
 
 void update_window_title(GtkWindow* window, VteTerminal* terminal) {
