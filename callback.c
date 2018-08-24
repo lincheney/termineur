@@ -140,7 +140,13 @@ void make_split(VteTerminal* terminal, gchar* data, GtkOrientation orientation, 
             } else if (strcmp(suffix, "px") == 0) {
                 //
             } else {
-                size *= vte_terminal_get_char_height(terminal);
+                size *= orientation == GTK_ORIENTATION_HORIZONTAL ? vte_terminal_get_char_width(terminal) : vte_terminal_get_char_height(terminal);
+            }
+
+            if (show_scrollbar && orientation == GTK_ORIENTATION_HORIZONTAL) {
+                GtkWidget* scrollbar = g_object_get_data(G_OBJECT(dest), "scrollbar");
+                gtk_widget_get_allocation(scrollbar, &rect);
+                size += rect.width;
             }
 
             if (after) {
