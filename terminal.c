@@ -108,7 +108,15 @@ void change_terminal_state(VteTerminal* terminal, int new_state) {
     }
 }
 
-gboolean term_focus_event(VteTerminal* terminal, GdkEvent* event, gpointer data) {
+gboolean term_focus_in_event(VteTerminal* terminal, GdkEvent* event, gpointer data) {
+    // set some css
+    GtkWidget* tab = term_get_tab(terminal);
+    VteTerminal* old_focus = VTE_TERMINAL(split_get_active_term(tab));
+    if (old_focus && old_focus != terminal) {
+        term_remove_css_class(old_focus, "selected");
+    }
+    term_add_css_class(terminal, "selected");
+
     split_set_active_term(terminal);
     // clear activity once terminal is focused
     change_terminal_state(terminal, TERMINAL_NO_STATE);
@@ -292,13 +300,13 @@ GtkStyleContext* get_label_context(GtkWidget* terminal) {
 void term_add_css_class(VteTerminal* terminal, char* class) {
     GtkStyleContext* context = get_label_context(GTK_WIDGET(terminal));
     if (context) gtk_style_context_add_class(context, class);
-    gtk_style_context_add_class(gtk_widget_get_style_context(GTK_WIDGET(terminal)), class);
+    gtk_style_context_add_class(gtk_widget_get_style_context(term_get_grid(terminal)), class);
 }
 
 void term_remove_css_class(VteTerminal* terminal, char* class) {
     GtkStyleContext* context = get_label_context(GTK_WIDGET(terminal));
     if (context) gtk_style_context_remove_class(context, class);
-    gtk_style_context_remove_class(gtk_widget_get_style_context(GTK_WIDGET(terminal)), class);
+    gtk_style_context_remove_class(gtk_widget_get_style_context(term_get_grid(terminal)), class);
 }
 
 void update_terminal_label_class(VteTerminal* terminal) {
@@ -398,7 +406,7 @@ GtkWidget* make_terminal(const char* cwd, int argc, char** argv) {
     g_object_set(terminal, "expand", TRUE, "scrollback-lines", terminal_default_scrollback_lines, NULL);
     g_object_set_data(G_OBJECT(terminal), "activity_state", GINT_TO_POINTER(TERMINAL_NO_STATE));
 
-    g_signal_connect(terminal, "focus-in-event", G_CALLBACK(term_focus_event), NULL);
+    g_signal_connect(terminal, "focus-in-event", G_CALLBACK(term_focus_in_event), NULL);
     g_signal_connect(terminal, "child-exited", G_CALLBACK(term_exited), grid);
     g_signal_connect(terminal, "destroy", G_CALLBACK(term_destroyed), grid);
     g_signal_connect(terminal, "window-title-changed", G_CALLBACK(update_terminal_title), NULL);
