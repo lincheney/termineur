@@ -30,7 +30,7 @@ void update_terminal_title(VteTerminal* terminal);
 void update_terminal_label_class(VteTerminal* terminal);
 
 GtkWidget* term_get_grid(VteTerminal* terminal) {
-    return gtk_widget_get_parent(GTK_WIDGET(terminal));
+    return gtk_widget_get_ancestor(GTK_WIDGET(terminal), GTK_TYPE_GRID);
 }
 
 GtkWidget* term_get_notebook(VteTerminal* terminal) {
@@ -432,16 +432,14 @@ void enable_terminal_scrollbar(VteTerminal* terminal, gboolean enable) {
     }
 }
 
-gboolean terminal_draw(GtkWidget* widget, cairo_t* cr) {
-    // draw terminal background
+gboolean draw_terminal_background(GtkWidget* widget, cairo_t* cr) {
     cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
     cairo_set_source_rgba(cr, BACKGROUND.red, BACKGROUND.green, BACKGROUND.blue, BACKGROUND.alpha);
     cairo_paint(cr);
     return FALSE;
 }
 
-gboolean terminal_draw_finish(GtkWidget* widget, cairo_t* cr) {
-    // draw widget background (to support backdrops)
+gboolean draw_terminal_overlay(GtkWidget* widget, cairo_t* cr) {
     GdkRectangle rect;
     gtk_widget_get_allocation(widget, &rect);
     GtkStyleContext* context = gtk_widget_get_style_context(widget);
@@ -449,18 +447,33 @@ gboolean terminal_draw_finish(GtkWidget* widget, cairo_t* cr) {
     return FALSE;
 }
 
+gboolean overlay_position_term(GtkWidget* overlay, GtkWidget* widget, GdkRectangle* rect) {
+    if (VTE_IS_TERMINAL(widget)) {
+        gtk_widget_get_allocation(overlay, rect);
+        int value = rect->height % vte_terminal_get_char_height(VTE_TERMINAL(widget));
+        rect->y += value;
+        return TRUE;
+    }
+    return FALSE;
+}
+
 GtkWidget* make_terminal(const char* cwd, int argc, char** argv) {
-    GtkWidget *terminal = vte_terminal_new();
+    GtkWidget* terminal = vte_terminal_new();
 
     GtkWidget* msg_bar = gtk_button_new_with_label("");
     label_new(gtk_bin_get_child(GTK_BIN(msg_bar)));
     g_object_ref(msg_bar);
     g_signal_connect(msg_bar, "clicked", G_CALLBACK(term_hide_message_bar), terminal);
 
+    // just a wrapper container to move the terminal about
+    GtkWidget* overlay = gtk_overlay_new();
+    g_signal_connect(overlay, "get-child-position", G_CALLBACK(overlay_position_term), NULL);
+    gtk_overlay_add_overlay(GTK_OVERLAY(overlay), terminal);
+
     GtkWidget* grid = gtk_grid_new();
     g_object_set_data(G_OBJECT(grid), "terminal", terminal);
     g_object_set_data(G_OBJECT(grid), "msg_bar", msg_bar);
-    gtk_container_add(GTK_CONTAINER(grid), GTK_WIDGET(terminal));
+    gtk_container_add(GTK_CONTAINER(grid), overlay);
     g_signal_connect_swapped(grid, "destroy", G_CALLBACK(g_object_unref), msg_bar);
     g_signal_connect_swapped(msg_bar, "focus-in-event", G_CALLBACK(gtk_widget_grab_focus), terminal);
 
@@ -477,8 +490,8 @@ GtkWidget* make_terminal(const char* cwd, int argc, char** argv) {
     g_signal_connect(terminal, "bell", G_CALLBACK(terminal_bell), NULL);
     g_signal_connect(terminal, "hyperlink-hover-uri-changed", G_CALLBACK(terminal_hyperlink_hover), NULL);
     g_signal_connect(terminal, "button-press-event", G_CALLBACK(terminal_button_press_event), NULL);
-    g_signal_connect(terminal, "draw", G_CALLBACK(terminal_draw), NULL);
-    g_signal_connect_after(terminal, "draw", G_CALLBACK(terminal_draw_finish), NULL);
+    g_signal_connect(overlay, "draw", G_CALLBACK(draw_terminal_background), NULL);
+    g_signal_connect_after(terminal, "draw", G_CALLBACK(draw_terminal_overlay), NULL);
 
     char **args;
     char *fallback_args[] = {NULL, NULL};
