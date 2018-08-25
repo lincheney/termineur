@@ -8,6 +8,7 @@
 #include "terminal.h"
 #include "window.h"
 #include "split.h"
+#include "label.h"
 
 guint timer_id = 0;
 const gint ERROR_EXIT_CODE = 127;
@@ -405,7 +406,9 @@ void term_show_message_bar(VteTerminal* terminal, const char* message, int timeo
     if (! gtk_widget_get_parent(msg_bar)) {
         gtk_grid_attach(GTK_GRID(grid), msg_bar, 0, -1, 2, 1);
     }
-    gtk_button_set_label(GTK_BUTTON(msg_bar), message);
+    GtkWidget* label = gtk_bin_get_child(GTK_BIN(msg_bar));
+    gtk_label_set_markup(GTK_LABEL(label), message);
+
     if (timeout) {
         g_timeout_add(timeout, (GSourceFunc)gtk_button_clicked, msg_bar);
     }
@@ -450,6 +453,7 @@ GtkWidget* make_terminal(const char* cwd, int argc, char** argv) {
     GtkWidget *terminal = vte_terminal_new();
 
     GtkWidget* msg_bar = gtk_button_new_with_label("");
+    label_new(gtk_bin_get_child(GTK_BIN(msg_bar)));
     g_object_ref(msg_bar);
     g_signal_connect(msg_bar, "clicked", G_CALLBACK(term_hide_message_bar), terminal);
 
