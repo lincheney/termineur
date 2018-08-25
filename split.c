@@ -1,5 +1,6 @@
 #include "split.h"
 #include "terminal.h"
+#include "label.h"
 
 #define RESIZE TRUE
 #define SHRINK FALSE
@@ -18,9 +19,8 @@ GtkWidget* split_new_root() {
     gtk_style_context_add_class(context, ROOT_SPLIT_CLASS);
 
     // label
-    GtkWidget* label = gtk_label_new("");
+    GtkWidget* label = label_new(NULL);
     g_object_set_data(G_OBJECT(paned), "label", label);
-    gtk_label_set_single_line_mode(GTK_LABEL(label), TRUE);
     g_object_ref(label);
 
     return paned;

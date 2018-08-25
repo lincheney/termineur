@@ -26,7 +26,7 @@ gboolean label_draw(GtkWidget* widget, cairo_t* cr) {
         int x, width;
         gtk_label_get_layout_offsets(label, &x, NULL);
         pango_layout_get_pixel_size(layout, &width, NULL);
-
+        x -= rect.x;
 
 #define SCALE_UINT16(x) ((float)(x) / (float)G_MAXUINT16)
         if (start) {
@@ -37,7 +37,7 @@ gboolean label_draw(GtkWidget* widget, cairo_t* cr) {
 
         if (end) {
             cairo_set_source_rgb(cr, SCALE_UINT16(end->red), SCALE_UINT16(end->green), SCALE_UINT16(end->blue));
-            cairo_rectangle(cr, x+width, 0, rect.width-x-width, rect.height);
+            cairo_rectangle(cr, x+width, 0, rect.width - width - x, rect.height);
             cairo_fill(cr);
         }
     }
@@ -47,6 +47,7 @@ gboolean label_draw(GtkWidget* widget, cairo_t* cr) {
 GtkWidget* label_new(GtkWidget* label) {
     if (!label) label = gtk_label_new("");
     g_signal_connect(label, "draw", G_CALLBACK(label_draw), NULL);
+    gtk_label_set_single_line_mode(GTK_LABEL(label), TRUE);
     return label;
 }
 
