@@ -31,6 +31,7 @@ GdkRGBA palette[PALETTE_SIZE+2] = {
     { 0., 1., 1., 1. }, // light cyan
     { 1., 1., 1., 1. }, // white
 };
+
 GtkPolicyType scrollbar_policy = GTK_POLICY_ALWAYS;
 GtkCssProvider* css_provider = NULL;
 char** default_args = NULL;
@@ -270,10 +271,10 @@ int set_config_from_str(char* line, size_t len) {
     if (LINE_EQUALS(show-scrollbar)) {
         if (strcmp(value, "auto") == 0 || strcmp(value, "automatic") == 0) {
             scrollbar_policy = GTK_POLICY_AUTOMATIC;
-        } else if (PARSE_BOOL(value)) {
-            scrollbar_policy = GTK_POLICY_ALWAYS;
-        } else {
+        } else if (! PARSE_BOOL(value) || strcmp(value, "never") == 0) {
             scrollbar_policy = GTK_POLICY_NEVER;
+        } else {
+            scrollbar_policy = GTK_POLICY_ALWAYS;
         }
         return 1;
     }

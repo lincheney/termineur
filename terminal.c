@@ -427,20 +427,37 @@ scrollbar_hover(GtkWidget* scrollbar, GdkEvent* event, gboolean inside) {
     return FALSE;
 }
 
+void check_full_scrollbar(GtkAdjustment* adjustment, GtkWidget* scrollbar) {
+    double value = gtk_adjustment_get_value(adjustment);
+    double page_size = gtk_adjustment_get_page_size(adjustment);
+    double lower = gtk_adjustment_get_lower(adjustment);
+    double upper = gtk_adjustment_get_upper(adjustment);
+
+    GtkStyleContext* context = gtk_widget_get_style_context(scrollbar);
+    if (value == lower && (value + page_size) == upper) {
+        gtk_style_context_add_class(context, "full");
+    } else {
+        gtk_style_context_remove_class(context, "full");
+    }
+}
+
 void configure_terminal_scrollbar(VteTerminal* terminal, GtkPolicyType scrollbar_policy) {
     GtkWidget* grid = term_get_grid(terminal);
     GtkWidget* scrollbar = g_object_get_data(G_OBJECT(grid), "scrollbar");
+    GtkAdjustment* adjustment = gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(terminal));
 
     if (scrollbar) {
+        g_signal_handlers_disconnect_by_data(adjustment, scrollbar);
         // destroy old scrollbar
         gtk_widget_destroy(scrollbar);
+        g_object_set_data(G_OBJECT(grid), "scrollbar", NULL);
     }
 
     if (scrollbar_policy == GTK_POLICY_NEVER) {
         return;
     }
 
-    scrollbar = gtk_scrollbar_new(GTK_ORIENTATION_VERTICAL, gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(terminal)));
+    scrollbar = gtk_scrollbar_new(GTK_ORIENTATION_VERTICAL, adjustment);
     g_object_set_data(G_OBJECT(grid), "scrollbar", scrollbar);
 
     if (scrollbar_policy == GTK_POLICY_AUTOMATIC) {
@@ -453,9 +470,14 @@ void configure_terminal_scrollbar(VteTerminal* terminal, GtkPolicyType scrollbar
         g_signal_connect(scrollbar, "motion-notify-event", G_CALLBACK(scrollbar_hover), GINT_TO_POINTER(TRUE));
         g_signal_connect(scrollbar, "leave-notify-event", G_CALLBACK(scrollbar_hover), GINT_TO_POINTER(FALSE));
 
+        g_signal_connect(adjustment, "changed", G_CALLBACK(check_full_scrollbar), scrollbar);
+        g_signal_connect(adjustment, "value-changed", G_CALLBACK(check_full_scrollbar), scrollbar);
+
     } else { /* GTK_POLICY_ALWAYS */
         gtk_grid_attach(GTK_GRID(grid), scrollbar, 1, 0, 1, 1);
     }
+
+    gtk_widget_show(scrollbar);
 }
 
 gboolean draw_terminal_background(GtkWidget* widget, cairo_t* cr) {
