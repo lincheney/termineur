@@ -480,26 +480,35 @@ void configure_terminal_scrollbar(VteTerminal* terminal, GtkPolicyType scrollbar
     gtk_widget_show(scrollbar);
 }
 
-gboolean draw_terminal_background(GtkWidget* widget, cairo_t* cr) {
-    cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
-    cairo_set_source_rgba(cr, BACKGROUND.red, BACKGROUND.green, BACKGROUND.blue, BACKGROUND.alpha);
-    cairo_paint(cr);
+gboolean draw_terminal_overlay(GtkWidget* widget, cairo_t* cr, GdkRectangle* rect) {
+    GdkRectangle dim;
+    if (rect == NULL) {
+        rect = &dim;
+        gtk_widget_get_allocation(widget, rect);
+    }
+
+    GtkStyleContext* context = gtk_widget_get_style_context(widget);
+    gtk_render_background(context, cr, rect->x, rect->y, rect->width, rect->height);
     return FALSE;
 }
 
-gboolean draw_terminal_overlay(GtkWidget* widget, cairo_t* cr) {
+gboolean draw_terminal_background(GtkWidget* widget, cairo_t* cr, GtkWidget* terminal) {
+    cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
+    cairo_set_source_rgba(cr, BACKGROUND.red, BACKGROUND.green, BACKGROUND.blue, BACKGROUND.alpha);
+    cairo_paint(cr);
+
     GdkRectangle rect;
     gtk_widget_get_allocation(widget, &rect);
-    GtkStyleContext* context = gtk_widget_get_style_context(widget);
-    gtk_render_background(context, cr, 0, 0, rect.width, rect.height);
+    rect.height = rect.height % vte_terminal_get_char_height(VTE_TERMINAL(terminal));
+    draw_terminal_overlay(terminal, cr, &rect);
     return FALSE;
 }
 
 gboolean overlay_position_term(GtkWidget* overlay, GtkWidget* widget, GdkRectangle* rect) {
     if (VTE_IS_TERMINAL(widget)) {
         gtk_widget_get_allocation(overlay, rect);
-        int value = rect->height % vte_terminal_get_char_height(VTE_TERMINAL(widget));
-        rect->y += value;
+        int margin = rect->height % vte_terminal_get_char_height(VTE_TERMINAL(widget));
+        rect->y += margin;
         return TRUE;
     }
     if (GTK_IS_SCROLLBAR(widget)) {
@@ -541,6 +550,7 @@ GtkWidget* make_terminal(const char* cwd, int argc, char** argv) {
     vte_terminal_set_clear_background(VTE_TERMINAL(terminal), FALSE);
 
     g_signal_connect(terminal, "focus-in-event", G_CALLBACK(term_focus_in_event), NULL);
+    g_signal_connect_swapped(terminal, "focus-out-event", G_CALLBACK(gtk_widget_queue_draw), overlay); // redraw overlay on focus out
     g_signal_connect(terminal, "child-exited", G_CALLBACK(term_exited), grid);
     g_signal_connect(terminal, "destroy", G_CALLBACK(term_destroyed), grid);
     g_signal_connect(terminal, "window-title-changed", G_CALLBACK(update_terminal_title), NULL);
@@ -548,7 +558,7 @@ GtkWidget* make_terminal(const char* cwd, int argc, char** argv) {
     g_signal_connect(terminal, "bell", G_CALLBACK(terminal_bell), NULL);
     g_signal_connect(terminal, "hyperlink-hover-uri-changed", G_CALLBACK(terminal_hyperlink_hover), NULL);
     g_signal_connect(terminal, "button-press-event", G_CALLBACK(terminal_button_press_event), NULL);
-    g_signal_connect(overlay, "draw", G_CALLBACK(draw_terminal_background), NULL);
+    g_signal_connect(overlay, "draw", G_CALLBACK(draw_terminal_background), terminal);
     g_signal_connect_after(terminal, "draw", G_CALLBACK(draw_terminal_overlay), NULL);
 
     char **args;
