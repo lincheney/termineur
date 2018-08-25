@@ -129,20 +129,26 @@ void new_window(VteTerminal* terminal, gchar* data) {
     add_tab_to_window(window, widget, -1);
 }
 
+void on_split_resize(GtkWidget* paned, GdkRectangle *rect, int value) {
+    gtk_paned_set_position(GTK_PANED(paned), value);
+    g_signal_handlers_disconnect_by_func(paned, on_split_resize, GINT_TO_POINTER(value));
+}
 void make_split(VteTerminal* terminal, gchar* data, GtkOrientation orientation, gboolean after) {
     GtkWidget* dest = term_get_grid(terminal);
     char* size_str = NULL;
     GtkWidget* src = new_term(data, &size_str);
+
+    // get the available size before splitting
+    GdkRectangle rect;
+    gtk_widget_get_allocation(dest, &rect);
+    int split_size = orientation == GTK_ORIENTATION_HORIZONTAL ? rect.width : rect.height;
+
     GtkWidget* paned = split(dest, src, orientation, after);
 
     if (size_str) {
         char* suffix;
         int size = strtol(size_str, &suffix, 10);
         if (size) {
-            GdkRectangle rect;
-            gtk_widget_get_allocation(paned, &rect);
-            int split_size = orientation == GTK_ORIENTATION_HORIZONTAL ? rect.width : rect.height;
-
             if (strcmp(suffix, "%") == 0) {
                 size = split_size*size/100;
             } else if (strcmp(suffix, "px") == 0) {
@@ -160,7 +166,7 @@ void make_split(VteTerminal* terminal, gchar* data, GtkOrientation orientation, 
             if (after) {
                 size = split_size - size - split_get_separator_size(paned);
             }
-            gtk_paned_set_position(GTK_PANED(paned), size);
+            g_signal_connect(paned, "size-allocate", G_CALLBACK(on_split_resize), GINT_TO_POINTER(size));
         }
         free(size_str);
     }
