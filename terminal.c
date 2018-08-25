@@ -419,16 +419,12 @@ void term_show_message_bar(VteTerminal* terminal, const char* message, int timeo
 void enable_terminal_scrollbar(VteTerminal* terminal, gboolean enable) {
     GtkWidget* grid = term_get_grid(terminal);
     GtkWidget* scrollbar = g_object_get_data(G_OBJECT(grid), "scrollbar");
+    GtkWidget* parent = gtk_widget_get_parent(scrollbar);
 
-    if (enable) {
-        if (! scrollbar) {
-            scrollbar = gtk_scrollbar_new(GTK_ORIENTATION_VERTICAL, gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(terminal)));
-            g_object_set_data(G_OBJECT(grid), "scrollbar", scrollbar);
-            gtk_grid_attach_next_to(GTK_GRID(grid), scrollbar, GTK_WIDGET(terminal), GTK_POS_RIGHT, 1, 1);
-        }
-        gtk_widget_show(scrollbar);
-    } else if (! enable && scrollbar) {
-        gtk_widget_hide(scrollbar);
+    if (enable && ! parent) {
+        gtk_grid_attach(GTK_GRID(grid), scrollbar, 1, 0, 1, 1);
+    } else if (! enable && parent) {
+        gtk_container_remove(GTK_CONTAINER(grid), scrollbar);
     }
 }
 
@@ -470,8 +466,12 @@ GtkWidget* make_terminal(const char* cwd, int argc, char** argv) {
     g_signal_connect(overlay, "get-child-position", G_CALLBACK(overlay_position_term), NULL);
     gtk_overlay_add_overlay(GTK_OVERLAY(overlay), terminal);
 
+    GtkWidget* scrollbar = gtk_scrollbar_new(GTK_ORIENTATION_VERTICAL, gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(terminal)));
+    g_object_ref(scrollbar);
+
     GtkWidget* grid = gtk_grid_new();
     g_object_set_data(G_OBJECT(grid), "terminal", terminal);
+    g_object_set_data(G_OBJECT(grid), "scrollbar", scrollbar);
     g_object_set_data(G_OBJECT(grid), "msg_bar", msg_bar);
     gtk_container_add(GTK_CONTAINER(grid), overlay);
     g_signal_connect_swapped(grid, "destroy", G_CALLBACK(g_object_unref), msg_bar);
