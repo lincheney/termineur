@@ -331,7 +331,7 @@ void spawn_subprocess(VteTerminal* terminal, gchar* data_, GBytes* stdin_bytes, 
     Window winid = gdk_x11_window_get_xid(gtk_widget_get_window(GTK_WIDGET(terminal)));
 
 #define SET_ENVIRON(name, format, value) \
-    ( sprintf(buffer, format, value), g_subprocess_launcher_setenv(launcher, APP_PREFIX "_" #name, buffer, TRUE) )
+    ( sprintf(buffer, (format), (value)), g_subprocess_launcher_setenv(launcher, APP_PREFIX "_" #name, buffer, TRUE) )
 
     // figure out actual row by looking at the adjustment
     GtkAdjustment* adj = gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(terminal));
@@ -341,6 +341,7 @@ void spawn_subprocess(VteTerminal* terminal, gchar* data_, GBytes* stdin_bytes, 
     SET_ENVIRON(FGPID, "%i", get_foreground_pid(terminal));
     SET_ENVIRON(CURSORX, "%li", cursorx);
     SET_ENVIRON(CURSORY, "%li", cursory);
+    SET_ENVIRON(CONTROL_FLOW, "%i", get_term_attr(terminal).c_iflag & IXON ? 1 : 0);
     if (hyperlink) SET_ENVIRON(HYPERLINK, "%s", hyperlink);
     if (winid) SET_ENVIRON(WINID, "0x%lx", winid);
 

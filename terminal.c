@@ -199,6 +199,14 @@ gboolean get_foreground_name(VteTerminal* terminal, char* buffer, size_t length)
     return TRUE;
 }
 
+struct termios get_term_attr(VteTerminal* terminal) {
+    VtePty* pty = vte_terminal_get_pty(terminal);
+    int pty_fd = vte_pty_get_fd(pty);
+    struct termios termios;
+    tcgetattr(pty_fd, &termios);
+    return termios;
+}
+
 int is_running_foreground_process(VteTerminal* terminal) {
     return get_pid(terminal) != get_foreground_pid(terminal);
 }
