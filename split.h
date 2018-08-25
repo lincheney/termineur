@@ -5,8 +5,9 @@
 #include <vte/vte.h>
 
 #define TERMINAL_FOCUS_KEY "focus_chain"
+#define ROOT_SPLIT_CLASS "split-root"
 
-GtkWidget* split_new();
+GtkWidget* split_new_root();
 GtkWidget* split_get_root(GtkWidget* paned);
 GtkWidget* split_get_container(GtkWidget* widget);
 GtkWidget* split(GtkWidget* dest, GtkWidget* src, GtkOrientation orientation, gboolean after);

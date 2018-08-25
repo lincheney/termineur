@@ -127,7 +127,7 @@ void add_tab_to_window(GtkWidget* window, GtkWidget* widget, int position) {
     } else {
         terminal = g_object_get_data(G_OBJECT(widget), "terminal");
 
-        tab = split_new();
+        tab = split_new_root();
         gtk_paned_pack1(GTK_PANED(tab), widget, TRUE, TRUE);
         split_set_active_term(VTE_TERMINAL(terminal));
     }

@@ -9,10 +9,13 @@ void gtk_paned_get_children(GtkPaned* paned, GtkWidget** child1, GtkWidget** chi
     *child2 = gtk_paned_get_child2(paned);
 }
 
-GtkWidget* split_new() {
+GtkWidget* split_new_root() {
     GtkWidget* paned =  gtk_paned_new(GTK_ORIENTATION_VERTICAL);
     gtk_paned_set_wide_handle(GTK_PANED(paned), TRUE);
     g_object_set_data(G_OBJECT(paned), TERMINAL_FOCUS_KEY, NULL);
+
+    GtkStyleContext* context = gtk_widget_get_style_context(paned);
+    gtk_style_context_add_class(context, ROOT_SPLIT_CLASS);
 
     // label
     GtkWidget* label = gtk_label_new("");

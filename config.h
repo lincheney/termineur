@@ -3,6 +3,7 @@
 
 #include <vte/vte.h>
 #include "callback.h"
+#include "split.h"
 
 #define APP_PREFIX "VTE_TERMINAL"
 
@@ -10,6 +11,11 @@
 GdkRGBA palette[PALETTE_SIZE+2];
 #define BACKGROUND (palette[0])
 #define FOREGROUND (palette[1])
+
+// make sure terminal background is transparent by default
+#define GLOBAL_CSS \
+    "vte-terminal { background: none; }\n" \
+    "notebook ." ROOT_SPLIT_CLASS " { background: black; }\n"
 
 char* app_id;
 char* config_filename;
