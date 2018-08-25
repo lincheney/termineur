@@ -4,14 +4,62 @@
 #include "window.h"
 #include "socket.h"
 
-char** commands = NULL;
+char* commands[255];
 
-static GOptionEntry entries[] = {
-    {"id",      'i', 0, G_OPTION_ARG_STRING,       &app_id,          "Application ID", "ID"},
-    {"config",  'c', 0, G_OPTION_ARG_FILENAME,     &config_filename, "Config file",    "FILE"},
-    {"command", 'C', 0, G_OPTION_ARG_STRING_ARRAY, &commands,        "Run commands",   NULL},
-    {NULL}
-};
+void print_help(int argc, char** argv) {
+    fprintf(stderr,
+            "usage: %s [-i|--id ID] [-c|--config CONFIG] [-C|--command COMMAND] [ARGS...]\n" \
+            "       %s -h|--help\n" \
+        , argv[0], argv[0]);
+}
+
+char** parse_args(int* argc, char** argv) {
+
+#define MATCH_FLAG(flag, dest) \
+        if (strncmp(argv[i], (flag), sizeof(flag)-1) == 0) { \
+            if (argv[i][sizeof(flag)-1] == '=') { \
+                /* -f=value */ \
+                dest = argv[i] + sizeof(flag); \
+            } else if (argv[i][1] != '-' && argv[i][sizeof(flag)-1]) { \
+                /* -fvalue */ \
+                dest = argv[i] + sizeof(flag) - 1; \
+            } else if (i + 1 < *argc) { \
+                /* -f value */ \
+                i ++; \
+                dest = argv[i]; \
+            } else { \
+                print_help(*argc, argv); \
+                fprintf(stderr, "%s: expected one argument\n", flag); \
+                exit(1); \
+            } \
+            continue; \
+        }
+
+    int i, command_ix = -1;
+    // skip arg0
+    for (i = 1; i < *argc; i ++) {
+        if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+            print_help(*argc, argv);
+            exit(0);
+        }
+
+        MATCH_FLAG("-c", config_filename);
+        MATCH_FLAG("--config", config_filename);
+        MATCH_FLAG("-i", app_id);
+        MATCH_FLAG("--id", app_id);
+        MATCH_FLAG("-C", command_ix ++; commands[command_ix]);
+        MATCH_FLAG("--command", command_ix ++; commands[command_ix]);
+        if (strcmp(argv[i], "--") == 0) {
+            i ++;
+        }
+        break;
+    }
+
+    commands[command_ix] = 0;
+    *argc -= i;
+    if (! argc) return NULL;
+    return argv+i;
+}
 
 int run_server(int argc, char** argv) {
     if (! config_filename) {
@@ -69,13 +117,11 @@ int client_send_line(GSocket* sock, char* line, Buffer* buffer) {
 int run_client(GSocket* sock, int argc, char** argv) {
     Buffer* buffer = buffer_new(1024);
 
-    if (commands) {
-        for (char** line = commands; *line; line++) {
-            client_send_line(sock, *line, buffer);
-        }
+    for (char** line = commands; *line; line++) {
+        client_send_line(sock, *line, buffer);
     }
 
-    if (! commands || argc > 0) {
+    if (! commands[0] || argc > 0) {
         char* quoted_argv[argc+3];
         quoted_argv[argc+2] = NULL;
 
@@ -123,7 +169,6 @@ char* make_app_id() {
         snprintf(buffer, sizeof(buffer), APP_PREFIX ".x%s", display+1);
         app_id = strndup(buffer, sizeof(buffer));
     } else if (strcmp(app_id, "") == 0) {
-        free(app_id);
         app_id = NULL;
     }
 
@@ -136,28 +181,10 @@ char* make_app_id() {
 
 int main(int argc, char *argv[]) {
     int status = 0;
-    GError* error = NULL;
     gtk_init(&argc, &argv);
+    argv = parse_args(&argc, argv);
 
-    // cli option parsing
-    GOptionContext* context = g_option_context_new(NULL);
-    g_option_context_add_main_entries(context, entries, NULL);
-    if (! g_option_context_parse(context, &argc, &argv, &error)) {
-        g_print("%s\n", error->message);
-        g_error_free(error);
-        return 1;
-    }
     app_id = make_app_id();
-
-    // remove arg0
-    argc --;
-    argv ++;
-    // remove --
-    if (argc > 0 && strcmp(argv[0], "--") == 0) {
-        argc --;
-        argv ++;
-    }
-
     if (! app_id) {
         run_server(argc, argv);
         return 0;
@@ -169,7 +196,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    status = commands ? 0 : try_bind_sock(sock, addr);
+    status = commands[0] ? 0 : try_bind_sock(sock, addr);
     if (status > 0) {
         status = run_server(argc, argv);
     } else if (status < 0) {
