@@ -55,6 +55,7 @@ char** parse_args(int* argc, char** argv) {
         break;
     }
 
+    command_ix ++;
     commands[command_ix] = 0;
     *argc -= i;
     if (! argc) return NULL;
