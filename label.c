@@ -1,4 +1,5 @@
 #include <gtk/gtk.h>
+#include "label.h"
 
 gboolean label_draw(GtkWidget* widget, cairo_t* cr) {
     GtkLabel* label = GTK_LABEL(widget);
