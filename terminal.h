@@ -17,6 +17,8 @@ int is_running_foreground_process(VteTerminal* terminal);
 void update_terminal_ui(VteTerminal* terminal);
 void update_window_title(GtkWindow*, VteTerminal* terminal);
 gboolean refresh_all_terminals(gpointer);
+gboolean term_hide_message_bar(VteTerminal* terminal);
+void term_show_message_bar(VteTerminal* terminal, const char* message, int timeout);
 void enable_terminal_scrollbar(VteTerminal* terminal, gboolean enable);
 void term_change_css_class(VteTerminal* terminal, char* class, gboolean add);
 GtkWidget* term_get_grid(VteTerminal* terminal);

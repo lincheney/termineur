@@ -161,6 +161,13 @@ gboolean split_move(GtkWidget* widget, GtkOrientation orientation, gboolean forw
 }
 
 gboolean split_move_focus(GtkWidget* widget, GtkOrientation orientation, gboolean forward) {
+    /*
+     * instead of navigating the split tree,
+     * loop through the terminals and find the one
+     * with the closest coords in the given
+     * direction
+     */
+
     GtkWidget* root = split_get_root(widget);
     GtkWidget* closest = NULL;
     GdkRectangle base, other;

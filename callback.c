@@ -438,6 +438,19 @@ void focus_split_below(VteTerminal* terminal) {
     split_move_focus(term_get_grid(terminal), GTK_ORIENTATION_VERTICAL, TRUE);
 }
 
+void show_message_bar(VteTerminal* terminal, char* data) {
+    int timeout = 0;
+    if (strncmp(data, "timeout=", sizeof("timeout=")-1) == 0) {
+        timeout = strtol(data + sizeof("timeout=") - 1, &data, 10);
+        // find whitespace
+        while (! g_ascii_isspace(*data) ) data++;
+        data ++;
+    }
+    term_show_message_bar(terminal, data, timeout);
+}
+
+CallbackFunc hide_message_bar = (CallbackFunc)term_hide_message_bar;
+
 char* str_unescape(char* string) {
     // modifies in place
     char* p = string;
@@ -547,6 +560,8 @@ Callback make_callback(char* name, char* arg) {
         MATCH_CALLBACK(focus_split_left);
         MATCH_CALLBACK(focus_split_above);
         MATCH_CALLBACK(focus_split_below);
+        MATCH_CALLBACK_WITH_DATA(show_message_bar, strdup(arg), free);
+        MATCH_CALLBACK(hide_message_bar);
         break;
     }
     return callback;

@@ -389,6 +389,30 @@ void set_window_title_format(char* string) {
     parse_title_format(string, &window_title_format);
 }
 
+gboolean term_hide_message_bar(VteTerminal* terminal) {
+    GtkWidget* grid = term_get_grid(terminal);
+    GtkWidget* msg_bar = GTK_WIDGET(g_object_get_data(G_OBJECT(grid), "msg_bar"));
+    if (gtk_widget_get_parent(msg_bar)) {
+        gtk_container_remove(GTK_CONTAINER(grid), msg_bar);
+    }
+    return G_SOURCE_REMOVE;
+}
+
+void term_show_message_bar(VteTerminal* terminal, const char* message, int timeout) {
+    GtkWidget* grid = term_get_grid(terminal);
+    GtkWidget* msg_bar = GTK_WIDGET(g_object_get_data(G_OBJECT(grid), "msg_bar"));
+
+    if (! gtk_widget_get_parent(msg_bar)) {
+        gtk_grid_attach(GTK_GRID(grid), msg_bar, 0, -1, 2, 1);
+    }
+    gtk_button_set_label(GTK_BUTTON(msg_bar), message);
+    if (timeout) {
+        g_timeout_add(timeout, (GSourceFunc)gtk_button_clicked, msg_bar);
+    }
+
+    gtk_widget_show(msg_bar);
+}
+
 void enable_terminal_scrollbar(VteTerminal* terminal, gboolean enable) {
     GtkWidget* grid = term_get_grid(terminal);
     GtkWidget* scrollbar = g_object_get_data(G_OBJECT(grid), "scrollbar");
@@ -397,7 +421,7 @@ void enable_terminal_scrollbar(VteTerminal* terminal, gboolean enable) {
         if (! scrollbar) {
             scrollbar = gtk_scrollbar_new(GTK_ORIENTATION_VERTICAL, gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(terminal)));
             g_object_set_data(G_OBJECT(grid), "scrollbar", scrollbar);
-            gtk_container_add(GTK_CONTAINER(grid), GTK_WIDGET(scrollbar));
+            gtk_grid_attach_next_to(GTK_GRID(grid), scrollbar, GTK_WIDGET(terminal), GTK_POS_RIGHT, 1, 1);
         }
         gtk_widget_show(scrollbar);
     } else if (! enable && scrollbar) {
@@ -423,10 +447,18 @@ gboolean terminal_draw_finish(GtkWidget* widget, cairo_t* cr) {
 }
 
 GtkWidget* make_terminal(const char* cwd, int argc, char** argv) {
-    GtkWidget* grid = gtk_grid_new();
     GtkWidget *terminal = vte_terminal_new();
+
+    GtkWidget* msg_bar = gtk_button_new_with_label("");
+    g_object_ref(msg_bar);
+    g_signal_connect(msg_bar, "clicked", G_CALLBACK(term_hide_message_bar), terminal);
+
+    GtkWidget* grid = gtk_grid_new();
     g_object_set_data(G_OBJECT(grid), "terminal", terminal);
+    g_object_set_data(G_OBJECT(grid), "msg_bar", msg_bar);
     gtk_container_add(GTK_CONTAINER(grid), GTK_WIDGET(terminal));
+    g_signal_connect_swapped(grid, "destroy", G_CALLBACK(g_object_unref), msg_bar);
+    g_signal_connect_swapped(msg_bar, "focus-in-event", G_CALLBACK(gtk_widget_grab_focus), terminal);
 
     configure_terminal(terminal);
     g_object_set(terminal, "expand", TRUE, "scrollback-lines", terminal_default_scrollback_lines, NULL);
