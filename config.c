@@ -31,7 +31,7 @@ GdkRGBA palette[PALETTE_SIZE+2] = {
     { 0., 1., 1., 1. }, // light cyan
     { 1., 1., 1., 1. }, // white
 };
-gboolean show_scrollbar = 1;
+GtkPolicyType scrollbar_policy = GTK_POLICY_ALWAYS;
 GtkCssProvider* css_provider = NULL;
 char** default_args = NULL;
 char* window_icon = NULL;
@@ -110,7 +110,7 @@ void configure_terminal(GtkWidget* terminal) {
     // populate palette
     vte_terminal_set_colors(VTE_TERMINAL(terminal), &FOREGROUND, &BACKGROUND, palette+2, PALETTE_SIZE);
 
-    enable_terminal_scrollbar(VTE_TERMINAL(terminal), show_scrollbar);
+    configure_terminal_scrollbar(VTE_TERMINAL(terminal), scrollbar_policy);
 }
 
 void configure_tab(GtkContainer* notebook, GtkWidget* tab) {
@@ -247,7 +247,6 @@ int set_config_from_str(char* line, size_t len) {
     MAP_LINE(scroll-on-output,         terminal_scroll_on_output     = PARSE_BOOL(value));
     MAP_LINE(default-scrollback-lines, terminal_default_scrollback_lines     = atoi(value));
     MAP_LINE(word-char-exceptions,     free(terminal_word_char_exceptions); terminal_word_char_exceptions = strdup(value));
-    MAP_LINE(show-scrollbar,           show_scrollbar                = PARSE_BOOL(value));
     MAP_LINE(window-icon,              free(window_icon);  window_icon = strdup(value));
     MAP_LINE(window-close-confirm,     window_close_confirm          = PARSE_BOOL(value));
 
@@ -265,6 +264,17 @@ int set_config_from_str(char* line, size_t len) {
     if (LINE_EQUALS(default-args)) {
         g_strfreev(default_args);
         default_args = shell_split(value, NULL);
+        return 1;
+    }
+
+    if (LINE_EQUALS(show-scrollbar)) {
+        if (strcmp(value, "auto") == 0 || strcmp(value, "automatic") == 0) {
+            scrollbar_policy = GTK_POLICY_AUTOMATIC;
+        } else if (PARSE_BOOL(value)) {
+            scrollbar_policy = GTK_POLICY_ALWAYS;
+        } else {
+            scrollbar_policy = GTK_POLICY_NEVER;
+        }
         return 1;
     }
 

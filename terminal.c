@@ -416,15 +416,45 @@ void term_show_message_bar(VteTerminal* terminal, const char* message, int timeo
     gtk_widget_show(msg_bar);
 }
 
-void enable_terminal_scrollbar(VteTerminal* terminal, gboolean enable) {
+gboolean
+scrollbar_hover(GtkWidget* scrollbar, GdkEvent* event, gboolean inside) {
+    GtkStyleContext* context = gtk_widget_get_style_context(scrollbar);
+    if (inside) {
+        gtk_style_context_add_class(context, "hovering");
+    } else {
+        gtk_style_context_remove_class(context, "hovering");
+    }
+    return FALSE;
+}
+
+void configure_terminal_scrollbar(VteTerminal* terminal, GtkPolicyType scrollbar_policy) {
     GtkWidget* grid = term_get_grid(terminal);
     GtkWidget* scrollbar = g_object_get_data(G_OBJECT(grid), "scrollbar");
-    GtkWidget* parent = gtk_widget_get_parent(scrollbar);
 
-    if (enable && ! parent) {
+    if (scrollbar) {
+        // destroy old scrollbar
+        gtk_widget_destroy(scrollbar);
+    }
+
+    if (scrollbar_policy == GTK_POLICY_NEVER) {
+        return;
+    }
+
+    scrollbar = gtk_scrollbar_new(GTK_ORIENTATION_VERTICAL, gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(terminal)));
+    g_object_set_data(G_OBJECT(grid), "scrollbar", scrollbar);
+
+    if (scrollbar_policy == GTK_POLICY_AUTOMATIC) {
+        GtkWidget* overlay = gtk_widget_get_parent(GTK_WIDGET(terminal));
+        // overlay on top of terminal
+        gtk_overlay_add_overlay(GTK_OVERLAY(overlay), scrollbar);
+
+        GtkStyleContext* context = gtk_widget_get_style_context(scrollbar);
+        gtk_style_context_add_class(context, "overlay-indicator");
+        g_signal_connect(scrollbar, "motion-notify-event", G_CALLBACK(scrollbar_hover), GINT_TO_POINTER(TRUE));
+        g_signal_connect(scrollbar, "leave-notify-event", G_CALLBACK(scrollbar_hover), GINT_TO_POINTER(FALSE));
+
+    } else { /* GTK_POLICY_ALWAYS */
         gtk_grid_attach(GTK_GRID(grid), scrollbar, 1, 0, 1, 1);
-    } else if (! enable && parent) {
-        gtk_container_remove(GTK_CONTAINER(grid), scrollbar);
     }
 }
 
@@ -450,6 +480,16 @@ gboolean overlay_position_term(GtkWidget* overlay, GtkWidget* widget, GdkRectang
         rect->y += value;
         return TRUE;
     }
+    if (GTK_IS_SCROLLBAR(widget)) {
+        gtk_widget_get_allocation(overlay, rect);
+        int min, natural;
+        gtk_widget_get_preferred_width(widget, &min, &natural);
+        int width = MAX(min, MIN(natural, rect->width));
+
+        rect->x = rect->width - width;
+        rect->width = width;
+        return TRUE;
+    }
     return FALSE;
 }
 
@@ -466,12 +506,8 @@ GtkWidget* make_terminal(const char* cwd, int argc, char** argv) {
     g_signal_connect(overlay, "get-child-position", G_CALLBACK(overlay_position_term), NULL);
     gtk_overlay_add_overlay(GTK_OVERLAY(overlay), terminal);
 
-    GtkWidget* scrollbar = gtk_scrollbar_new(GTK_ORIENTATION_VERTICAL, gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(terminal)));
-    g_object_ref(scrollbar);
-
     GtkWidget* grid = gtk_grid_new();
     g_object_set_data(G_OBJECT(grid), "terminal", terminal);
-    g_object_set_data(G_OBJECT(grid), "scrollbar", scrollbar);
     g_object_set_data(G_OBJECT(grid), "msg_bar", msg_bar);
     gtk_container_add(GTK_CONTAINER(grid), overlay);
     g_signal_connect_swapped(grid, "destroy", G_CALLBACK(g_object_unref), msg_bar);

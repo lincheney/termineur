@@ -25,10 +25,10 @@ char* default_open_action;
 guint terminal_default_scrollback_lines;
 gboolean show_scrollbar;
 
-gboolean window_close_confirm;
 #define CLOSE_CONFIRM_NO 0
 #define CLOSE_CONFIRM_YES 1
 #define CLOSE_CONFIRM_SMART 2
+gboolean window_close_confirm;
 gint tab_close_confirm;
 
 #define BELL_EVENT 1

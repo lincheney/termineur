@@ -19,7 +19,7 @@ void update_window_title(GtkWindow*, VteTerminal* terminal);
 gboolean refresh_all_terminals(gpointer);
 gboolean term_hide_message_bar(VteTerminal* terminal);
 void term_show_message_bar(VteTerminal* terminal, const char* message, int timeout);
-void enable_terminal_scrollbar(VteTerminal* terminal, gboolean enable);
+void configure_terminal_scrollbar(VteTerminal* terminal, GtkPolicyType scrollbar_policy);
 void term_change_css_class(VteTerminal* terminal, char* class, gboolean add);
 GtkWidget* term_get_grid(VteTerminal* terminal);
 GtkWidget* term_get_notebook(VteTerminal* terminal);
