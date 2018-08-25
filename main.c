@@ -13,7 +13,7 @@ static GOptionEntry entries[] = {
     {NULL}
 };
 
-int run_primary(int argc, char** argv) {
+int run_server(int argc, char** argv) {
     if (! config_filename) {
         config_filename = g_build_filename(g_get_user_config_dir(), "vte_terminal", "config.ini", NULL);
     }
@@ -29,7 +29,7 @@ int run_primary(int argc, char** argv) {
     return 0;
 }
 
-int slave_send_line(GSocket* sock, char* line, Buffer* buffer) {
+int client_send_line(GSocket* sock, char* line, Buffer* buffer) {
     GError* error = NULL;
     line = g_strescape(line, "\"");
     int len = strlen(line) + 1;
@@ -66,12 +66,12 @@ int slave_send_line(GSocket* sock, char* line, Buffer* buffer) {
     return 0;
 }
 
-int run_slave(GSocket* sock, int argc, char** argv) {
+int run_client(GSocket* sock, int argc, char** argv) {
     Buffer* buffer = buffer_new(1024);
 
     if (commands) {
         for (char** line = commands; *line; line++) {
-            slave_send_line(sock, *line, buffer);
+            client_send_line(sock, *line, buffer);
         }
     }
 
@@ -101,7 +101,7 @@ int run_slave(GSocket* sock, int argc, char** argv) {
             free(quoted_argv[i+2]); // first 2 strings are static
         }
         *strchr(line, ' ') = ':';
-        slave_send_line(sock, line, buffer);
+        client_send_line(sock, line, buffer);
         free(line);
     }
 
@@ -159,7 +159,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (! app_id) {
-        run_primary(argc, argv);
+        run_server(argc, argv);
         return 0;
     }
 
@@ -171,11 +171,11 @@ int main(int argc, char *argv[]) {
 
     status = commands ? 0 : try_bind_sock(sock, addr);
     if (status > 0) {
-        status = run_primary(argc, argv);
+        status = run_server(argc, argv);
     } else if (status < 0) {
         return 1;
     } else if (connect_sock(sock, addr) >= 0) {
-        status = run_slave(sock, argc, argv);
+        status = run_client(sock, argc, argv);
     }
     close_socket(sock);
 
