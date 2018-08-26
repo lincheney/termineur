@@ -4,6 +4,7 @@
 #include "config.h"
 #include "window.h"
 #include "socket.h"
+#include "utils.h"
 
 char* commands[255];
 
@@ -17,7 +18,7 @@ void print_help(int argc, char** argv) {
 char** parse_args(int* argc, char** argv) {
 
 #define MATCH_FLAG(flag, dest) \
-        if (strncmp(argv[i], (flag), sizeof(flag)-1) == 0) { \
+        if (STR_STARTSWITH(argv[i], (flag))) { \
             if (argv[i][sizeof(flag)-1] == '=') { \
                 /* -f=value */ \
                 dest = argv[i] + sizeof(flag); \
@@ -39,7 +40,7 @@ char** parse_args(int* argc, char** argv) {
     int i, command_ix = -1;
     // skip arg0
     for (i = 1; i < *argc; i ++) {
-        if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+        if (STR_EQUAL(argv[i], "-h") || STR_EQUAL(argv[i], "--help")) {
             print_help(*argc, argv);
             exit(0);
         }
@@ -50,7 +51,7 @@ char** parse_args(int* argc, char** argv) {
         MATCH_FLAG("--id", app_id);
         MATCH_FLAG("-C", command_ix ++; commands[command_ix]);
         MATCH_FLAG("--command", command_ix ++; commands[command_ix]);
-        if (strcmp(argv[i], "--") == 0) {
+        if (STR_EQUAL(argv[i], "--")) {
             i ++;
         }
         break;
@@ -67,14 +68,14 @@ int run_server(int argc, char** argv) {
     if (! config_filename) {
         config_filename = g_build_filename(g_get_user_config_dir(), "vte_terminal", "config.ini", NULL);
     }
-    load_config(config_filename);
-
     GtkCssProvider* css_provider = gtk_css_provider_new();
     gtk_css_provider_load_from_data(css_provider, GLOBAL_CSS, -1, NULL);
     GdkScreen* screen = gdk_screen_get_default();
     gtk_style_context_add_provider_for_screen(screen, GTK_STYLE_PROVIDER(css_provider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
 
+    load_config(config_filename);
     make_new_window_full(NULL, NULL, argc, argv);
+
     gtk_main();
     return 0;
 }
@@ -187,7 +188,7 @@ char* make_app_id() {
         const char* display = gdk_display_get_name(gdk_display_get_default());
         snprintf(buffer, sizeof(buffer), APP_PREFIX ".x%s", display+1);
         app_id = strndup(buffer, sizeof(buffer));
-    } else if (strcmp(app_id, "") == 0) {
+    } else if (STR_EQUAL(app_id, "")) {
         app_id = NULL;
     }
 

@@ -1,7 +1,7 @@
 #ifndef CALLBACK_H
 #define CALLBACK_H
 
-typedef void(*CallbackFunc)(VteTerminal*, gpointer, gpointer);
+typedef void(*CallbackFunc)(VteTerminal*, char**, void*);
 
 typedef struct {
     CallbackFunc func;

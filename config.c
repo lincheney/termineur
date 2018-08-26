@@ -7,6 +7,7 @@
 #include "window.h"
 #include "terminal.h"
 #include "split.h"
+#include "utils.h"
 
 char* config_filename = NULL;
 char* app_id = NULL;
@@ -173,6 +174,7 @@ void unset_callback(guint key, int metadata) {
 }
 
 int set_config_from_str(char* line, size_t len) {
+    char* tmp;
     char* value = strchr(line, '=');
     if (! value) return 0; // invalid line
 
@@ -182,7 +184,7 @@ int set_config_from_str(char* line, size_t len) {
     g_strstrip(line);
     g_strstrip(value);
 
-#define LINE_EQUALS(string) (strcmp(line, (#string)) == 0)
+#define LINE_EQUALS(string) (STR_EQUAL(line, (#string)))
 #define MAP_LINE(string, body) \
     if (LINE_EQUALS(string)) { \
         body; \
@@ -200,11 +202,12 @@ int set_config_from_str(char* line, size_t len) {
 #define MAP_LINE_VALUE(string, type, ...) MAP_LINE(string, MAP_VALUE(type, __VA_ARGS__))
 
     // palette colours
-    if (strncmp(line, "col", 3) == 0) {
+    tmp = STR_STRIP_PREFIX(line, "col");
+    if (tmp) {
         errno = 0;
         char* endptr = NULL;
-        int n = strtol(line+3, &endptr, 0);
-        if ((! errno) && *endptr == '\0' && 0 <= n && n < 16) {
+        int n = strtol(tmp, &endptr, 10);
+        if (!errno && *endptr == '\0' && 0 <= n && n < 16) {
             gdk_rgba_parse(palette+2+n, value);
             return 1;
         }
@@ -214,8 +217,8 @@ int set_config_from_str(char* line, size_t len) {
     g_ascii_strcasecmp((string), "no") == 0 \
     || g_ascii_strcasecmp((string), "n") == 0 \
     || g_ascii_strcasecmp((string), "false") == 0 \
-    || strcmp((string), "") == 0 \
-    || strcmp((string), "0") == 0 \
+    || STR_EQUAL((string), "") \
+    || STR_EQUAL((string), "0") \
     ))
 
     if (LINE_EQUALS(css)) {
@@ -269,9 +272,9 @@ int set_config_from_str(char* line, size_t len) {
     }
 
     if (LINE_EQUALS(show-scrollbar)) {
-        if (strcmp(value, "auto") == 0 || strcmp(value, "automatic") == 0) {
+        if (STR_EQUAL(value, "auto") || STR_EQUAL(value, "automatic")) {
             scrollbar_policy = GTK_POLICY_AUTOMATIC;
-        } else if (! PARSE_BOOL(value) || strcmp(value, "never") == 0) {
+        } else if (! PARSE_BOOL(value) || STR_EQUAL(value, "never")) {
             scrollbar_policy = GTK_POLICY_NEVER;
         } else {
             scrollbar_policy = GTK_POLICY_ALWAYS;
@@ -325,12 +328,13 @@ int set_config_from_str(char* line, size_t len) {
 
     CallbackData combo = {0, 0, {NULL, NULL, NULL}};
 
-    if (strncmp(line, "on-", sizeof("on-")-1) == 0) {
-        char* event = line + sizeof("on-")-1;
+    tmp = STR_STRIP_PREFIX(line, "on-");
+    if (tmp) {
+        char* event = tmp;
         combo.key = -1;
 
 #define MAP_EVENT(string, value) \
-        if (strcmp(event, #string) == 0) { \
+        if (STR_EQUAL(event, #string)) { \
             combo.metadata = value ## _EVENT; \
             break; \
         }
@@ -344,8 +348,9 @@ int set_config_from_str(char* line, size_t len) {
 
     }
 
-    if (strncmp(line, "key-", sizeof("key-")-1) == 0) {
-        char* shortcut = line + sizeof("key-")-1;
+    tmp = STR_STRIP_PREFIX(line, "key-");
+    if (tmp) {
+        char* shortcut = tmp;
 
         gtk_accelerator_parse(shortcut, &(combo.key), (GdkModifierType*) &(combo.metadata));
         if (combo.metadata & GDK_SHIFT_MASK) {
@@ -354,7 +359,7 @@ int set_config_from_str(char* line, size_t len) {
     }
 
     if (combo.key) {
-        if (strcmp(value, "") == 0) {
+        if (STR_EQUAL(value, "")) {
             // unset this shortcut
             unset_callback(combo.key, combo.metadata);
             return 1;
@@ -386,7 +391,7 @@ int trigger_callback(VteTerminal* terminal, guint key, int metadata) {
         for (int i = 0; i < callbacks->len; i++) {
             CallbackData* cb = &g_array_index(callbacks, CallbackData, i);
             if (cb->key == key && cb->metadata == metadata) {
-                cb->callback.func(terminal, cb->callback.data, NULL);
+                cb->callback.func(terminal, NULL, cb->callback.data);
                 handled = 1;
             }
         }
@@ -416,8 +421,8 @@ void* execute_line(char* line, int size, gboolean reconfigure) {
     if (callback.func) {
         VteTerminal* terminal = get_active_terminal(NULL);
         if (terminal) {
-            void* data = NULL;
-            callback.func(terminal, callback.data, &data);
+            char* data = NULL;
+            callback.func(terminal, &data, callback.data);
             if (callback.cleanup) {
                 callback.cleanup(callback.data);
             }
@@ -453,7 +458,7 @@ void load_config(char* filename) {
     ssize_t len, l;
     while ((len = getline(&line, &size, config)) != -1) {
         // multilines
-        if (len >= 4 && strcmp(line+len-4, "\"\"\"\n") == 0) {
+        if (len >= 4 && STR_EQUAL(line+len-4, "\"\"\"\n")) {
             len -= 4;
             while ((l = getline(&buffer, &bufsize, config)) != -1) {
                 len += l;
@@ -463,7 +468,7 @@ void load_config(char* filename) {
                 }
                 memcpy(line+len-l, buffer, l);
 
-                if (strncmp(line+len-4, "\"\"\"\n", 4) == 0) {
+                if (STR_STARTSWITH(line+len-4, "\"\"\"\n")) {
                     line[len-4] = '\0';
                     break;
                 }

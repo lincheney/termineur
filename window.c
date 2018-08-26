@@ -7,8 +7,12 @@
 
 GList* toplevel_windows = NULL;
 
+GtkWidget* window_get_notebook(GtkWidget* window) {
+    return GTK_WIDGET(g_object_get_data(G_OBJECT(window), "notebook"));
+}
+
 VteTerminal* get_nth_terminal(GtkWidget* window, int index) {
-    GtkWidget* notebook = g_object_get_data(G_OBJECT(window), "notebook");
+    GtkWidget* notebook = window_get_notebook(window);
     GtkWidget* tab = gtk_notebook_get_nth_page(GTK_NOTEBOOK(notebook), index);
     GtkWidget* terminal = split_get_active_term(tab);
     return VTE_TERMINAL(terminal);
@@ -28,7 +32,7 @@ VteTerminal* get_active_terminal(GtkWidget* window) {
     if (! window) window = get_active_window();
     if (! window) return NULL;
 
-    GtkWidget* notebook = g_object_get_data(G_OBJECT(window), "notebook");
+    GtkWidget* notebook = window_get_notebook(window);
     int index = gtk_notebook_get_current_page(GTK_NOTEBOOK(notebook));
     if (index < 0) return NULL;
     return get_nth_terminal(window, index);
@@ -54,7 +58,7 @@ void notebook_tab_removed(GtkWidget* notebook, GtkWidget *child, guint page_num)
 
 GtkNotebook* notebook_create_window(GtkNotebook* notebook, GtkWidget* page, gint x, gint y) {
     GtkWidget* window = make_window();
-    return GTK_NOTEBOOK(g_object_get_data(G_OBJECT(window), "notebook"));
+    return GTK_NOTEBOOK(window_get_notebook(window));
 }
 
 void notebook_switch_page(GtkNotebook* notebook, GtkWidget* tab, guint num) {
@@ -82,7 +86,7 @@ gint run_confirm_close_dialog(GtkWidget* window, char* message) {
 gboolean prevent_window_close(GtkWidget* window, GdkEvent* event, gpointer data) {
     if (! window_close_confirm) return FALSE;
 
-    GtkNotebook* notebook = GTK_NOTEBOOK(g_object_get_data(G_OBJECT(window), "notebook"));
+    GtkNotebook* notebook = GTK_NOTEBOOK(window_get_notebook(window));
     int npages = gtk_notebook_get_n_pages(notebook);
     char message[1024];
     snprintf(message, sizeof(message), "You have %i tab(s) open.\nAre you sure you want to quit?", npages);
@@ -133,7 +137,7 @@ void add_tab_to_window(GtkWidget* window, GtkWidget* widget, int position) {
     }
 
     GtkWidget* label = g_object_get_data(G_OBJECT(tab), "label");
-    GtkNotebook* notebook = GTK_NOTEBOOK(g_object_get_data(G_OBJECT(window), "notebook"));
+    GtkNotebook* notebook = GTK_NOTEBOOK(window_get_notebook(window));
     int page = gtk_notebook_insert_page(notebook, tab, label, position);
     configure_tab(GTK_CONTAINER(notebook), tab);
 
@@ -192,7 +196,7 @@ void foreach_window(GFunc callback, gpointer data) {
 }
 void foreach_terminal_in_window(GtkWidget* window, GFunc callback, gpointer data) {
     GtkWidget* tab;
-    GtkNotebook* notebook = g_object_get_data(G_OBJECT(window), "notebook");
+    GtkNotebook* notebook = GTK_NOTEBOOK(window_get_notebook(window));
 
     int n = gtk_notebook_get_n_pages(notebook);
     for (int i = 0; i < n; i ++) {

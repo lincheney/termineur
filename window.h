@@ -4,6 +4,7 @@
 GtkWidget* get_active_window();
 VteTerminal* get_active_terminal();
 gint get_tab_number(VteTerminal* terminal);
+GtkWidget* window_get_notebook(GtkWidget*);
 
 GtkWidget* make_window();
 GtkWidget* make_new_window_full(GtkWidget*, const char*, int, char**);
