@@ -457,6 +457,24 @@ void show_message_bar(VteTerminal* terminal, char* data) {
 
 CallbackFunc hide_message_bar = (CallbackFunc)term_hide_message_bar;
 
+void select_range(VteTerminal* terminal, char* data) {
+    /* x1,y1,x2,y2 */
+    long args[4];
+    char* string = data;
+
+    for (int i = 0; i < 4; i++) {
+        if (! string) {
+            return;
+        }
+
+        args[i] = strtol(string, &string, 10);
+        string = strchr(string, ',');
+        if (string) string ++;
+    }
+
+    term_select_range(terminal, args[0], args[1], args[2], args[3]);
+}
+
 char* str_unescape(char* string) {
     // modifies in place
     char* p = string;
@@ -568,6 +586,7 @@ Callback make_callback(char* name, char* arg) {
         MATCH_CALLBACK(focus_split_below);
         MATCH_CALLBACK_WITH_DATA(show_message_bar, strdup(arg), free);
         MATCH_CALLBACK(hide_message_bar);
+        MATCH_CALLBACK_WITH_DATA(select_range, strdup(arg), free);
         break;
     }
     return callback;

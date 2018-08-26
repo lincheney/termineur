@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <math.h>
 #include <string.h>
 #include "config.h"
 #include "terminal.h"
@@ -24,6 +25,8 @@ TitleFormat window_title_format = {NULL, 0};
 #define TERMINAL_NO_STATE 0
 #define TERMINAL_ACTIVE 1
 #define TERMINAL_INACTIVE 2
+
+#define SELECTION_SCROLLOFF 5
 
 void update_terminal_ui(VteTerminal* terminal);
 void update_terminal_title(VteTerminal* terminal);
@@ -522,6 +525,110 @@ gboolean overlay_position_term(GtkWidget* overlay, GtkWidget* widget, GdkRectang
         return TRUE;
     }
     return FALSE;
+}
+
+void term_select_range(VteTerminal* terminal, double start_col, double start_row, double end_col, double end_row) {
+    /*
+     * hacks
+     * vte doesn't have a direct API for changing selection
+     * and the ATK interface doesn't work if there is scrollback
+     * so we fake mouse events instead
+     */
+
+    vte_terminal_unselect_all(terminal);
+
+    GtkAdjustment* adjustment = gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(terminal));
+    double value = gtk_adjustment_get_value(adjustment);
+    double page_size = gtk_adjustment_get_page_size(adjustment);
+    double lower = gtk_adjustment_get_lower(adjustment);
+    double upper = gtk_adjustment_get_upper(adjustment);
+    double original = value;
+    double scrolloff = MIN(SELECTION_SCROLLOFF, floor(page_size / 4));
+
+    long columns = vte_terminal_get_column_count(terminal);
+    double rows = upper - lower;
+    /* handle negative offsets */
+    if (end_col < 0) end_col += columns + 1;
+    if (start_col < 0) start_col += columns;
+    if (end_row < 0) end_row += rows;
+    if (start_row < 0) start_row += rows;
+
+    if (start_row > end_row || (start_row == end_row && start_col >= end_col)) {
+        return;
+    }
+    start_row += lower;
+    end_row += lower;
+
+    /* have to find the right GdkWindow or the terminal won't accept the events */
+    GdkWindow* window = gtk_widget_get_window(GTK_WIDGET(terminal));
+    GdkDisplay* display = gdk_window_get_display(window);
+    GdkSeat* seat = gdk_display_get_default_seat(display);
+    GdkDevice* device = gdk_seat_get_pointer(seat);
+    GList* window_list = gdk_window_get_children_with_user_data(window, terminal);
+
+    window = window_list->data;
+    g_list_free(window_list);
+    if (! window) {
+        g_warning("No GdkWindow found for terminal\n");
+        return;
+    }
+
+    /* printf("start=%f end=%f value=%f lower=%f upper=%f page=%f\n", start_row, end_row, value, lower, upper, page_size); */
+
+    guint state = GDK_SHIFT_MASK;
+    int width = vte_terminal_get_char_width(terminal);
+    int height = vte_terminal_get_char_height(terminal);
+
+    /* scroll until start row is in view */
+    if (value > start_row || value+page_size < start_row) {
+        value = CLAMP(start_row - scrolloff, lower, upper - page_size);
+        gtk_adjustment_set_value(adjustment, value);
+    }
+
+    /* press */
+    GdkEventButton button = {
+        GDK_BUTTON_PRESS,
+        window, TRUE, 0,
+        start_col*width, (start_row-value)*height,
+        NULL,
+        state,
+        1, /* left mouse button */
+        device, 0., 0.,
+    };
+    GTK_WIDGET_GET_CLASS(terminal)->button_press_event(GTK_WIDGET(terminal), &button);
+
+    /* first motion to start selection before we scroll */
+    GdkEventMotion motion = {
+        GDK_MOTION_NOTIFY,
+        window, TRUE, 0,
+        button.x+width, button.y,
+        NULL,
+        state,
+        FALSE, device, 0, 0,
+    };
+    GTK_WIDGET_GET_CLASS(terminal)->motion_notify_event(GTK_WIDGET(terminal), &motion);
+
+    /* scroll until end row is in view */
+    if (value+page_size < end_row) {
+        value = CLAMP(end_row + scrolloff - page_size, lower, upper - page_size);
+        gtk_adjustment_set_value(adjustment, value);
+    }
+
+    /* select to end */
+    motion.x = end_col*width;
+    motion.y = (end_row-value)*height;
+    GTK_WIDGET_GET_CLASS(terminal)->motion_notify_event(GTK_WIDGET(terminal), &motion);
+
+    /* release */
+    button.type = GDK_BUTTON_RELEASE;
+    button.x = motion.x;
+    button.y = motion.y;
+    GTK_WIDGET_GET_CLASS(terminal)->button_release_event(GTK_WIDGET(terminal), &button);
+
+    /* scroll back to original if possible */
+    if (original < end_row && original+page_size >= start_row) {
+        gtk_adjustment_set_value(adjustment, original);
+    }
 }
 
 GtkWidget* make_terminal(const char* cwd, int argc, char** argv) {
