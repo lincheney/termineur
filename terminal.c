@@ -658,7 +658,9 @@ GtkWidget* make_terminal(const char* cwd, int argc, char** argv) {
     vte_terminal_set_clear_background(VTE_TERMINAL(terminal), FALSE);
 
     g_signal_connect(terminal, "focus-in-event", G_CALLBACK(term_focus_in_event), NULL);
-    g_signal_connect_swapped(terminal, "focus-out-event", G_CALLBACK(gtk_widget_queue_draw), overlay); // redraw overlay on focus out
+    // redraw overlay on focus in/out
+    g_signal_connect_swapped(terminal, "focus-out-event", G_CALLBACK(gtk_widget_queue_draw), overlay);
+    g_signal_connect_swapped(terminal, "focus-in-event", G_CALLBACK(gtk_widget_queue_draw), overlay);
     g_signal_connect(terminal, "child-exited", G_CALLBACK(term_exited), grid);
     g_signal_connect(terminal, "destroy", G_CALLBACK(term_destroyed), grid);
     g_signal_connect(terminal, "window-title-changed", G_CALLBACK(update_terminal_title), NULL);
