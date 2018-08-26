@@ -88,6 +88,7 @@ int client_send_line(GSocket* sock, char* line, Buffer* buffer) {
         return 1;
     }
 
+    /* get the response */
     while (1) {
         len = g_socket_receive(sock, buffer->data + buffer->used, buffer->reserved - buffer->used, NULL, &error);
         if (len < 0) {
@@ -103,6 +104,8 @@ int client_send_line(GSocket* sock, char* line, Buffer* buffer) {
         }
 
         char* end = memchr(buffer->data + buffer->used, 0, len);
+        write(STDOUT_FILENO, buffer->data, end ? end - buffer->data : buffer->used);
+
         if (end) {
             // end of payload
             buffer->used += len;
