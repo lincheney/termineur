@@ -441,18 +441,12 @@ scrollbar_hover(GtkWidget* scrollbar, GdkEvent* event, gboolean inside) {
     return FALSE;
 }
 
-void check_full_scrollbar(GtkAdjustment* adjustment, GtkWidget* scrollbar) {
+void check_full_scrollbar(GtkAdjustment* adjustment, VteTerminal* terminal) {
     double value = gtk_adjustment_get_value(adjustment);
     double page_size = gtk_adjustment_get_page_size(adjustment);
     double lower = gtk_adjustment_get_lower(adjustment);
     double upper = gtk_adjustment_get_upper(adjustment);
-
-    GtkStyleContext* context = gtk_widget_get_style_context(scrollbar);
-    if (value == lower && (value + page_size) == upper) {
-        gtk_style_context_add_class(context, "full");
-    } else {
-        gtk_style_context_remove_class(context, "full");
-    }
+    term_change_css_class(terminal, "full-width", (value == lower && (value + page_size) == upper));
 }
 
 void configure_terminal_scrollbar(VteTerminal* terminal, GtkPolicyType scrollbar_policy) {
@@ -484,8 +478,8 @@ void configure_terminal_scrollbar(VteTerminal* terminal, GtkPolicyType scrollbar
         g_signal_connect(scrollbar, "enter-notify-event", G_CALLBACK(scrollbar_hover), GINT_TO_POINTER(TRUE));
         g_signal_connect(scrollbar, "leave-notify-event", G_CALLBACK(scrollbar_hover), GINT_TO_POINTER(FALSE));
 
-        g_signal_connect(adjustment, "changed", G_CALLBACK(check_full_scrollbar), scrollbar);
-        g_signal_connect(adjustment, "value-changed", G_CALLBACK(check_full_scrollbar), scrollbar);
+        g_signal_connect(adjustment, "changed", G_CALLBACK(check_full_scrollbar), terminal);
+        g_signal_connect(adjustment, "value-changed", G_CALLBACK(check_full_scrollbar), terminal);
 
     } else { /* GTK_POLICY_ALWAYS */
         gtk_grid_attach(GTK_GRID(grid), scrollbar, 1, 0, 1, 1);
