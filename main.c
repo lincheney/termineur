@@ -104,7 +104,18 @@ int client_send_line(GSocket* sock, char* line, Buffer* buffer) {
         }
 
         char* end = memchr(buffer->data + buffer->used, 0, len);
-        write(STDOUT_FILENO, buffer->data, end ? end - buffer->data : buffer->used);
+
+        /* dump existing buffer */
+        int size = end ? (end - buffer->data) : (buffer->used + len);
+        ssize_t written = 0;
+        while (written < size) {
+            int result = write(STDOUT_FILENO, buffer->data + written, size - written);
+            if (result < 0) {
+                g_warning("Error writing to stdout");
+                return 1;
+            }
+            written += result;
+        }
 
         if (end) {
             // end of payload
