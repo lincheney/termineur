@@ -394,9 +394,9 @@ int trigger_callback(VteTerminal* terminal, guint key, int metadata) {
     return handled;
 }
 
-void free_callback_data(CallbackData* kc) {
-    if (kc->callback.cleanup)
-        kc->callback.cleanup(kc->callback.data);
+void free_callback_data(CallbackData* c) {
+    if (c->callback.cleanup)
+        c->callback.cleanup(c->callback.data);
 }
 
 void* execute_line(char* line, int size, gboolean reconfigure) {
@@ -418,6 +418,9 @@ void* execute_line(char* line, int size, gboolean reconfigure) {
         if (terminal) {
             void* data = NULL;
             callback.func(terminal, callback.data, &data);
+            if (callback.cleanup) {
+                callback.cleanup(callback.data);
+            }
             return data;
         }
         return NULL;
