@@ -1,4 +1,5 @@
 #include <gtk/gtk.h>
+#include <errno.h>
 
 #include "config.h"
 #include "window.h"
@@ -110,6 +111,9 @@ int client_send_line(GSocket* sock, char* line, Buffer* buffer) {
         ssize_t written = 0;
         while (written < size) {
             int result = write(STDOUT_FILENO, buffer->data + written, size - written);
+            if (result < 0 && errno == EPIPE) {
+                break;
+            }
             if (result < 0) {
                 g_warning("Error writing to stdout");
                 return 1;
