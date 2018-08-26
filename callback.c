@@ -348,6 +348,10 @@ void spawn_subprocess(VteTerminal* terminal, gchar* data_, GBytes* stdin_bytes, 
     SET_ENVIRON(CURSORX, "%li", cursorx);
     SET_ENVIRON(CURSORY, "%li", cursory);
     SET_ENVIRON(CONTROL_FLOW, "%i", get_term_attr(terminal).c_iflag & IXON ? 1 : 0);
+    SET_ENVIRON(COLUMNS, "%li", vte_terminal_get_column_count(terminal));
+    SET_ENVIRON(LINES, "%li", (long int)(gtk_adjustment_get_upper(adj) - gtk_adjustment_get_lower(adj)));
+    SET_ENVIRON(ROWS, "%li", vte_terminal_get_row_count(terminal));
+    /* TODO TERM? */
     if (hyperlink) SET_ENVIRON(HYPERLINK, "%s", hyperlink);
     if (winid) SET_ENVIRON(WINID, "0x%lx", winid);
 
