@@ -334,7 +334,6 @@ void spawn_subprocess(VteTerminal* terminal, gchar* data_, GBytes* stdin_bytes, 
     // env vars
     vte_terminal_get_cursor_position(terminal, &cursorx, &cursory);
     g_object_get(G_OBJECT(terminal), "hyperlink-hover-uri", &hyperlink, NULL);
-    Window winid = gdk_x11_window_get_xid(gtk_widget_get_window(GTK_WIDGET(terminal)));
 
 #define SET_ENVIRON(name, format, value) \
     ( sprintf(buffer, (format), (value)), g_subprocess_launcher_setenv(launcher, APP_PREFIX "_" #name, buffer, TRUE) )
@@ -353,7 +352,14 @@ void spawn_subprocess(VteTerminal* terminal, gchar* data_, GBytes* stdin_bytes, 
     SET_ENVIRON(ROWS, "%li", vte_terminal_get_row_count(terminal));
     /* TODO TERM? */
     if (hyperlink) SET_ENVIRON(HYPERLINK, "%s", hyperlink);
-    if (winid) SET_ENVIRON(WINID, "0x%lx", winid);
+
+    // get x11 windowid
+    GdkWindow* window = gtk_widget_get_window(GTK_WIDGET(terminal));
+    GdkDisplay* display = gdk_window_get_display(window);
+    if (GDK_IS_X11_DISPLAY(display)) {
+        Window winid = gdk_x11_window_get_xid(window);
+        SET_ENVIRON(XWINDOWID, "0x%lx", winid);
+    }
 
     GSubprocess* proc = g_subprocess_launcher_spawnv(launcher, (const char**)argv, &error);
     if (!proc) {
