@@ -511,7 +511,8 @@ gboolean overlay_position_term(GtkWidget* overlay, GtkWidget* widget, GdkRectang
     if (VTE_IS_TERMINAL(widget)) {
         gtk_widget_get_allocation(overlay, rect);
         int margin = rect->height % vte_terminal_get_char_height(VTE_TERMINAL(widget));
-        rect->y += margin;
+        rect->y = margin;
+        rect->x = 0;
         return TRUE;
     }
     if (GTK_IS_SCROLLBAR(widget)) {
