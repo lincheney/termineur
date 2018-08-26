@@ -173,8 +173,8 @@ int get_foreground_pid(VteTerminal* terminal) {
     return fg_pid;
 }
 
-gboolean get_foreground_name(VteTerminal* terminal, char* buffer, size_t length) {
-    int pid = get_foreground_pid(terminal);
+gboolean get_foreground_info(VteTerminal* terminal, int pid, char* name, int* ppid) {
+    pid = pid ? pid : get_foreground_pid(terminal);
     if (pid <= 0) return FALSE;
 
     char fname[100];
@@ -183,23 +183,34 @@ gboolean get_foreground_name(VteTerminal* terminal, char* buffer, size_t length)
     char file_buffer[1024];
     int fd = open(fname, O_RDONLY);
     if (fd < 0) return FALSE;
-    length = read(fd, file_buffer, sizeof(file_buffer)-1);
+    int length = read(fd, file_buffer, sizeof(file_buffer)-1);
     if (length < 0) return FALSE;
     close(fd);
     file_buffer[length] = '\0';
 
-    // second field
-    char* start = strchr(file_buffer, '\t');
-    if (! start) return FALSE;
+    char* value;
+    char* ptr = file_buffer - 1;
 
-    // name is on first line
-    char* nl = strchr(start, '\n');
-    if (! nl) nl = file_buffer + length; // set to end of buffer
-    *nl = '\0';
+#define GET_FIELD(key, x) \
+    while (ptr && strncmp(ptr+1, key, sizeof(key)-1) != 0) { \
+        ptr = strchr(ptr+1, '\n'); \
+    } \
+    if (! ptr) return FALSE; \
+    value = ptr + sizeof(key); \
+    ptr = strchr(value+1, '\n'); \
+    if (! ptr) return FALSE; \
+    *ptr = '\0';
 
-    // don't touch buffer until the very end
-    strncpy(buffer, start+1, nl-start-1);
-    buffer[nl-start-1] = '\0';
+    if (name) {
+        GET_FIELD("Name:\t", 0);
+        strcpy(name, value);
+    }
+
+    if (ppid) {
+        GET_FIELD("PPid:\t", 1);
+        *ppid = atoi(value);
+    }
+
     return TRUE;
 }
 
@@ -253,7 +264,7 @@ gboolean construct_title(TitleFormat format, VteTerminal* terminal, gboolean esc
                 break;
             case 'n':
                 if (*name == '\0') {
-                    get_foreground_name(terminal, name, sizeof(name));
+                    get_foreground_info(terminal, 0, name, NULL);
                 }
                 val = name;
                 break;

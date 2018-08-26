@@ -112,7 +112,7 @@ gboolean prevent_tab_close(VteTerminal* terminal) {
     }
 
     char message[1024], name[512];
-    get_foreground_name(terminal, name, sizeof(name));
+    get_foreground_info(terminal, 0, name, NULL);
     snprintf(message, sizeof(message), "%s is still running.\nAre you sure you want to close it?", name);
 
     gint response = run_confirm_close_dialog(gtk_widget_get_toplevel(GTK_WIDGET(terminal)), message);
