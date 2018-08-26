@@ -412,7 +412,7 @@ void term_show_message_bar(VteTerminal* terminal, const char* message, int timeo
     GtkWidget* label = gtk_bin_get_child(GTK_BIN(msg_bar));
     gtk_label_set_markup(GTK_LABEL(label), message);
 
-    if (timeout) {
+    if (timeout > 0) {
         g_timeout_add(timeout, (GSourceFunc)gtk_button_clicked, msg_bar);
     }
 

@@ -445,14 +445,18 @@ void focus_split_below(VteTerminal* terminal) {
 }
 
 void show_message_bar(VteTerminal* terminal, char* data) {
-    int timeout = 0;
+    int timeout = -1;
     if (strncmp(data, "timeout=", sizeof("timeout=")-1) == 0) {
         timeout = strtol(data + sizeof("timeout=") - 1, &data, 10);
         // find whitespace
         while (! g_ascii_isspace(*data) ) data++;
         data ++;
     }
-    term_show_message_bar(terminal, data, timeout);
+    if (timeout) {
+        term_show_message_bar(terminal, data, timeout);
+    } else {
+        term_hide_message_bar(terminal);
+    }
 }
 
 CallbackFunc hide_message_bar = (CallbackFunc)term_hide_message_bar;
