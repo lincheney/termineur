@@ -470,7 +470,7 @@ void configure_terminal_scrollbar(VteTerminal* terminal, GtkPolicyType scrollbar
 
         GtkStyleContext* context = gtk_widget_get_style_context(scrollbar);
         gtk_style_context_add_class(context, "overlay-indicator");
-        g_signal_connect(scrollbar, "motion-notify-event", G_CALLBACK(scrollbar_hover), GINT_TO_POINTER(TRUE));
+        g_signal_connect(scrollbar, "enter-notify-event", G_CALLBACK(scrollbar_hover), GINT_TO_POINTER(TRUE));
         g_signal_connect(scrollbar, "leave-notify-event", G_CALLBACK(scrollbar_hover), GINT_TO_POINTER(FALSE));
 
         g_signal_connect(adjustment, "changed", G_CALLBACK(check_full_scrollbar), scrollbar);
