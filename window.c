@@ -41,7 +41,7 @@ VteTerminal* get_active_terminal(GtkWidget* window) {
 gboolean key_pressed(GtkWidget* window, GdkEventKey* event, gpointer data) {
     guint modifiers = event->state & gtk_accelerator_get_default_mod_mask();
     VteTerminal* terminal = get_active_terminal(window);
-    return trigger_callback(terminal, event->keyval, modifiers);
+    return trigger_action(terminal, event->keyval, modifiers);
 }
 
 gint get_tab_number(VteTerminal* terminal) {

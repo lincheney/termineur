@@ -70,14 +70,14 @@ void term_destroyed(VteTerminal* terminal, GtkWidget* grid) {
 }
 
 void terminal_bell(VteTerminal* terminal) {
-    trigger_callback(terminal, -1, BELL_EVENT);
+    trigger_action(terminal, -1, BELL_EVENT);
 }
 
 void terminal_hyperlink_hover(VteTerminal* terminal) {
     char* uri;
     g_object_get(G_OBJECT(terminal), "hyperlink-hover-uri", &uri, NULL);
     if (uri) {
-        trigger_callback(terminal, -1, HYPERLINK_HOVER_EVENT);
+        trigger_action(terminal, -1, HYPERLINK_HOVER_EVENT);
     }
 }
 
@@ -86,7 +86,7 @@ gboolean terminal_button_press_event(VteTerminal* terminal, GdkEvent* event) {
         char* uri;
         g_object_get(G_OBJECT(terminal), "hyperlink-hover-uri", &uri, NULL);
         if (uri) {
-            trigger_callback(terminal, -1, HYPERLINK_CLICK_EVENT);
+            trigger_action(terminal, -1, HYPERLINK_CLICK_EVENT);
         }
     }
     return FALSE;

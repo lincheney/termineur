@@ -155,20 +155,20 @@ void reconfigure_window(GtkWindow* window) {
     }
 }
 
-Callback lookup_callback(char* value) {
+Action lookup_action(char* value) {
     char* arg = strchr(value, ':');
     if (arg) {
         *arg = '\0';
         arg++;
     }
-    return make_callback(value, arg);
+    return make_action(value, arg);
 }
 
-void unset_callback(guint key, int metadata) {
-    for (int i = callbacks->len - 1; i >= 0; i--) {
-        CallbackData* kc = &g_array_index(callbacks, CallbackData, i);
-        if (kc->key == key && kc->metadata == metadata) {
-            g_array_remove_index(callbacks, i);
+void unset_action(guint key, int metadata) {
+    for (int i = actions->len - 1; i >= 0; i--) {
+        ActionData* action = &g_array_index(actions, ActionData, i);
+        if (action->key == key && action->metadata == metadata) {
+            g_array_remove_index(actions, i);
         }
     }
 }
@@ -324,18 +324,18 @@ int set_config_from_str(char* line, size_t len) {
             {"window",    "new_window"},
     );
 
-    // ONLY events/callbacks from here on
+    // ONLY events/actions from here on
 
-    CallbackData combo = {0, 0, {NULL, NULL, NULL}};
+    ActionData action = {0, 0, {NULL, NULL, NULL}};
 
     tmp = STR_STRIP_PREFIX(line, "on-");
     if (tmp) {
         char* event = tmp;
-        combo.key = -1;
+        action.key = -1;
 
 #define MAP_EVENT(string, value) \
         if (STR_EQUAL(event, #string)) { \
-            combo.metadata = value ## _EVENT; \
+            action.metadata = value ## _EVENT; \
             break; \
         }
 
@@ -352,22 +352,22 @@ int set_config_from_str(char* line, size_t len) {
     if (tmp) {
         char* shortcut = tmp;
 
-        gtk_accelerator_parse(shortcut, &(combo.key), (GdkModifierType*) &(combo.metadata));
-        if (combo.metadata & GDK_SHIFT_MASK) {
-            combo.key = gdk_keyval_to_upper(combo.key);
+        gtk_accelerator_parse(shortcut, &(action.key), (GdkModifierType*) &(action.metadata));
+        if (action.metadata & GDK_SHIFT_MASK) {
+            action.key = gdk_keyval_to_upper(action.key);
         }
     }
 
-    if (combo.key) {
+    if (action.key) {
         if (STR_EQUAL(value, "")) {
             // unset this shortcut
-            unset_callback(combo.key, combo.metadata);
+            unset_action(action.key, action.metadata);
             return 1;
         } else {
-            Callback callback = lookup_callback(value);
-            if (callback.func) {
-                combo.callback = callback;
-                g_array_append_val(callbacks, combo);
+            Action a = lookup_action(value);
+            if (a.func) {
+                action.action = a;
+                g_array_append_val(actions, action);
             } else {
                 g_warning("Unrecognised action: %s", value);
             }
@@ -385,13 +385,13 @@ void reconfigure_all() {
     create_timer(ui_refresh_interval);
 }
 
-int trigger_callback(VteTerminal* terminal, guint key, int metadata) {
+int trigger_action(VteTerminal* terminal, guint key, int metadata) {
     int handled = 0;
-    if (callbacks) {
-        for (int i = 0; i < callbacks->len; i++) {
-            CallbackData* cb = &g_array_index(callbacks, CallbackData, i);
-            if (cb->key == key && cb->metadata == metadata) {
-                cb->callback.func(terminal, NULL, cb->callback.data);
+    if (actions) {
+        for (int i = 0; i < actions->len; i++) {
+            ActionData* action = &g_array_index(actions, ActionData, i);
+            if (action->key == key && action->metadata == metadata) {
+                action->action.func(terminal, NULL, action->action.data);
                 handled = 1;
             }
         }
@@ -399,9 +399,9 @@ int trigger_callback(VteTerminal* terminal, guint key, int metadata) {
     return handled;
 }
 
-void free_callback_data(CallbackData* c) {
-    if (c->callback.cleanup)
-        c->callback.cleanup(c->callback.data);
+void free_action_data(ActionData* c) {
+    if (c->action.cleanup)
+        c->action.cleanup(c->action.data);
 }
 
 void* execute_line(char* line, int size, gboolean reconfigure) {
@@ -416,15 +416,15 @@ void* execute_line(char* line, int size, gboolean reconfigure) {
     }
 
     line_copy = strdup(line);
-    Callback callback = lookup_callback(line_copy);
+    Action action = lookup_action(line_copy);
     free(line_copy);
-    if (callback.func) {
+    if (action.func) {
         VteTerminal* terminal = get_active_terminal(NULL);
         if (terminal) {
             char* data = NULL;
-            callback.func(terminal, &data, callback.data);
-            if (callback.cleanup) {
-                callback.cleanup(callback.data);
+            action.func(terminal, &data, action.data);
+            if (action.cleanup) {
+                action.cleanup(action.data);
             }
             return data;
         }
@@ -436,9 +436,9 @@ void* execute_line(char* line, int size, gboolean reconfigure) {
 
 void load_config(char* filename) {
     // init some things
-    if (! callbacks) {
-        callbacks = g_array_new(FALSE, FALSE, sizeof(CallbackData));
-        g_array_set_clear_func(callbacks, (GDestroyNotify)free_callback_data);
+    if (! actions) {
+        actions = g_array_new(FALSE, FALSE, sizeof(ActionData));
+        g_array_set_clear_func(actions, (GDestroyNotify)free_action_data);
     }
     if (! css_provider) {
         css_provider = gtk_css_provider_new();

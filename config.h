@@ -2,7 +2,7 @@
 #define CONFIG_H
 
 #include <vte/vte.h>
-#include "callback.h"
+#include "action.h"
 #include "split.h"
 
 #define APP_PREFIX "VTE_TERMINAL"
@@ -35,17 +35,17 @@ gint tab_close_confirm;
 #define HYPERLINK_HOVER_EVENT 2
 #define HYPERLINK_CLICK_EVENT 3
 
-GArray* callbacks;
+GArray* actions;
 
 char** shell_split(char* string, gint* argc);
 int set_config_from_str(char* line, size_t len);
-Callback lookup_callback(char* value);
+Action lookup_action(char* value);
 void reconfigure_all();
 void* execute_line(char* line, int size, gboolean reconfigure);
 void load_config(char* filename);
 void configure_terminal(GtkWidget*);
 void configure_tab(GtkContainer*, GtkWidget*);
 void configure_window(GtkWindow*);
-int trigger_callback(VteTerminal* terminal, guint key, int metadata);
+int trigger_action(VteTerminal* terminal, guint key, int metadata);
 
 #endif

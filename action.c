@@ -1,7 +1,7 @@
 #include <vte/vte.h>
 #include <gtk/gtk.h>
 #include <gdk/gdkx.h>
-#include "callback.h"
+#include "action.h"
 #include "window.h"
 #include "terminal.h"
 #include "config.h"
@@ -10,20 +10,20 @@
 
 GtkWidget* detaching_tab = NULL;
 
-#define DEF_CALLBACK(name, ...) void name(VteTerminal* terminal, char** result __VA_OPT__(,) __VA_ARGS__)
+#define DEF_ACTION(name, ...) void name(VteTerminal* terminal, char** result __VA_OPT__(,) __VA_ARGS__)
 
-CallbackFunc select_all = (CallbackFunc)vte_terminal_select_all;
-CallbackFunc unselect_all = (CallbackFunc)vte_terminal_unselect_all;
+ActionFunc select_all = (ActionFunc)vte_terminal_select_all;
+ActionFunc unselect_all = (ActionFunc)vte_terminal_unselect_all;
 
-DEF_CALLBACK(add_css_class, char* data) {
+DEF_ACTION(add_css_class, char* data) {
     term_change_css_class(terminal, data, 1);
 }
 
-DEF_CALLBACK(remove_css_class, char* data) {
+DEF_ACTION(remove_css_class, char* data) {
     term_change_css_class(terminal, data, 0);
 }
 
-DEF_CALLBACK(paste_text, char* data) {
+DEF_ACTION(paste_text, char* data) {
     GtkClipboard* clipboard = NULL;
     char* original = NULL;
 
@@ -40,11 +40,11 @@ DEF_CALLBACK(paste_text, char* data) {
     }
 }
 
-DEF_CALLBACK(copy_text) {
+DEF_ACTION(copy_text) {
     vte_terminal_copy_clipboard_format(terminal, VTE_FORMAT_TEXT);
 }
 
-DEF_CALLBACK(change_font_size, char* delta) {
+DEF_ACTION(change_font_size, char* delta) {
     float value = strtof(delta, NULL);
     if (delta[0] == '+' || value < 0) {
         value = vte_terminal_get_font_scale(terminal) + value;
@@ -52,7 +52,7 @@ DEF_CALLBACK(change_font_size, char* delta) {
     vte_terminal_set_font_scale(terminal, value);
 }
 
-DEF_CALLBACK(reset_terminal) {
+DEF_ACTION(reset_terminal) {
     vte_terminal_reset(terminal, 1, 1);
     vte_terminal_feed_child_binary(terminal, (guint8*)"\x0c", 1); // control-l = clear
 }
@@ -61,35 +61,35 @@ DEF_CALLBACK(reset_terminal) {
     GtkAdjustment* adj = gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(terminal)); \
     gtk_adjustment_set_value(adj, value)
 
-DEF_CALLBACK(scroll_up) {
+DEF_ACTION(scroll_up) {
     SCROLL(terminal, gtk_adjustment_get_value(adj) - gtk_adjustment_get_step_increment(adj));
 }
 
-DEF_CALLBACK(scroll_down) {
+DEF_ACTION(scroll_down) {
     SCROLL(terminal, gtk_adjustment_get_value(adj) + gtk_adjustment_get_step_increment(adj));
 }
 
-DEF_CALLBACK(scroll_page_up) {
+DEF_ACTION(scroll_page_up) {
     SCROLL(terminal, gtk_adjustment_get_value(adj) - gtk_adjustment_get_page_size(adj));
 }
 
-DEF_CALLBACK(scroll_page_down) {
+DEF_ACTION(scroll_page_down) {
     SCROLL(terminal, gtk_adjustment_get_value(adj) + gtk_adjustment_get_page_size(adj));
 }
 
-DEF_CALLBACK(scroll_top) {
+DEF_ACTION(scroll_top) {
     SCROLL(terminal, gtk_adjustment_get_lower(adj));
 }
 
-DEF_CALLBACK(scroll_bottom) {
+DEF_ACTION(scroll_bottom) {
     SCROLL(terminal, gtk_adjustment_get_upper(adj));
 }
 
-DEF_CALLBACK(feed_data, char* data) {
+DEF_ACTION(feed_data, char* data) {
     vte_terminal_feed_child_binary(terminal, (guint8*)data, strlen(data));
 }
 
-DEF_CALLBACK(feed_term, char* data) {
+DEF_ACTION(feed_term, char* data) {
     vte_terminal_feed(terminal, data, -1);
 }
 
@@ -122,12 +122,12 @@ GtkWidget* new_term(gchar* data, char** size) {
     return grid;
 }
 
-DEF_CALLBACK(new_tab, char* data) {
+DEF_ACTION(new_tab, char* data) {
     GtkWidget* widget = new_term(data, NULL);
     add_tab_to_window(GTK_WIDGET(get_active_window()), widget, -1);
 }
 
-DEF_CALLBACK(new_window, char* data) {
+DEF_ACTION(new_window, char* data) {
     GtkWidget* widget = new_term(data, NULL);
     GtkWidget* window = make_window();
     add_tab_to_window(window, widget, -1);
@@ -181,19 +181,19 @@ void make_split(VteTerminal* terminal, char* data, GtkOrientation orientation, g
     gtk_widget_grab_focus(GTK_WIDGET(terminal));
 }
 
-DEF_CALLBACK(split_left, char* data) {
+DEF_ACTION(split_left, char* data) {
     make_split(terminal, data, GTK_ORIENTATION_HORIZONTAL, FALSE);
 }
 
-DEF_CALLBACK(split_right, char* data) {
+DEF_ACTION(split_right, char* data) {
     make_split(terminal, data, GTK_ORIENTATION_HORIZONTAL, TRUE);
 }
 
-DEF_CALLBACK(split_above, char* data) {
+DEF_ACTION(split_above, char* data) {
     make_split(terminal, data, GTK_ORIENTATION_VERTICAL, FALSE);
 }
 
-DEF_CALLBACK(split_below, char* data) {
+DEF_ACTION(split_below, char* data) {
     make_split(terminal, data, GTK_ORIENTATION_VERTICAL, TRUE);
 }
 
@@ -204,11 +204,11 @@ void jump_tab(VteTerminal* terminal, int delta) {
     gtk_notebook_set_current_page(notebook, (n+delta) % pages);
 }
 
-DEF_CALLBACK(prev_tab) {
+DEF_ACTION(prev_tab) {
     jump_tab(terminal, -1);
 }
 
-DEF_CALLBACK(next_tab) {
+DEF_ACTION(next_tab) {
     jump_tab(terminal, 1);
 }
 
@@ -221,15 +221,15 @@ void move_tab(VteTerminal* terminal, int delta) {
     gtk_notebook_reorder_child(notebook, tab, (n+delta) % pages);
 }
 
-DEF_CALLBACK(move_tab_prev) {
+DEF_ACTION(move_tab_prev) {
     move_tab(terminal, -1);
 }
 
-DEF_CALLBACK(move_tab_next) {
+DEF_ACTION(move_tab_next) {
     move_tab(terminal, 1);
 }
 
-DEF_CALLBACK(detach_tab) {
+DEF_ACTION(detach_tab) {
     GtkWidget* tab = term_get_tab(terminal);
     GtkWidget* notebook = gtk_widget_get_parent(tab);
 
@@ -241,13 +241,13 @@ DEF_CALLBACK(detach_tab) {
     }
 }
 
-DEF_CALLBACK(cut_tab) {
+DEF_ACTION(cut_tab) {
     if (detaching_tab) g_object_remove_weak_pointer(G_OBJECT(detaching_tab), (void*)&detaching_tab);
     detaching_tab = term_get_tab(terminal);
     g_object_add_weak_pointer(G_OBJECT(detaching_tab), (void*)&detaching_tab);
 }
 
-DEF_CALLBACK(paste_tab) {
+DEF_ACTION(paste_tab) {
     if (! detaching_tab) {
         g_warning("No tab to paste");
         return;
@@ -271,19 +271,19 @@ DEF_CALLBACK(paste_tab) {
     detaching_tab = NULL;
 }
 
-DEF_CALLBACK(switch_to_tab, int num) {
+DEF_ACTION(switch_to_tab, int num) {
     GtkNotebook* notebook = GTK_NOTEBOOK(term_get_notebook(terminal));
     int n = gtk_notebook_get_n_pages(notebook);
     gtk_notebook_set_current_page(notebook, num >= n ? -1 : num);
 }
 
-DEF_CALLBACK(tab_popup_menu) {
+DEF_ACTION(tab_popup_menu) {
     GtkNotebook* notebook = GTK_NOTEBOOK(term_get_notebook(terminal));
     gboolean value;
     g_signal_emit_by_name(notebook, "popup-menu", &value);
 }
 
-DEF_CALLBACK(close_tab) {
+DEF_ACTION(close_tab) {
     if (! prevent_tab_close(terminal)) {
         GtkWidget* tab = term_get_tab(terminal);
         GtkContainer* notebook = GTK_CONTAINER(gtk_widget_get_parent(tab));
@@ -291,9 +291,9 @@ DEF_CALLBACK(close_tab) {
     }
 }
 
-DEF_CALLBACK(reload_config, char* filename) {
-    if (callbacks) {
-        g_array_remove_range(callbacks, 0, callbacks->len);
+DEF_ACTION(reload_config, char* filename) {
+    if (actions) {
+        g_array_remove_range(actions, 0, actions->len);
     }
     load_config(filename);
 }
@@ -380,17 +380,17 @@ void spawn_subprocess(VteTerminal* terminal, gchar* data_, GBytes* stdin_bytes, 
     g_subprocess_communicate_async(proc, stdin_bytes, NULL, subprocess_finish, data);
 }
 
-DEF_CALLBACK(run, char* data) {
+DEF_ACTION(run, char* data) {
     spawn_subprocess(terminal, data, NULL, NULL);
 }
 
-DEF_CALLBACK(pipe_screen, char* data) {
+DEF_ACTION(pipe_screen, char* data) {
     char* stdin_buf = vte_terminal_get_text_include_trailing_spaces(terminal, NULL, NULL, NULL);
     GBytes* stdin_bytes = g_bytes_new_take(stdin_buf, strlen(stdin_buf));
     spawn_subprocess(terminal, data, stdin_bytes, result);
 }
 
-DEF_CALLBACK(pipe_line, char* data) {
+DEF_ACTION(pipe_line, char* data) {
     glong col, row;
     vte_terminal_get_cursor_position(terminal, &col, &row);
     char* stdin_buf = vte_terminal_get_text_range(terminal, row, 0, row+1, -1, NULL, NULL, NULL);
@@ -398,7 +398,7 @@ DEF_CALLBACK(pipe_line, char* data) {
     spawn_subprocess(terminal, data, stdin_bytes, result);
 }
 
-DEF_CALLBACK(pipe_all, char* data) {
+DEF_ACTION(pipe_all, char* data) {
     GError* error = NULL;
     GOutputStream* stream = g_memory_output_stream_new_resizable();
     gboolean success = vte_terminal_write_contents_sync(terminal, stream, VTE_WRITE_DEFAULT, NULL, &error);
@@ -413,7 +413,7 @@ DEF_CALLBACK(pipe_all, char* data) {
     spawn_subprocess(terminal, data, stdin_bytes, result);
 }
 
-DEF_CALLBACK(scrollback_lines, int value) {
+DEF_ACTION(scrollback_lines, int value) {
     if (value >= -1) {
         g_object_set(G_OBJECT(terminal), "scrollback-lines", value, NULL);
     }
@@ -425,43 +425,43 @@ DEF_CALLBACK(scrollback_lines, int value) {
     }
 }
 
-DEF_CALLBACK(move_split_right) {
+DEF_ACTION(move_split_right) {
     split_move(term_get_grid(terminal), GTK_ORIENTATION_HORIZONTAL, TRUE);
     gtk_widget_grab_focus(GTK_WIDGET(terminal));
 }
 
-DEF_CALLBACK(move_split_left) {
+DEF_ACTION(move_split_left) {
     split_move(term_get_grid(terminal), GTK_ORIENTATION_HORIZONTAL, FALSE);
     gtk_widget_grab_focus(GTK_WIDGET(terminal));
 }
 
-DEF_CALLBACK(move_split_above) {
+DEF_ACTION(move_split_above) {
     split_move(term_get_grid(terminal), GTK_ORIENTATION_VERTICAL, FALSE);
     gtk_widget_grab_focus(GTK_WIDGET(terminal));
 }
 
-DEF_CALLBACK(move_split_below) {
+DEF_ACTION(move_split_below) {
     split_move(term_get_grid(terminal), GTK_ORIENTATION_VERTICAL, TRUE);
     gtk_widget_grab_focus(GTK_WIDGET(terminal));
 }
 
-DEF_CALLBACK(focus_split_right) {
+DEF_ACTION(focus_split_right) {
     split_move_focus(term_get_grid(terminal), GTK_ORIENTATION_HORIZONTAL, TRUE);
 }
 
-DEF_CALLBACK(focus_split_left) {
+DEF_ACTION(focus_split_left) {
     split_move_focus(term_get_grid(terminal), GTK_ORIENTATION_HORIZONTAL, FALSE);
 }
 
-DEF_CALLBACK(focus_split_above) {
+DEF_ACTION(focus_split_above) {
     split_move_focus(term_get_grid(terminal), GTK_ORIENTATION_VERTICAL, FALSE);
 }
 
-DEF_CALLBACK(focus_split_below) {
+DEF_ACTION(focus_split_below) {
     split_move_focus(term_get_grid(terminal), GTK_ORIENTATION_VERTICAL, TRUE);
 }
 
-DEF_CALLBACK(show_message_bar, char* data) {
+DEF_ACTION(show_message_bar, char* data) {
     int timeout = -1;
     if (strncmp(data, "timeout=", sizeof("timeout=")-1) == 0) {
         timeout = strtol(data + sizeof("timeout=") - 1, &data, 10);
@@ -476,9 +476,9 @@ DEF_CALLBACK(show_message_bar, char* data) {
     }
 }
 
-CallbackFunc hide_message_bar = (CallbackFunc)term_hide_message_bar;
+ActionFunc hide_message_bar = (ActionFunc)term_hide_message_bar;
 
-DEF_CALLBACK(select_range, char* data) {
+DEF_ACTION(select_range, char* data) {
     /* x1,y1,x2,y2 */
     long args[4];
     char* string = data;
@@ -540,75 +540,75 @@ char* str_unescape(char* string) {
     return string;
 }
 
-Callback make_callback(char* name, char* arg) {
-    Callback callback = {NULL, NULL, NULL};
+Action make_action(char* name, char* arg) {
+    Action action = {NULL, NULL, NULL};
 
-#define MATCH_CALLBACK_WITH_DATA_DEFAULT(_name, processor, _cleanup, default) \
+#define MATCH_ACTION_WITH_DATA_DEFAULT(_name, processor, _cleanup, default) \
     if (STR_EQUAL(name, #_name)) { \
-        callback.func = (CallbackFunc)_name; \
+        action.func = (ActionFunc)_name; \
         if (arg) { \
             arg = str_unescape(arg); \
-            callback.data = processor; \
-            callback.cleanup = _cleanup; \
+            action.data = processor; \
+            action.cleanup = _cleanup; \
         } else { \
-            callback.data = default; \
+            action.data = default; \
         } \
         break; \
     }
-#define MATCH_CALLBACK_WITH_DATA(name, processor, _cleanup) MATCH_CALLBACK_WITH_DATA_DEFAULT(name, processor, _cleanup, NULL)
-#define MATCH_CALLBACK(name) MATCH_CALLBACK_WITH_DATA(name, NULL, NULL)
+#define MATCH_ACTION_WITH_DATA(name, processor, _cleanup) MATCH_ACTION_WITH_DATA_DEFAULT(name, processor, _cleanup, NULL)
+#define MATCH_ACTION(name) MATCH_ACTION_WITH_DATA(name, NULL, NULL)
 
     while (1) {
-        MATCH_CALLBACK_WITH_DATA(paste_text, strdup(arg), free);
-        MATCH_CALLBACK(copy_text);
-        MATCH_CALLBACK_WITH_DATA(change_font_size, strdup(arg), free);
-        MATCH_CALLBACK(reset_terminal);
-        MATCH_CALLBACK(scroll_up);
-        MATCH_CALLBACK(scroll_down);
-        MATCH_CALLBACK(scroll_page_up);
-        MATCH_CALLBACK(scroll_page_down);
-        MATCH_CALLBACK(scroll_top);
-        MATCH_CALLBACK(scroll_bottom);
-        MATCH_CALLBACK(select_all);
-        MATCH_CALLBACK(unselect_all);
-        MATCH_CALLBACK_WITH_DATA(feed_data, strdup(arg), free);
-        MATCH_CALLBACK_WITH_DATA(feed_term, strdup(arg), free);
-        MATCH_CALLBACK_WITH_DATA(new_tab, strdup(arg), free);
-        MATCH_CALLBACK_WITH_DATA(new_window, strdup(arg), free);
-        MATCH_CALLBACK(prev_tab);
-        MATCH_CALLBACK(next_tab);
-        MATCH_CALLBACK(move_tab_prev);
-        MATCH_CALLBACK(move_tab_next);
-        MATCH_CALLBACK(detach_tab);
-        MATCH_CALLBACK(cut_tab);
-        MATCH_CALLBACK(paste_tab);
-        MATCH_CALLBACK_WITH_DATA_DEFAULT(switch_to_tab, GINT_TO_POINTER(atoi(arg)), NULL, 0);
-        MATCH_CALLBACK(tab_popup_menu);
-        MATCH_CALLBACK_WITH_DATA(reload_config, strdup(arg), free);
-        MATCH_CALLBACK(close_tab);
-        MATCH_CALLBACK_WITH_DATA(add_css_class, strdup(arg), free);
-        MATCH_CALLBACK_WITH_DATA(remove_css_class, strdup(arg), free);
-        MATCH_CALLBACK_WITH_DATA(run, strdup(arg), free);
-        MATCH_CALLBACK_WITH_DATA(pipe_screen, strdup(arg), free);
-        MATCH_CALLBACK_WITH_DATA(pipe_line, strdup(arg), free);
-        MATCH_CALLBACK_WITH_DATA(pipe_all, strdup(arg), free);
-        MATCH_CALLBACK_WITH_DATA_DEFAULT(scrollback_lines, GINT_TO_POINTER(atoi(arg)), NULL, GINT_TO_POINTER(-2));
-        MATCH_CALLBACK_WITH_DATA(split_right, strdup(arg), free);
-        MATCH_CALLBACK_WITH_DATA(split_left, strdup(arg), free);
-        MATCH_CALLBACK_WITH_DATA(split_above, strdup(arg), free);
-        MATCH_CALLBACK_WITH_DATA(split_below, strdup(arg), free);
-        MATCH_CALLBACK(move_split_right);
-        MATCH_CALLBACK(move_split_left);
-        MATCH_CALLBACK(move_split_above);
-        MATCH_CALLBACK(move_split_below);
-        MATCH_CALLBACK(focus_split_right);
-        MATCH_CALLBACK(focus_split_left);
-        MATCH_CALLBACK(focus_split_above);
-        MATCH_CALLBACK(focus_split_below);
-        MATCH_CALLBACK_WITH_DATA(show_message_bar, strdup(arg), free);
-        MATCH_CALLBACK(hide_message_bar);
-        MATCH_CALLBACK_WITH_DATA(select_range, strdup(arg), free);
+        MATCH_ACTION_WITH_DATA(paste_text, strdup(arg), free);
+        MATCH_ACTION(copy_text);
+        MATCH_ACTION_WITH_DATA(change_font_size, strdup(arg), free);
+        MATCH_ACTION(reset_terminal);
+        MATCH_ACTION(scroll_up);
+        MATCH_ACTION(scroll_down);
+        MATCH_ACTION(scroll_page_up);
+        MATCH_ACTION(scroll_page_down);
+        MATCH_ACTION(scroll_top);
+        MATCH_ACTION(scroll_bottom);
+        MATCH_ACTION(select_all);
+        MATCH_ACTION(unselect_all);
+        MATCH_ACTION_WITH_DATA(feed_data, strdup(arg), free);
+        MATCH_ACTION_WITH_DATA(feed_term, strdup(arg), free);
+        MATCH_ACTION_WITH_DATA(new_tab, strdup(arg), free);
+        MATCH_ACTION_WITH_DATA(new_window, strdup(arg), free);
+        MATCH_ACTION(prev_tab);
+        MATCH_ACTION(next_tab);
+        MATCH_ACTION(move_tab_prev);
+        MATCH_ACTION(move_tab_next);
+        MATCH_ACTION(detach_tab);
+        MATCH_ACTION(cut_tab);
+        MATCH_ACTION(paste_tab);
+        MATCH_ACTION_WITH_DATA_DEFAULT(switch_to_tab, GINT_TO_POINTER(atoi(arg)), NULL, 0);
+        MATCH_ACTION(tab_popup_menu);
+        MATCH_ACTION_WITH_DATA(reload_config, strdup(arg), free);
+        MATCH_ACTION(close_tab);
+        MATCH_ACTION_WITH_DATA(add_css_class, strdup(arg), free);
+        MATCH_ACTION_WITH_DATA(remove_css_class, strdup(arg), free);
+        MATCH_ACTION_WITH_DATA(run, strdup(arg), free);
+        MATCH_ACTION_WITH_DATA(pipe_screen, strdup(arg), free);
+        MATCH_ACTION_WITH_DATA(pipe_line, strdup(arg), free);
+        MATCH_ACTION_WITH_DATA(pipe_all, strdup(arg), free);
+        MATCH_ACTION_WITH_DATA_DEFAULT(scrollback_lines, GINT_TO_POINTER(atoi(arg)), NULL, GINT_TO_POINTER(-2));
+        MATCH_ACTION_WITH_DATA(split_right, strdup(arg), free);
+        MATCH_ACTION_WITH_DATA(split_left, strdup(arg), free);
+        MATCH_ACTION_WITH_DATA(split_above, strdup(arg), free);
+        MATCH_ACTION_WITH_DATA(split_below, strdup(arg), free);
+        MATCH_ACTION(move_split_right);
+        MATCH_ACTION(move_split_left);
+        MATCH_ACTION(move_split_above);
+        MATCH_ACTION(move_split_below);
+        MATCH_ACTION(focus_split_right);
+        MATCH_ACTION(focus_split_left);
+        MATCH_ACTION(focus_split_above);
+        MATCH_ACTION(focus_split_below);
+        MATCH_ACTION_WITH_DATA(show_message_bar, strdup(arg), free);
+        MATCH_ACTION(hide_message_bar);
+        MATCH_ACTION_WITH_DATA(select_range, strdup(arg), free);
         break;
     }
-    return callback;
+    return action;
 }
