@@ -19,6 +19,7 @@ void buffer_reserve(Buffer* buffer, int size) {
 }
 
 Buffer* buffer_new(int size) {
+    size = size ? size : BUFFER_DEFAULT_SIZE;
     Buffer* buffer = malloc(sizeof(Buffer));
     buffer->used = 0;
     buffer->reserved = 0;
@@ -32,75 +33,14 @@ void buffer_free(Buffer* buffer) {
     free(buffer);
 }
 
-#define READ_SIZE 1024
-
-int sock_recv(GSocket* sock, GIOCondition io, Buffer* buffer) {
-    if (io & G_IO_IN) {
-        GError* error = NULL;
-        if (buffer->reserved - buffer->used < READ_SIZE) {
-            buffer_reserve(buffer, buffer->reserved+READ_SIZE);
-        }
-
-        int len = g_socket_receive(sock, buffer->data + buffer->used, READ_SIZE, NULL, &error);
-        buffer->used += len;
-
-        if (len < 0) {
-            g_warning("Failed to recv(): %s\n", error->message);
-            g_error_free(error);
-
-        } else if (len >= 0) {
-            char* start = buffer->data + buffer->used - len;
-
-            while (buffer->used > 0) {
-                char* end = buffer->data + buffer->used;
-                // search for \0 or \n
-                char* ptr;
-                for (ptr = start; ptr < end && *ptr != 0 && *ptr != '\n'; ptr++) ;
-                // no terminator found
-                if (ptr == end) break;
-
-                *ptr = '\0'; // end of line
-                void* data = execute_line(buffer->data, ptr - buffer->data, TRUE);
-                if (data) {
-                    sock_send_all(sock, data, strlen(data)+1);
-                } else {
-                    sock_send_all(sock, "", 1);
-                }
-                free(data);
-
-                // shift by length of line
-                buffer_shift_back(buffer, ptr - buffer->data + 1);
-                // search from beginning now
-                start = buffer->data;
-            }
-
-            if (len == 0) {
-                // leftovers in the buffer
-                if (buffer->used > 0) {
-                    g_warning("Unprocessed buffer contents, %i bytes remaining", buffer->used);
-                }
-                close_socket(sock);
-                return G_SOURCE_REMOVE;
-            }
-        }
-    }
-
-    if (io & G_IO_ERR) {
-        close_socket(sock);
-        return G_SOURCE_REMOVE;
-    }
-
-    return G_SOURCE_CONTINUE;
-}
-
-int accept_connection(GSocket* sock, GIOCondition io) {
+int accept_connection(GSocket* sock, GIOCondition io, GSourceFunc callback) {
     GError* error = NULL;
     sock = g_socket_accept(sock, NULL, &error);
 
     if (sock) {
-        Buffer* buffer = buffer_new(READ_SIZE);
+        Buffer* buffer = buffer_new(0);
         GSource* source = g_socket_create_source(sock, G_IO_IN | G_IO_ERR, NULL);
-        g_source_set_callback(source, (GSourceFunc)sock_recv, buffer, (GDestroyNotify)buffer_free);
+        g_source_set_callback(source, callback, buffer, (GDestroyNotify)buffer_free);
         g_source_attach(source, NULL);
     } else {
         g_warning("Failed on accept(): %s\n", error->message);
@@ -122,7 +62,7 @@ gboolean make_sock(const char* path, GSocket** sock, GSocketAddress** addr) {
     return TRUE;
 }
 
-int try_bind_sock(GSocket* sock, GSocketAddress* addr) {
+int try_bind_sock(GSocket* sock, GSocketAddress* addr, GSourceFunc callback) {
     GError* error = NULL;
     if (! g_socket_bind(sock, addr, TRUE, &error)) {
         if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_ADDRESS_IN_USE)) {
@@ -136,7 +76,7 @@ int try_bind_sock(GSocket* sock, GSocketAddress* addr) {
 
     if (g_socket_listen(sock, &error)) {
         GSource* source = g_socket_create_source(sock, G_IO_IN, NULL);
-        g_source_set_callback(source, (GSourceFunc)accept_connection, NULL, NULL);
+        g_source_set_callback(source, (GSourceFunc)accept_connection, callback, NULL);
         g_source_attach(source, NULL);
         return 1;
     }

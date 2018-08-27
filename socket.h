@@ -13,13 +13,15 @@ typedef struct buffer {
     int reserved;
     char* data;
 } Buffer;
+#define BUFFER_DEFAULT_SIZE 1024
 
 void buffer_shift_back(Buffer* buffer, int offset);
+void buffer_reserve(Buffer* buffer, int size);
 Buffer* buffer_new(int size);
 void buffer_free(Buffer*);
 
 gboolean make_sock(const char* path, GSocket** sock, GSocketAddress** addr);
-int try_bind_sock(GSocket* sock, GSocketAddress* addr);
+int try_bind_sock(GSocket* sock, GSocketAddress* addr, GSourceFunc callback);
 int connect_sock(GSocket* sock, GSocketAddress* addr);
 gboolean close_socket(GSocket* sock);
 gboolean sock_send_all(GSocket* sock, char* buffer, int size);
