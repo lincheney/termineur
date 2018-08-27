@@ -19,5 +19,10 @@ typedef struct {
 Action make_action(char*, char*);
 
 GtkWidget* new_tab(VteTerminal* terminal, char* data, int* pipes);
+GtkWidget* new_window(VteTerminal* terminal, char* data, int* pipes);
+GtkWidget* split_left(VteTerminal* terminal, char* data, int* pipes);
+GtkWidget* split_right(VteTerminal* terminal, char* data, int* pipes);
+GtkWidget* split_above(VteTerminal* terminal, char* data, int* pipes);
+GtkWidget* split_below(VteTerminal* terminal, char* data, int* pipes);
 
 #endif

@@ -160,10 +160,10 @@ GtkWidget* new_tab(VteTerminal* terminal, char* data, int* pipes) {
     return widget;
 }
 
-DEF_ACTION(new_window, char* data) {
-    GtkWidget* widget = new_term(data, NULL, NULL);
-    GtkWidget* window = make_window();
-    add_tab_to_window(window, widget, -1);
+GtkWidget* new_window(VteTerminal* terminal, char* data, int* pipes) {
+    GtkWidget* widget = new_term(data, NULL, pipes);
+    add_tab_to_window(make_window(), widget, -1);
+    return widget;
 }
 
 void on_split_resize(GtkWidget* paned, GdkRectangle *rect, int value) {
@@ -171,17 +171,17 @@ void on_split_resize(GtkWidget* paned, GdkRectangle *rect, int value) {
     g_signal_handlers_disconnect_by_func(paned, on_split_resize, GINT_TO_POINTER(value));
 }
 
-void make_split(VteTerminal* terminal, char* data, GtkOrientation orientation, gboolean after) {
+GtkWidget* make_split(VteTerminal* terminal, char* data, GtkOrientation orientation, gboolean after, int* pipes) {
     GtkWidget* dest = term_get_grid(terminal);
     char* size_str = NULL;
-    GtkWidget* src = new_term(data, &size_str, NULL);
+    GtkWidget* grid = new_term(data, &size_str, pipes);
 
     // get the available size before splitting
     GdkRectangle rect;
     gtk_widget_get_allocation(dest, &rect);
     int split_size = orientation == GTK_ORIENTATION_HORIZONTAL ? rect.width : rect.height;
 
-    GtkWidget* paned = split(dest, src, orientation, after);
+    GtkWidget* paned = split(dest, grid, orientation, after);
 
     if (size_str) {
         char* suffix;
@@ -210,24 +210,25 @@ void make_split(VteTerminal* terminal, char* data, GtkOrientation orientation, g
     }
 
     // focus the new terminal
-    terminal = g_object_get_data(G_OBJECT(src), "terminal");
+    terminal = g_object_get_data(G_OBJECT(grid), "terminal");
     gtk_widget_grab_focus(GTK_WIDGET(terminal));
+    return grid;
 }
 
-DEF_ACTION(split_left, char* data) {
-    make_split(terminal, data, GTK_ORIENTATION_HORIZONTAL, FALSE);
+GtkWidget* split_left(VteTerminal* terminal, char* data, int* pipes) {
+    return make_split(terminal, data, GTK_ORIENTATION_HORIZONTAL, FALSE, pipes);
 }
 
-DEF_ACTION(split_right, char* data) {
-    make_split(terminal, data, GTK_ORIENTATION_HORIZONTAL, TRUE);
+GtkWidget* split_right(VteTerminal* terminal, char* data, int* pipes) {
+    return make_split(terminal, data, GTK_ORIENTATION_HORIZONTAL, TRUE, pipes);
 }
 
-DEF_ACTION(split_above, char* data) {
-    make_split(terminal, data, GTK_ORIENTATION_VERTICAL, FALSE);
+GtkWidget* split_above(VteTerminal* terminal, char* data, int* pipes) {
+    return make_split(terminal, data, GTK_ORIENTATION_VERTICAL, FALSE, pipes);
 }
 
-DEF_ACTION(split_below, char* data) {
-    make_split(terminal, data, GTK_ORIENTATION_VERTICAL, TRUE);
+GtkWidget* split_below(VteTerminal* terminal, char* data, int* pipes) {
+    return make_split(terminal, data, GTK_ORIENTATION_VERTICAL, TRUE, pipes);
 }
 
 void jump_tab(VteTerminal* terminal, int delta) {

@@ -11,7 +11,14 @@ void server_pipe_over_socket(GSocket* sock, char* value, Buffer* remainder) {
     free(copy);
 
     ConnectActionFunc func = (ConnectActionFunc)action.func;
-    if (func != (ConnectActionFunc)new_tab) {
+    if (
+            func != (ConnectActionFunc)new_tab
+            && func != (ConnectActionFunc)new_window
+            && func != (ConnectActionFunc)split_left
+            && func != (ConnectActionFunc)split_right
+            && func != (ConnectActionFunc)split_above
+            && func != (ConnectActionFunc)split_below
+    ) {
         g_warning("Invalid connection action: %s", value);
         return;
     }
