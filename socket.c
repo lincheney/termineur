@@ -1,3 +1,4 @@
+#include <errno.h>
 #include "socket.h"
 #include "config.h"
 
@@ -31,6 +32,85 @@ Buffer* buffer_new(int size) {
 void buffer_free(Buffer* buffer) {
     free(buffer->data);
     free(buffer);
+}
+
+int write_to_fd(int fd, char* buffer, ssize_t size) {
+    ssize_t written = 0;
+    while (written < size) {
+        int result = write(fd, buffer + written, size - written);
+        if (result < 0 && errno == EPIPE) {
+            return 0;
+        }
+        if (result < 0) {
+            g_warning("Error writing to %i", fd);
+            return -1;
+        }
+        written += result;
+    }
+    return size;
+}
+
+int dump_socket_to_fd(GSocket* sock, GIOCondition io, int fd) {
+    if (io & G_IO_IN) {
+        GError* error = NULL;
+        char buffer[BUFFER_DEFAULT_SIZE];
+
+        int len = g_socket_receive(sock, buffer, sizeof(buffer), NULL, &error);
+        if (len < 0) {
+            g_warning("Failed to recv(): %s\n", error->message);
+            g_error_free(error);
+        } else if (len == 0) {
+            close_socket(sock);
+            return G_SOURCE_REMOVE;
+        } else if (write_to_fd(fd, buffer, len) == 0) {
+            // fd is closed
+            return G_SOURCE_REMOVE;
+        }
+    }
+
+    if (io & G_IO_ERR) {
+        g_warning("error on socket");
+        close_socket(sock);
+        return G_SOURCE_REMOVE;
+    }
+
+    if (io & (G_IO_HUP | G_IO_NVAL)) {
+        close_socket(sock);
+        return G_SOURCE_REMOVE;
+    }
+
+    return G_SOURCE_CONTINUE;
+}
+
+gboolean dump_fd_to_socket(GIOChannel* source, GIOCondition io, GSocket* sock) {
+    int fd = g_io_channel_unix_get_fd(source);
+
+    if (io & G_IO_IN) {
+        char buffer[BUFFER_DEFAULT_SIZE];
+        ssize_t len = read(fd, buffer, sizeof(buffer));
+        if (len < 0) {
+            g_warning("Failed to read from %i: %s", fd, strerror(errno));
+            return FALSE;
+        }
+        if (len == 0) {
+            // closed
+            return G_SOURCE_REMOVE;
+        }
+        sock_send_all(sock, buffer, len);
+    }
+
+    if (io & G_IO_ERR) {
+        g_warning("error on %i", fd);
+        close(fd);
+        return G_SOURCE_REMOVE;
+    }
+
+    if (io & (G_IO_HUP | G_IO_NVAL)) {
+        close(fd);
+        return G_SOURCE_REMOVE;
+    }
+
+    return G_SOURCE_CONTINUE;
 }
 
 int accept_connection(GSocket* sock, GIOCondition io, GSourceFunc callback) {

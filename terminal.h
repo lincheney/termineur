@@ -6,7 +6,9 @@
 
 #define get_pid(terminal) GPOINTER_TO_INT(g_object_get_data(G_OBJECT(terminal), "pid"))
 
+void term_setup_pipes(int pipes[2]);
 GtkWidget* make_terminal(const char* cwd, int argc, char** argv);
+GtkWidget* make_terminal_full(const char* cwd, int argc, char** argv, GSpawnChildSetupFunc child_setup, void* child_setup_data, GDestroyNotify child_setup_destroy);
 void create_timer(guint interval);
 void set_tab_title_format(char*);
 void set_window_title_format(char*);

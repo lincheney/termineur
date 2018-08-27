@@ -2,6 +2,49 @@
 #include "socket.h"
 #include "config.h"
 #include "window.h"
+#include "utils.h"
+#include "action.h"
+
+void server_pipe_over_socket(GSocket* sock, char* value, Buffer* remainder) {
+    char* copy = strdup(value);
+    Action action = lookup_action(copy);
+    free(copy);
+
+    ConnectActionFunc func = (ConnectActionFunc)action.func;
+    if (func != (ConnectActionFunc)new_tab) {
+        g_warning("Invalid connection action: %s", value);
+        return;
+    }
+
+    VteTerminal* terminal = get_active_terminal(NULL);
+    if (terminal) {
+        char* data = NULL;
+        int pipes[2] = {0, 0};
+        GtkWidget* widget = func(terminal, action.data, pipes);
+        if (action.cleanup) {
+            action.cleanup(action.data);
+        }
+        free(data);
+
+        if (widget) {
+            write_to_fd(pipes[0], remainder->data, remainder->used);
+
+            // monitor the pipes
+            GSource* source = g_socket_create_source(sock, G_IO_IN | G_IO_ERR | G_IO_HUP, NULL);
+            g_source_set_callback(source, (GSourceFunc)dump_socket_to_fd, GINT_TO_POINTER(pipes[0]), NULL);
+            g_source_attach(source, NULL);
+
+            GIOChannel* channel = g_io_channel_unix_new(pipes[1]);
+            g_io_add_watch(channel, G_IO_IN | G_IO_ERR | G_IO_HUP, (GIOFunc)dump_fd_to_socket, sock);
+
+            // close everything when terminal exits
+            terminal = g_object_get_data(G_OBJECT(widget), "terminal");
+            g_signal_connect_swapped(terminal, "destroy", G_CALLBACK(close_socket), sock);
+            g_signal_connect_swapped(terminal, "destroy", G_CALLBACK(close), GINT_TO_POINTER(pipes[0]));
+            g_signal_connect_swapped(terminal, "destroy", G_CALLBACK(close), GINT_TO_POINTER(pipes[1]));
+        }
+    }
+}
 
 int server_recv(GSocket* sock, GIOCondition io, Buffer* buffer) {
     if (io & G_IO_IN) {
@@ -29,6 +72,18 @@ int server_recv(GSocket* sock, GIOCondition io, Buffer* buffer) {
                 if (ptr == end) break;
 
                 *ptr = '\0'; // end of line
+                char *sock_connect, *fd_connect;
+                if ((sock_connect = STR_STRIP_PREFIX(buffer->data, CONNECT_SOCK))) {
+                    // dup as the shift below will invalidate the data
+                    sock_connect = strdup(sock_connect);
+                    // shift by length of line
+                    buffer_shift_back(buffer, ptr - buffer->data + 1);
+                    server_pipe_over_socket(sock, sock_connect, buffer);
+                    free(sock_connect);
+
+                    return G_SOURCE_REMOVE;
+                }
+
                 void* data = execute_line(buffer->data, ptr - buffer->data, TRUE);
                 if (data) {
                     sock_send_all(sock, data, strlen(data)+1);

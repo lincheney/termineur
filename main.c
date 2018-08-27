@@ -8,6 +8,8 @@
 #include "client.h"
 
 char* commands[255];
+char* sock_connect = NULL;
+char* fd_connect = NULL;
 
 void print_help(int argc, char** argv) {
     fprintf(stderr,
@@ -23,19 +25,23 @@ char** parse_args(int* argc, char** argv) {
             if (argv[i][sizeof(flag)-1] == '=') { \
                 /* -f=value */ \
                 dest = argv[i] + sizeof(flag); \
+                continue; \
             } else if (argv[i][1] != '-' && argv[i][sizeof(flag)-1]) { \
                 /* -fvalue */ \
                 dest = argv[i] + sizeof(flag) - 1; \
+                continue; \
+            } else if (argv[i][sizeof(flag)-1]) { \
+                /* unknown flag */ \
             } else if (i + 1 < *argc) { \
                 /* -f value */ \
                 i ++; \
                 dest = argv[i]; \
+                continue; \
             } else { \
                 print_help(*argc, argv); \
                 fprintf(stderr, "%s: expected one argument\n", flag); \
                 exit(1); \
             } \
-            continue; \
         }
 
     int i, command_ix = -1;
@@ -52,6 +58,8 @@ char** parse_args(int* argc, char** argv) {
         MATCH_FLAG("--id", app_id);
         MATCH_FLAG("-C", command_ix ++; commands[command_ix]);
         MATCH_FLAG("--command", command_ix ++; commands[command_ix]);
+        MATCH_FLAG("--connect", fd_connect);
+        MATCH_FLAG("--connect-sock", sock_connect);
         if (STR_EQUAL(argv[i], "--")) {
             i ++;
         }
@@ -112,7 +120,7 @@ int main(int argc, char *argv[]) {
     } else if (status < 0) {
         return 1;
     } else if (connect_sock(sock, addr) >= 0) {
-        status = run_client(sock, commands, argc, argv);
+        status = run_client(sock, commands, argc, argv, sock_connect, fd_connect);
     }
     close_socket(sock);
 

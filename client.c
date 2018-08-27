@@ -1,7 +1,28 @@
-#include <errno.h>
 #include "client.h"
 #include "socket.h"
 #include "config.h"
+#include "server.h"
+
+int client_pipe_over_sock(GSocket* sock, char* value) {
+    // send them all over
+    int result = sock_send_all(sock, CONNECT_SOCK, sizeof(CONNECT_SOCK)-1);
+    if (result) result = sock_send_all(sock, value, strlen(value)+1);
+    if (!result) return 1;
+
+    // now read connect up stdin, stdout
+
+    // stdout
+    GSource* source = g_socket_create_source(sock, G_IO_IN | G_IO_ERR, NULL);
+    g_source_set_callback(source, (GSourceFunc)dump_socket_to_fd, GINT_TO_POINTER(STDOUT_FILENO), (GDestroyNotify)gtk_main_quit);
+    g_source_attach(source, NULL);
+
+    // stdin
+    GIOChannel* channel = g_io_channel_unix_new(STDIN_FILENO);
+    g_io_add_watch(channel, G_IO_IN | G_IO_ERR | G_IO_HUP, (GIOFunc)dump_fd_to_socket, sock);
+
+    gtk_main();
+    return 0;
+}
 
 int client_send_line(GSocket* sock, char* line, Buffer* buffer) {
     GError* error = NULL;
@@ -32,17 +53,8 @@ int client_send_line(GSocket* sock, char* line, Buffer* buffer) {
 
         /* dump existing buffer */
         int size = end ? (end - buffer->data) : (buffer->used + len);
-        ssize_t written = 0;
-        while (written < size) {
-            int result = write(STDOUT_FILENO, buffer->data + written, size - written);
-            if (result < 0 && errno == EPIPE) {
-                break;
-            }
-            if (result < 0) {
-                g_warning("Error writing to stdout");
-                return 1;
-            }
-            written += result;
+        if (write_to_fd(STDOUT_FILENO, buffer->data, size)) {
+            return 1;
         }
 
         if (end) {
@@ -57,14 +69,16 @@ int client_send_line(GSocket* sock, char* line, Buffer* buffer) {
     return 0;
 }
 
-int run_client(GSocket* sock, char** commands, int argc, char** argv) {
+int run_client(GSocket* sock, char** commands, int argc, char** argv, char* sock_connect, char* fd_connect) {
     Buffer* buffer = buffer_new(1024);
 
+    /* do any --command actions */
     for (char** line = commands; *line; line++) {
         client_send_line(sock, *line, buffer);
     }
 
-    if (! commands[0] || argc > 0) {
+    /* open new tab/window with remaining commands */
+    if ((! commands[0] || argc > 0) && ! (sock_connect || fd_connect)) {
         char* quoted_argv[argc+3];
         quoted_argv[argc+2] = NULL;
 
@@ -94,6 +108,14 @@ int run_client(GSocket* sock, char** commands, int argc, char** argv) {
         free(line);
     }
 
+    /* discard anything left in the buffer */
     buffer_free(buffer);
+
+    if (sock_connect) {
+        return client_pipe_over_sock(sock, sock_connect);
+    } else if (fd_connect) {
+        // TODO
+    }
+
     return 0;
 }

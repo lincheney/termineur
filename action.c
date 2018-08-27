@@ -1,6 +1,7 @@
 #include <vte/vte.h>
 #include <gtk/gtk.h>
 #include <gdk/gdkx.h>
+#include <errno.h>
 #include "action.h"
 #include "window.h"
 #include "terminal.h"
@@ -10,7 +11,7 @@
 
 GtkWidget* detaching_tab = NULL;
 
-#define DEF_ACTION(name, ...) void name(VteTerminal* terminal, char** result __VA_OPT__(,) __VA_ARGS__)
+#define DEF_ACTION(name, ...) void name(VteTerminal* terminal, __VA_ARGS__ __VA_OPT__(,) char** result)
 
 ActionFunc select_all = (ActionFunc)vte_terminal_select_all;
 ActionFunc unselect_all = (ActionFunc)vte_terminal_unselect_all;
@@ -93,7 +94,7 @@ DEF_ACTION(feed_term, char* data) {
     vte_terminal_feed(terminal, data, -1);
 }
 
-GtkWidget* new_term(gchar* data, char** size) {
+GtkWidget* new_term(gchar* data, char** size, int* pipes) {
     gint argc;
     char* cwd = NULL;
     char **original, **argv = shell_split(data, &argc);
@@ -117,18 +118,50 @@ GtkWidget* new_term(gchar* data, char** size) {
         argv ++;
     }
 
-    GtkWidget* grid = make_terminal(cwd, argc, argv);
+    GtkWidget* grid = NULL;
+    /*
+     * pipes == NULL -> no piping
+     * pipes == {0, 0} -> stdin, stdout piping
+     * pipes == {..., -1} -> dup all fd
+     */
+    if (pipes == NULL) {
+        grid = make_terminal(cwd, argc, argv);
+    } else if (pipes[0] == 0 && pipes[1] == 0) {
+        /* read stdin, write stdin, read stdout, write stdout */
+        int fds[] = {-1, -1, -1, -1};
+
+        if (pipe(fds) || pipe(fds+2)) {
+            g_warning("Failed to create pipes: %s", strerror(errno));
+            for (int i = 0; i < sizeof(fds)/sizeof(int); i ++) {
+                if (fds[i] >= 0) close(fds[i]);
+            }
+        } else {
+            pipes[0] = fds[1]; // stdin
+            pipes[1] = fds[2]; // stdout
+
+            int* child_fds = malloc(sizeof(int) * 3);
+            child_fds[0] = fds[0];
+            child_fds[1] = fds[3];
+            child_fds[2] = -1;
+            grid = make_terminal_full(cwd, argc, argv, (GSpawnChildSetupFunc)term_setup_pipes, child_fds, NULL);
+
+            GtkWidget* terminal = g_object_get_data(G_OBJECT(grid), "terminal");
+            g_object_set_data(G_OBJECT(terminal), "child_fds", child_fds);
+        }
+    }
+
     if (original) g_strfreev(original);
     return grid;
 }
 
-DEF_ACTION(new_tab, char* data) {
-    GtkWidget* widget = new_term(data, NULL);
+GtkWidget* new_tab(VteTerminal* terminal, char* data, int* pipes) {
+    GtkWidget* widget = new_term(data, NULL, pipes);
     add_tab_to_window(GTK_WIDGET(get_active_window()), widget, -1);
+    return widget;
 }
 
 DEF_ACTION(new_window, char* data) {
-    GtkWidget* widget = new_term(data, NULL);
+    GtkWidget* widget = new_term(data, NULL, NULL);
     GtkWidget* window = make_window();
     add_tab_to_window(window, widget, -1);
 }
@@ -141,7 +174,7 @@ void on_split_resize(GtkWidget* paned, GdkRectangle *rect, int value) {
 void make_split(VteTerminal* terminal, char* data, GtkOrientation orientation, gboolean after) {
     GtkWidget* dest = term_get_grid(terminal);
     char* size_str = NULL;
-    GtkWidget* src = new_term(data, &size_str);
+    GtkWidget* src = new_term(data, &size_str, NULL);
 
     // get the available size before splitting
     GdkRectangle rect;

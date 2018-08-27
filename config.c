@@ -391,7 +391,7 @@ int trigger_action(VteTerminal* terminal, guint key, int metadata) {
         for (int i = 0; i < actions->len; i++) {
             ActionData* action = &g_array_index(actions, ActionData, i);
             if (action->key == key && action->metadata == metadata) {
-                action->action.func(terminal, NULL, action->action.data);
+                action->action.func(terminal, action->action.data, NULL);
                 handled = 1;
             }
         }
@@ -422,7 +422,7 @@ void* execute_line(char* line, int size, gboolean reconfigure) {
         VteTerminal* terminal = get_active_terminal(NULL);
         if (terminal) {
             char* data = NULL;
-            action.func(terminal, &data, action.data);
+            action.func(terminal, action.data, &data);
             if (action.cleanup) {
                 action.cleanup(action.data);
             }

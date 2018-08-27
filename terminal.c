@@ -93,6 +93,14 @@ gboolean terminal_button_press_event(VteTerminal* terminal, GdkEvent* event) {
 }
 
 void term_spawn_callback(GtkWidget* terminal, GPid pid, GError *error, GtkWidget* grid) {
+    // close any left over fds
+    int* fds = g_object_get_data(G_OBJECT(terminal), "child_fds");
+    for (int* fd = fds; fds && *fd != -1; fd++) {
+        close(*fd);
+    }
+    g_object_set_data(G_OBJECT(terminal), "child_fds", NULL);
+    free(fds);
+
     if (error) {
         g_warning("Could not start terminal: %s", error->message);
         grid_cleanup(grid);
@@ -637,7 +645,18 @@ void term_select_range(VteTerminal* terminal, double start_col, double start_row
     }
 }
 
+void term_setup_pipes(int pipes[2]) {
+    dup2(pipes[0], 0);
+    dup2(pipes[1], 1);
+    close(pipes[0]);
+    close(pipes[1]);
+}
+
 GtkWidget* make_terminal(const char* cwd, int argc, char** argv) {
+    return make_terminal_full(cwd, argc, argv, NULL, NULL, NULL);
+}
+
+GtkWidget* make_terminal_full(const char* cwd, int argc, char** argv, GSpawnChildSetupFunc child_setup, void* child_setup_data, GDestroyNotify child_setup_destroy) {
     GtkWidget* terminal = vte_terminal_new();
 
     GtkWidget* msg_bar = gtk_button_new_with_label("");
@@ -705,12 +724,12 @@ GtkWidget* make_terminal(const char* cwd, int argc, char** argv) {
             args, // args
             NULL, // env
             G_SPAWN_SEARCH_PATH, // g spawn flags
-            NULL, // child setup
-            NULL, // child setup data
-            NULL, // child setup data destroy
+            child_setup, // child setup
+            child_setup_data, // child setup data
+            child_setup_destroy, // child setup data destroy
             -1, // timeout
             NULL, // cancellable
-            (VteTerminalSpawnAsyncCallback) term_spawn_callback, // callback
+            (VteTerminalSpawnAsyncCallback)term_spawn_callback, // callback
             grid // user data
     );
     free(user_shell);

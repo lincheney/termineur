@@ -3,6 +3,6 @@
 
 #include <gio/gio.h>
 
-int run_client(GSocket* sock, char** commands, int argc, char** argv);
+int run_client(GSocket* sock, char** commands, int argc, char** argv, char* sock_connect, char* fd_connect);
 
 #endif
