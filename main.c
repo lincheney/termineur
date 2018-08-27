@@ -13,8 +13,15 @@ char* fd_connect = NULL;
 
 void print_help(int argc, char** argv) {
     fprintf(stderr,
-            "usage: %s [-i|--id ID] [-c|--config CONFIG] [-C|--command COMMAND] [ARGS...]\n" \
+            "usage: %s [OPTIONS] [ARGS...]\n" \
             "       %s -h|--help\n" \
+            "\n" \
+            "Options:\n" \
+            "  -i ID, --id ID\n" \
+            "  -c CONFIG, --config CONFIG\n" \
+            "  -C COMMAND, --command COMMAND\n" \
+            "  --connect COMMAND\n" \
+            "  --connect-sock COMMAND\n"
         , argv[0], argv[0]);
 }
 
