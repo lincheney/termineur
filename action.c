@@ -382,6 +382,7 @@ void spawn_subprocess(VteTerminal* terminal, gchar* data_, GBytes* stdin_bytes, 
     GtkAdjustment* adj = gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(terminal));
     cursory -= gtk_adjustment_get_value(adj);
 
+    g_subprocess_launcher_setenv(launcher, "TERM", TERM_ENV_VAR, TRUE);
     SET_ENVIRON(PID, "%i", get_pid(terminal));
     SET_ENVIRON(FGPID, "%i", get_foreground_pid(terminal));
     SET_ENVIRON(CURSORX, "%li", cursorx);

@@ -6,6 +6,7 @@
 #include "split.h"
 
 #define APP_PREFIX "VTE_TERMINAL"
+#define TERM_ENV_VAR "xterm256-color" // this is actually set inside vte
 
 #define PALETTE_SIZE (16)
 GdkRGBA palette[PALETTE_SIZE+2];
