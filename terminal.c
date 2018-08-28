@@ -501,23 +501,33 @@ gboolean draw_terminal_overlay(GtkWidget* widget, cairo_t* cr, GdkRectangle* rec
     GdkRectangle dim;
     if (rect == NULL) {
         rect = &dim;
-        gtk_widget_get_allocation(widget, rect);
+        GtkWidget* overlay = gtk_widget_get_parent(widget);
+        gtk_widget_get_allocation(overlay, rect);
+        rect->y -= rect->height % vte_terminal_get_char_height(VTE_TERMINAL(widget));
     }
 
     GtkStyleContext* context = gtk_widget_get_style_context(widget);
     gtk_render_background(context, cr, rect->x, rect->y, rect->width, rect->height);
+
     return FALSE;
 }
 
 gboolean draw_terminal_background(GtkWidget* widget, cairo_t* cr, GtkWidget* terminal) {
+    cairo_save(cr);
+
     cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
     cairo_set_source_rgba(cr, BACKGROUND.red, BACKGROUND.green, BACKGROUND.blue, BACKGROUND.alpha);
     cairo_paint(cr);
 
     GdkRectangle rect;
+    /* draw terminal background over the top padding */
     gtk_widget_get_allocation(widget, &rect);
-    rect.height = rect.height % vte_terminal_get_char_height(VTE_TERMINAL(terminal));
+    double height = rect.height % vte_terminal_get_char_height(VTE_TERMINAL(terminal));
+    cairo_rectangle(cr, rect.x, rect.y, rect.width, height);
+    cairo_clip(cr);
     draw_terminal_overlay(terminal, cr, &rect);
+
+    cairo_restore(cr);
     return FALSE;
 }
 
