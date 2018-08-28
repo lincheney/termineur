@@ -87,7 +87,9 @@ gboolean dump_fd_to_socket(int fd, GIOCondition io, GSocket* sock) {
         char buffer[BUFFER_DEFAULT_SIZE];
         ssize_t len = read(fd, buffer, sizeof(buffer));
         if (len < 0) {
-            g_warning("Failed to read from %i: %s", fd, strerror(errno));
+            if (errno != EAGAIN) {
+                g_warning("Failed to read from %i: %s", fd, strerror(errno));
+            }
             return G_SOURCE_REMOVE;
         }
         if (len == 0) {

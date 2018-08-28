@@ -14,8 +14,8 @@ void pipe_is_closed(GSocket* sock) {
 void finalise_pipe_socket(GSocket* sock) {
     int stdin = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(sock), "stdin"));
     int stdout = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(sock), "stdout"));
-    // flush all stdout
-    if (stdout >= 0) {
+    // flush all stdout; set to nonblock first
+    if (stdout >= 0 && g_unix_set_fd_nonblocking(stdout, TRUE, NULL)) {
         while (dump_fd_to_socket(stdout, G_IO_IN, sock)) ;
         close(stdout);
     }
