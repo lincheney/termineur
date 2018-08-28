@@ -98,7 +98,7 @@ GtkWidget* new_term(gchar* data, char** size, int** pipes) {
     gint argc;
     char* cwd = NULL;
     char **original, **argv = shell_split(data, &argc);
-    if (data && ! argv) {
+    if (data && ! STR_EQUAL(data, "") && ! argv) {
         g_warning("Failed to parse: %s", data);
         return NULL;
     }
