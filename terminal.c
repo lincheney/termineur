@@ -10,6 +10,7 @@
 #include "window.h"
 #include "split.h"
 #include "label.h"
+#include "utils.h"
 
 guint timer_id = 0;
 const gint ERROR_EXIT_CODE = 127;
@@ -315,7 +316,9 @@ void update_terminal_title(VteTerminal* terminal) {
     GtkLabel* label = GTK_LABEL(g_object_get_data(G_OBJECT(tab), "label"));
     gboolean escape_markup = gtk_label_get_use_markup(label);
     if (construct_title(tab_title_format, terminal, escape_markup, buffer, sizeof(buffer)-1)) {
-        gtk_label_set_label(label, buffer);
+        if (! STR_EQUAL(gtk_label_get_label(label), buffer)) {
+            gtk_label_set_label(label, buffer);
+        }
     }
 }
 
