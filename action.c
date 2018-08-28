@@ -331,7 +331,9 @@ void subprocess_finish(GObject* proc, GAsyncResult* res, void* data) {
     GError* error = NULL;
     GBytes* stdout_buf;
     if (! g_subprocess_communicate_finish(G_SUBPROCESS(proc), res, &stdout_buf, NULL, &error)) {
-        g_warning("IO failed (%s): %s", error->message, data ? (char*)data : "");
+        if (error->domain != G_IO_ERROR || error->code != G_IO_ERROR_BROKEN_PIPE) {
+            g_warning("IO failed (%s): %s", error->message, data ? (char*)data : "");
+        }
         g_error_free(error);
         return;
     }

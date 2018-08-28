@@ -206,7 +206,7 @@ gboolean sock_send_all(GSocket* sock, char* buffer, int size) {
     while (size > 0) {
         int result = g_socket_send(sock, buffer, size, NULL, &error);
         if (result < 0) {
-            if (error->code != G_FILE_ERROR_PIPE) {
+            if (error->domain != G_IO_ERROR || error->code != G_IO_ERROR_BROKEN_PIPE) {
                 g_warning("Failed on send(): %s", error->message);
             }
             g_error_free(error);
