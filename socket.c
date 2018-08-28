@@ -57,7 +57,7 @@ int dump_socket_to_fd(GSocket* sock, GIOCondition io, int fd) {
 
         int len = g_socket_receive(sock, buffer, sizeof(buffer), NULL, &error);
         if (len < 0) {
-            g_warning("Failed to recv(): %s\n", error->message);
+            g_warning("Failed to recv(): %s", error->message);
             g_error_free(error);
         } else if (len == 0) {
             close_socket(sock);
@@ -123,7 +123,7 @@ int accept_connection(GSocket* sock, GIOCondition io, GSourceFunc callback) {
         g_source_set_callback(source, callback, buffer, (GDestroyNotify)buffer_free);
         g_source_attach(source, NULL);
     } else {
-        g_warning("Failed on accept(): %s\n", error->message);
+        g_warning("Failed on accept(): %s", error->message);
         g_error_free(error);
     }
     return G_SOURCE_CONTINUE;
@@ -135,7 +135,7 @@ gboolean make_sock(const char* path, GSocket** sock, GSocketAddress** addr) {
     *sock = g_socket_new(g_socket_address_get_family(*addr), G_SOCKET_TYPE_STREAM, G_SOCKET_PROTOCOL_DEFAULT, &error);
 
     if (! *sock) {
-        g_warning("Failed to create socket: %s\n", error->message);
+        g_warning("Failed to create socket: %s", error->message);
         g_error_free(error);
         return FALSE;
     }
@@ -149,7 +149,7 @@ int try_bind_sock(GSocket* sock, GSocketAddress* addr, GSourceFunc callback) {
             return 0;
         }
 
-        g_warning("Failed on bind(): %s\n", error->message);
+        g_warning("Failed on bind(): %s", error->message);
         g_error_free(error);
         return -1;
     }
@@ -161,7 +161,7 @@ int try_bind_sock(GSocket* sock, GSocketAddress* addr, GSourceFunc callback) {
         return 1;
     }
 
-    g_warning("Failed on listen(): %s\n", error->message);
+    g_warning("Failed on listen(): %s", error->message);
     g_error_free(error);
     return -1;
 }
@@ -172,10 +172,10 @@ int connect_sock(GSocket* sock, GSocketAddress* addr) {
         return 1;
     /* } else if (type == SOCK_SLAVE) { */
         /* // was a forced slave connection */
-        /* g_print("No terminal is running\n"); */
+        /* g_print("No terminal is running"); */
     }
 
-    g_warning("Failed on connect(): %s\n", error->message);
+    g_warning("Failed on connect(): %s", error->message);
     g_error_free(error);
     return -1;
 }
@@ -183,7 +183,7 @@ int connect_sock(GSocket* sock, GSocketAddress* addr) {
 gboolean close_socket(GSocket* sock) {
     GError* error = NULL;
     if (! g_socket_close(sock, &error)) {
-        g_warning("Failed to close socket: %s\n", error->message);
+        g_warning("Failed to close socket: %s", error->message);
         g_error_free(error);
         g_object_unref(sock);
         return FALSE;
@@ -197,7 +197,7 @@ gboolean sock_send_all(GSocket* sock, char* buffer, int size) {
     while (size > 0) {
         int sent = g_socket_send(sock, buffer, size, NULL, &error);
         if (sent < 0) {
-            g_warning("Failed on send(): %s\n", error->message);
+            g_warning("Failed on send(): %s", error->message);
             g_error_free(error);
             return FALSE;
         }
@@ -222,7 +222,7 @@ char* sock_recv_until_null(GSocket* sock) {
 
         len = g_socket_receive(sock, buffer + size, total_size - size, NULL, &error);
         if (len < 0) {
-            g_warning("Failed to recv(): %s\n", error->message);
+            g_warning("Failed to recv(): %s", error->message);
             g_error_free(error);
             return NULL;
         }

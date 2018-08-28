@@ -583,7 +583,7 @@ void term_select_range(VteTerminal* terminal, double start_col, double start_row
     window = window_list->data;
     g_list_free(window_list);
     if (! window) {
-        g_warning("No GdkWindow found for terminal\n");
+        g_warning("No GdkWindow found for terminal");
         return;
     }
 
