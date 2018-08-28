@@ -393,12 +393,14 @@ void spawn_subprocess(VteTerminal* terminal, gchar* data_, char* text, char** re
     if (hyperlink) SET_ENVIRON(HYPERLINK, "%s", hyperlink);
 
     // get x11 windowid
+#ifdef GDK_WINDOWING_X11
     GdkWindow* window = gtk_widget_get_window(GTK_WIDGET(terminal));
     GdkDisplay* display = gdk_window_get_display(window);
     if (GDK_IS_X11_DISPLAY(display)) {
         Window winid = gdk_x11_window_get_xid(window);
         SET_ENVIRON(XWINDOWID, "0x%lx", winid);
     }
+#endif
 
     GSubprocess* proc = g_subprocess_launcher_spawnv(launcher, (const char**)argv, &error);
     if (!proc) {

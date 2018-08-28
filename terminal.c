@@ -497,35 +497,44 @@ void configure_terminal_scrollbar(VteTerminal* terminal, GtkPolicyType scrollbar
     gtk_widget_show(scrollbar);
 }
 
-gboolean draw_terminal_overlay(GtkWidget* widget, cairo_t* cr, GdkRectangle* rect) {
-    GdkRectangle dim;
-    if (rect == NULL) {
-        rect = &dim;
-        GtkWidget* overlay = gtk_widget_get_parent(widget);
-        gtk_widget_get_allocation(overlay, rect);
-        rect->y -= rect->height % vte_terminal_get_char_height(VTE_TERMINAL(widget));
-    }
+/*
+ * DRAWING
+ * 1. draw terminal widget css bg in overlay draw handler
+ * 2. draw terminal bg in overlay draw handler
+ * 3. draw overlay bg in overlay post draw handler
+ */
+
+gboolean draw_overlay_widget_post(GtkWidget* widget, cairo_t* cr, GtkWidget* terminal) {
+    /*
+     * draw the overlay background on top of everything
+     */
+
+    GdkRectangle rect;
+    gtk_widget_get_allocation(widget, &rect);
 
     GtkStyleContext* context = gtk_widget_get_style_context(widget);
-    gtk_render_background(context, cr, rect->x, rect->y, rect->width, rect->height);
+    gtk_render_background(context, cr, rect.x, rect.y, rect.width, rect.height);
 
     return FALSE;
 }
 
-gboolean draw_terminal_background(GtkWidget* widget, cairo_t* cr, GtkWidget* terminal) {
+gboolean draw_overlay_widget(GtkWidget* widget, cairo_t* cr, GtkWidget* terminal) {
+    /*
+     * draw the terminal backgrounds here
+     * since this draw handler gets called first
+     */
+
     cairo_save(cr);
+
+    GdkRectangle rect;
+    gtk_widget_get_allocation(widget, &rect);
+
+    GtkStyleContext* context = gtk_widget_get_style_context(terminal);
+    gtk_render_background(context, cr, rect.x, rect.y, rect.width, rect.height);
 
     cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
     cairo_set_source_rgba(cr, BACKGROUND.red, BACKGROUND.green, BACKGROUND.blue, BACKGROUND.alpha);
     cairo_paint(cr);
-
-    GdkRectangle rect;
-    /* draw terminal background over the top padding */
-    gtk_widget_get_allocation(widget, &rect);
-    double height = rect.height % vte_terminal_get_char_height(VTE_TERMINAL(terminal));
-    cairo_rectangle(cr, rect.x, rect.y, rect.width, height);
-    cairo_clip(cr);
-    draw_terminal_overlay(terminal, cr, &rect);
 
     cairo_restore(cr);
     return FALSE;
@@ -764,8 +773,8 @@ GtkWidget* make_terminal_full(const char* cwd, int argc, char** argv, GSpawnChil
     g_signal_connect(terminal, "bell", G_CALLBACK(terminal_bell), NULL);
     g_signal_connect(terminal, "hyperlink-hover-uri-changed", G_CALLBACK(terminal_hyperlink_hover), NULL);
     g_signal_connect(terminal, "button-press-event", G_CALLBACK(terminal_button_press_event), NULL);
-    g_signal_connect(overlay, "draw", G_CALLBACK(draw_terminal_background), terminal);
-    g_signal_connect_after(terminal, "draw", G_CALLBACK(draw_terminal_overlay), NULL);
+    g_signal_connect(overlay, "draw", G_CALLBACK(draw_overlay_widget), terminal);
+    g_signal_connect_after(overlay, "draw", G_CALLBACK(draw_overlay_widget_post), terminal);
 
     char **args;
     char *fallback_args[] = {NULL, NULL};
