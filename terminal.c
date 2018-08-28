@@ -545,6 +545,9 @@ gboolean overlay_position_term(GtkWidget* overlay, GtkWidget* widget, GdkRectang
         gtk_widget_get_preferred_width(widget, &min, &natural);
         int width = MAX(min, MIN(natural, rect->width));
 
+        gtk_widget_get_preferred_height(widget, &min, &natural);
+        rect->height = MAX(min, rect->height);
+
         rect->x = rect->width - width;
         rect->width = width;
         return TRUE;
