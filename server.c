@@ -177,6 +177,7 @@ int run_server(int argc, char** argv) {
     load_config(config_filename);
     make_new_window_full(NULL, NULL, argc, argv);
 
+    g_unix_signal_add(SIGINT, (GSourceFunc)gtk_main_quit, NULL);
     gtk_main();
     return 0;
 }
