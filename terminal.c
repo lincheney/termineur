@@ -95,11 +95,12 @@ gboolean terminal_button_press_event(VteTerminal* terminal, GdkEvent* event) {
 void term_spawn_callback(GtkWidget* terminal, GPid pid, GError *error, GtkWidget* grid) {
     // close any left over fds
     int* fds = g_object_get_data(G_OBJECT(terminal), "child_fds");
-    for (int* fd = fds; fds && *fd != -1; fd++) {
-        close(*fd);
+    if (fds) {
+        if (fds[0] >= 0) close(fds[0]);
+        if (fds[1] >= 0) close(fds[1]);
+        free(fds);
     }
     g_object_set_data(G_OBJECT(terminal), "child_fds", NULL);
-    free(fds);
 
     if (error) {
         g_warning("Could not start terminal: %s", error->message);
@@ -645,11 +646,15 @@ void term_select_range(VteTerminal* terminal, double start_col, double start_row
     }
 }
 
-void term_setup_pipes(int pipes[2]) {
-    dup2(pipes[0], 0);
-    dup2(pipes[1], 1);
-    close(pipes[0]);
-    close(pipes[1]);
+void term_setup_pipes(int* pipes) {
+    if (pipes[0] >= 0) {
+        dup2(pipes[0], 0);
+        close(pipes[0]);
+    }
+    if (pipes[1] >= 0) {
+        dup2(pipes[1], 1);
+        close(pipes[1]);
+    }
 }
 
 void term_get_row_positions(VteTerminal* terminal, int* screen_lower, int* screen_upper, int* lower, int* upper) {

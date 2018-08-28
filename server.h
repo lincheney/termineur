@@ -5,7 +5,6 @@
 #include "socket.h"
 
 #define CONNECT_SOCK "CONNECT_SOCK:"
-#define CONNECT_FD "CONNECT_FD:"
 
 int server_recv(GSocket* sock, GIOCondition io, Buffer* buffer);
 int run_server(int argc, char** argv);

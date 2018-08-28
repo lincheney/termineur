@@ -26,6 +26,16 @@ void finalise_pipe_socket(GSocket* sock) {
 }
 
 void server_pipe_over_socket(GSocket* sock, char* value, Buffer* remainder) {
+    if (strlen(value) < 2) {
+        g_warning("Invalid connection format: %s", value);
+        return;
+    }
+
+    char flag = value[0] - '0';
+    int connect_stdin = flag & 1;
+    int connect_stdout = flag & 2;
+    value += 2;
+
     char* copy = strdup(value);
     Action action = lookup_action(copy);
     free(copy);
@@ -46,7 +56,7 @@ void server_pipe_over_socket(GSocket* sock, char* value, Buffer* remainder) {
     VteTerminal* terminal = get_active_terminal(NULL);
     if (terminal) {
         char* data = NULL;
-        int pipes[2];
+        int pipes[2] = {connect_stdin, connect_stdout};
         int* ptr = pipes;
 
         GtkWidget* widget = func(terminal, action.data, &ptr);

@@ -4,9 +4,14 @@
 #include "config.h"
 #include "server.h"
 
-int client_pipe_over_sock(GSocket* sock, char* value) {
+int client_pipe_over_sock(GSocket* sock, char* value, gboolean connect_stdin, gboolean connect_stdout) {
+    char buf[2];
+    buf[0] = '0' + (connect_stdin ? 1 : 0) + (connect_stdout ? 2 : 0);
+    buf[1] = ':';
+
     if (
             ! sock_send_all(sock, CONNECT_SOCK, sizeof(CONNECT_SOCK)-1) ||
+            ! sock_send_all(sock, buf, sizeof(buf)) ||
             ! sock_send_all(sock, value, strlen(value)+1)
     ) {
         return 1;
@@ -71,7 +76,7 @@ int client_send_line(GSocket* sock, char* line, Buffer* buffer) {
     return 0;
 }
 
-int run_client(GSocket* sock, char** commands, int argc, char** argv, char* sock_connect) {
+int run_client(GSocket* sock, char** commands, int argc, char** argv, char* sock_connect, gboolean connect_stdin, gboolean connect_stdout) {
     Buffer* buffer = buffer_new(1024);
 
     /* do any --command actions */
@@ -114,7 +119,7 @@ int run_client(GSocket* sock, char** commands, int argc, char** argv, char* sock
     buffer_free(buffer);
 
     if (sock_connect) {
-        return client_pipe_over_sock(sock, sock_connect);
+        return client_pipe_over_sock(sock, sock_connect, connect_stdin, connect_stdout);
     }
 
     return 0;

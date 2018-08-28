@@ -123,23 +123,22 @@ GtkWidget* new_term(gchar* data, char** size, int** pipes) {
         /* read stdin, write stdin, read stdout, write stdout */
         int fds[] = {-1, -1, -1, -1};
 
-        if (pipe(fds) || pipe(fds+2)) {
-            g_warning("Failed to create pipes: %s", strerror(errno));
-            for (int i = 0; i < sizeof(fds)/sizeof(int); i ++) {
-                if (fds[i] >= 0) close(fds[i]);
-            }
-        } else {
+        if ( ( !(*pipes)[0] || pipe(fds) >= 0 ) && ( !(*pipes)[1] || pipe(fds+2) >= 0 ) ) {
             (*pipes)[0] = fds[1]; // stdin
             (*pipes)[1] = fds[2]; // stdout
 
-            int* child_fds = malloc(sizeof(int) * 3);
+            int* child_fds = malloc(sizeof(int) * 2);
             child_fds[0] = fds[0];
             child_fds[1] = fds[3];
-            child_fds[2] = -1;
             grid = make_terminal_full(cwd, argc, argv, (GSpawnChildSetupFunc)term_setup_pipes, child_fds, NULL);
 
             GtkWidget* terminal = g_object_get_data(G_OBJECT(grid), "terminal");
             g_object_set_data(G_OBJECT(terminal), "child_fds", child_fds);
+        } else {
+            g_warning("Failed to create pipes: %s", strerror(errno));
+            for (int i = 0; i < sizeof(fds)/sizeof(int); i ++) {
+                if (fds[i] >= 0) close(fds[i]);
+            }
         }
     }
 

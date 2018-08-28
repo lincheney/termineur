@@ -9,6 +9,8 @@
 
 char* commands[255];
 char* sock_connect = NULL;
+gboolean no_connect_stdin = FALSE;
+gboolean no_connect_stdout = FALSE;
 
 void print_help(int argc, char** argv) {
     fprintf(stderr,
@@ -25,7 +27,7 @@ void print_help(int argc, char** argv) {
 
 char** parse_args(int* argc, char** argv) {
 
-#define MATCH_FLAG(flag, dest) \
+#define MATCH_FLAG_WITH_ARG(flag, dest) \
         if (STR_STARTSWITH(argv[i], (flag))) { \
             if (argv[i][sizeof(flag)-1] == '=') { \
                 /* -f=value */ \
@@ -49,6 +51,12 @@ char** parse_args(int* argc, char** argv) {
             } \
         }
 
+#define MATCH_FLAG(flag, dest) \
+    if (STR_EQUAL(argv[i], (flag))) { \
+        dest = TRUE; \
+        continue; \
+    }
+
     int i, command_ix = -1;
     // skip arg0
     for (i = 1; i < *argc; i ++) {
@@ -57,13 +65,15 @@ char** parse_args(int* argc, char** argv) {
             exit(0);
         }
 
-        MATCH_FLAG("-C", config_filename);
-        MATCH_FLAG("--config", config_filename);
-        MATCH_FLAG("-i", app_id);
-        MATCH_FLAG("--id", app_id);
-        MATCH_FLAG("-c", command_ix ++; commands[command_ix]);
-        MATCH_FLAG("--command", command_ix ++; commands[command_ix]);
-        MATCH_FLAG("--connect", sock_connect);
+        MATCH_FLAG_WITH_ARG("-C", config_filename);
+        MATCH_FLAG_WITH_ARG("--config", config_filename);
+        MATCH_FLAG_WITH_ARG("-i", app_id);
+        MATCH_FLAG_WITH_ARG("--id", app_id);
+        MATCH_FLAG_WITH_ARG("-c", command_ix ++; commands[command_ix]);
+        MATCH_FLAG_WITH_ARG("--command", command_ix ++; commands[command_ix]);
+        MATCH_FLAG_WITH_ARG("--connect", sock_connect);
+        MATCH_FLAG("--no-connect-stdin", no_connect_stdin);
+        MATCH_FLAG("--no-connect-stdout", no_connect_stdout);
         if (STR_EQUAL(argv[i], "--")) {
             i ++;
         }
@@ -124,7 +134,7 @@ int main(int argc, char *argv[]) {
     } else if (status < 0) {
         return 1;
     } else if (connect_sock(sock, addr) >= 0) {
-        status = run_client(sock, commands, argc, argv, sock_connect);
+        status = run_client(sock, commands, argc, argv, sock_connect, !no_connect_stdin, !no_connect_stdout);
     }
     close_socket(sock);
 

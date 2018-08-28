@@ -172,9 +172,6 @@ int connect_sock(GSocket* sock, GSocketAddress* addr) {
     GError* error = NULL;
     if (g_socket_connect(sock, addr, NULL, &error)) {
         return 1;
-    /* } else if (type == SOCK_SLAVE) { */
-        /* // was a forced slave connection */
-        /* g_print("No terminal is running"); */
     }
 
     g_warning("Failed on connect(): %s", error->message);
