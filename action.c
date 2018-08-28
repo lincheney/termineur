@@ -151,13 +151,13 @@ GtkWidget* new_term(gchar* data, char** size, int** pipes) {
 
 GtkWidget* new_tab(VteTerminal* terminal, char* data, int** pipes) {
     GtkWidget* widget = new_term(data, NULL, pipes);
-    add_tab_to_window(GTK_WIDGET(get_active_window()), widget, -1);
+    if (widget) add_tab_to_window(GTK_WIDGET(get_active_window()), widget, -1);
     return widget;
 }
 
 GtkWidget* new_window(VteTerminal* terminal, char* data, int** pipes) {
     GtkWidget* widget = new_term(data, NULL, pipes);
-    add_tab_to_window(make_window(), widget, -1);
+    if (widget) add_tab_to_window(make_window(), widget, -1);
     return widget;
 }
 
@@ -170,6 +170,9 @@ GtkWidget* make_split(VteTerminal* terminal, char* data, GtkOrientation orientat
     GtkWidget* dest = term_get_grid(terminal);
     char* size_str = NULL;
     GtkWidget* grid = new_term(data, &size_str, pipes);
+    if (! grid) {
+        return NULL;
+    }
 
     // get the available size before splitting
     GdkRectangle rect;
