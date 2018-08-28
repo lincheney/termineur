@@ -17,8 +17,8 @@ void print_help(int argc, char** argv) {
             "\n" \
             "Options:\n" \
             "  -i ID, --id ID\n" \
-            "  -c CONFIG, --config CONFIG\n" \
-            "  -C COMMAND, --command COMMAND\n" \
+            "  -C CONFIG, --config CONFIG\n" \
+            "  -c COMMAND, --command COMMAND\n" \
             "  --connect COMMAND\n" \
         , argv[0], argv[0]);
 }
@@ -57,11 +57,11 @@ char** parse_args(int* argc, char** argv) {
             exit(0);
         }
 
-        MATCH_FLAG("-c", config_filename);
+        MATCH_FLAG("-C", config_filename);
         MATCH_FLAG("--config", config_filename);
         MATCH_FLAG("-i", app_id);
         MATCH_FLAG("--id", app_id);
-        MATCH_FLAG("-C", command_ix ++; commands[command_ix]);
+        MATCH_FLAG("-c", command_ix ++; commands[command_ix]);
         MATCH_FLAG("--command", command_ix ++; commands[command_ix]);
         MATCH_FLAG("--connect", sock_connect);
         if (STR_EQUAL(argv[i], "--")) {
