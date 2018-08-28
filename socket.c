@@ -94,7 +94,9 @@ gboolean dump_fd_to_socket(int fd, GIOCondition io, GSocket* sock) {
             // closed
             return G_SOURCE_REMOVE;
         }
-        sock_send_all(sock, buffer, len);
+        if (sock_send_all(sock, buffer, len) <= 0) {
+            return G_SOURCE_REMOVE;
+        }
     }
 
     if (io & G_IO_ERR) {
@@ -193,14 +195,17 @@ gboolean close_socket(GSocket* sock) {
 gboolean sock_send_all(GSocket* sock, char* buffer, int size) {
     GError* error = NULL;
     while (size > 0) {
-        int sent = g_socket_send(sock, buffer, size, NULL, &error);
-        if (sent < 0) {
-            g_warning("Failed on send(): %s", error->message);
+        int result = g_socket_send(sock, buffer, size, NULL, &error);
+        if (result < 0) {
+            if (error->code != G_FILE_ERROR_PIPE) {
+                g_warning("Failed on send(): %s", error->message);
+            }
             g_error_free(error);
+            close_socket(sock);
             return FALSE;
         }
-        size -= sent;
-        buffer += sent;
+        size -= result;
+        buffer += result;
     }
     return TRUE;
 }

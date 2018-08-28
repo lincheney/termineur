@@ -6,9 +6,12 @@
 
 int client_pipe_over_sock(GSocket* sock, char* value) {
     // send them all over
-    int result = sock_send_all(sock, CONNECT_SOCK, sizeof(CONNECT_SOCK)-1);
-    if (result) result = sock_send_all(sock, value, strlen(value)+1);
-    if (!result) return 1;
+    if (
+            ! sock_send_all(sock, CONNECT_SOCK, sizeof(CONNECT_SOCK)-1) ||
+            ! sock_send_all(sock, value, strlen(value)+1)
+    ) {
+        return 1;
+    }
 
     // now read connect up stdin, stdout
 

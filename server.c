@@ -113,12 +113,17 @@ int server_recv(GSocket* sock, GIOCondition io, Buffer* buffer) {
                 }
 
                 void* data = execute_line(buffer->data, ptr - buffer->data, TRUE);
+                int result;
                 if (data) {
-                    sock_send_all(sock, data, strlen(data)+1);
+                    result = sock_send_all(sock, data, strlen(data)+1);
                 } else {
-                    sock_send_all(sock, "", 1);
+                    result = sock_send_all(sock, "", 1);
                 }
                 free(data);
+
+                if (! result) {
+                    return 1;
+                }
 
                 // shift by length of line
                 buffer_shift_back(buffer, ptr - buffer->data + 1);
