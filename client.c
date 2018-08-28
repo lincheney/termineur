@@ -5,7 +5,6 @@
 #include "server.h"
 
 int client_pipe_over_sock(GSocket* sock, char* value) {
-    // send them all over
     if (
             ! sock_send_all(sock, CONNECT_SOCK, sizeof(CONNECT_SOCK)-1) ||
             ! sock_send_all(sock, value, strlen(value)+1)
@@ -56,7 +55,7 @@ int client_send_line(GSocket* sock, char* line, Buffer* buffer) {
 
         /* dump existing buffer */
         int size = end ? (end - buffer->data) : (buffer->used + len);
-        if (write_to_fd(STDOUT_FILENO, buffer->data, size)) {
+        if (write_to_fd(STDOUT_FILENO, buffer->data, size) < 0) {
             return 1;
         }
 

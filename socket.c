@@ -42,7 +42,7 @@ int write_to_fd(int fd, char* buffer, ssize_t size) {
             return 0;
         }
         if (result < 0) {
-            g_warning("Error writing to %i", fd);
+            g_warning("Error writing to %i: %s", fd, strerror(errno));
             return -1;
         }
         written += result;
