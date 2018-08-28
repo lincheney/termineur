@@ -6,6 +6,25 @@
 #include "utils.h"
 #include "action.h"
 
+void pipe_is_closed(GSocket* sock) {
+    g_object_set_data(G_OBJECT(sock), "stdin", GINT_TO_POINTER(-1));
+    g_object_set_data(G_OBJECT(sock), "stdout", GINT_TO_POINTER(-1));
+}
+
+void finalise_pipe_socket(GSocket* sock) {
+    int stdin = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(sock), "stdin"));
+    int stdout = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(sock), "stdout"));
+    // flush all stdout
+    if (stdout >= 0) {
+        while (dump_fd_to_socket(stdout, G_IO_IN, sock)) ;
+        close(stdout);
+    }
+    if (stdin >= 0) {
+        close(stdin);
+    }
+    close_socket(sock);
+}
+
 void server_pipe_over_socket(GSocket* sock, char* value, Buffer* remainder) {
     char* copy = strdup(value);
     Action action = lookup_action(copy);
@@ -44,13 +63,13 @@ void server_pipe_over_socket(GSocket* sock, char* value, Buffer* remainder) {
             g_source_set_callback(source, (GSourceFunc)dump_socket_to_fd, GINT_TO_POINTER(pipes[0]), NULL);
             g_source_attach(source, NULL);
 
-            g_unix_fd_add(pipes[1], G_IO_IN | G_IO_ERR | G_IO_HUP, (GUnixFDSourceFunc)dump_fd_to_socket, sock);
+            g_unix_fd_add_full(G_PRIORITY_DEFAULT, pipes[1], G_IO_IN | G_IO_ERR | G_IO_HUP, (GUnixFDSourceFunc)dump_fd_to_socket, sock, (GDestroyNotify)pipe_is_closed);
 
             // close everything when terminal exits
+            g_object_set_data(G_OBJECT(sock), "stdin", GINT_TO_POINTER(pipes[0]));
+            g_object_set_data(G_OBJECT(sock), "stdout", GINT_TO_POINTER(pipes[1]));
             terminal = g_object_get_data(G_OBJECT(widget), "terminal");
-            g_signal_connect_swapped(terminal, "destroy", G_CALLBACK(close_socket), sock);
-            g_signal_connect_swapped(terminal, "destroy", G_CALLBACK(close), GINT_TO_POINTER(pipes[0]));
-            g_signal_connect_swapped(terminal, "destroy", G_CALLBACK(close), GINT_TO_POINTER(pipes[1]));
+            g_signal_connect_swapped(terminal, "destroy", G_CALLBACK(finalise_pipe_socket), sock);
         }
     }
 }
