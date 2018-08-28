@@ -4,6 +4,10 @@
 #include "config.h"
 #include "server.h"
 
+void stdin_is_closed(GSocket* sock) {
+    shutdown_socket(sock, FALSE, TRUE);
+}
+
 int client_pipe_over_sock(GSocket* sock, char* value, gboolean connect_stdin, gboolean connect_stdout) {
     char buf[2];
     buf[0] = '0' + (connect_stdin ? 1 : 0) + (connect_stdout ? 2 : 0);
@@ -17,13 +21,19 @@ int client_pipe_over_sock(GSocket* sock, char* value, gboolean connect_stdin, gb
         return 1;
     }
 
-    // now read connect up stdin, stdout
+    /*
+     * connect up:
+     *      socket read -> stdout
+     *      stdin       -> socket write
+     *  when stdin closes, close write end of socket (server will then close its stdin pipe)
+     *  when socket closes, process must have exited so quit the app
+     */
 
-    // stdout
     GSource* source;
     if (connect_stdout) {
         source = g_socket_create_source(sock, G_IO_IN | G_IO_HUP | G_IO_ERR, NULL);
     } else {
+        // still need to wait for socket close to detect when remote process has exited
         source = g_socket_create_source(sock, G_IO_HUP | G_IO_ERR, NULL);
     }
     g_source_set_callback(source, (GSourceFunc)dump_socket_to_fd, GINT_TO_POINTER(STDOUT_FILENO), (GDestroyNotify)gtk_main_quit);
@@ -31,7 +41,11 @@ int client_pipe_over_sock(GSocket* sock, char* value, gboolean connect_stdin, gb
 
     // stdin
     if (connect_stdin) {
-        g_unix_fd_add(STDIN_FILENO, G_IO_IN | G_IO_ERR | G_IO_HUP, (GUnixFDSourceFunc)dump_fd_to_socket, sock);
+        g_unix_fd_add_full(
+                G_PRIORITY_DEFAULT, STDIN_FILENO,
+                G_IO_IN | G_IO_ERR | G_IO_HUP,
+                (GUnixFDSourceFunc)dump_fd_to_socket, sock, (GDestroyNotify)stdin_is_closed
+        );
     }
 
     gtk_main();

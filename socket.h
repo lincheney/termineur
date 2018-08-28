@@ -26,6 +26,7 @@ gboolean dump_fd_to_socket(int fd, GIOCondition condition, GSocket* sock);
 gboolean make_sock(const char* path, GSocket** sock, GSocketAddress** addr);
 int try_bind_sock(GSocket* sock, GSocketAddress* addr, GSourceFunc callback);
 int connect_sock(GSocket* sock, GSocketAddress* addr);
+gboolean shutdown_socket(GSocket* sock, gboolean shutdown_read, gboolean shutdown_write);
 gboolean close_socket(GSocket* sock);
 gboolean sock_send_all(GSocket* sock, char* buffer, int size);
 char* sock_recv_until_null(GSocket* sock);

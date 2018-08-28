@@ -60,7 +60,7 @@ int dump_socket_to_fd(GSocket* sock, GIOCondition io, int fd) {
             g_warning("Failed to recv(): %s", error->message);
             g_error_free(error);
         } else if (len == 0) {
-            close_socket(sock);
+            shutdown_socket(sock, TRUE, FALSE);
             return G_SOURCE_REMOVE;
         } else if (write_to_fd(fd, buffer, len) == 0) {
             // fd is closed
@@ -70,12 +70,12 @@ int dump_socket_to_fd(GSocket* sock, GIOCondition io, int fd) {
 
     if (io & G_IO_ERR) {
         g_warning("error on socket");
-        close_socket(sock);
+        shutdown_socket(sock, TRUE, FALSE);
         return G_SOURCE_REMOVE;
     }
 
     if (io & (G_IO_HUP | G_IO_NVAL)) {
-        close_socket(sock);
+        shutdown_socket(sock, TRUE, FALSE);
         return G_SOURCE_REMOVE;
     }
 
@@ -177,6 +177,16 @@ int connect_sock(GSocket* sock, GSocketAddress* addr) {
     g_warning("Failed on connect(): %s", error->message);
     g_error_free(error);
     return -1;
+}
+
+gboolean shutdown_socket(GSocket* sock, gboolean shutdown_read, gboolean shutdown_write) {
+    GError* error = NULL;
+    if (! g_socket_shutdown(sock, shutdown_read, shutdown_write, &error)) {
+        g_warning("Failed to shutdown socket: %s", error->message);
+        g_error_free(error);
+        return FALSE;
+    }
+    return TRUE;
 }
 
 gboolean close_socket(GSocket* sock) {
