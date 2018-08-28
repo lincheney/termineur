@@ -182,7 +182,9 @@ int connect_sock(GSocket* sock, GSocketAddress* addr) {
 gboolean shutdown_socket(GSocket* sock, gboolean shutdown_read, gboolean shutdown_write) {
     GError* error = NULL;
     if (! g_socket_shutdown(sock, shutdown_read, shutdown_write, &error)) {
-        g_warning("Failed to shutdown socket: %s", error->message);
+        if (error->domain != G_IO_ERROR || error->code != G_IO_ERROR_CLOSED) {
+            g_warning("Failed to shutdown socket: %s", error->message);
+        }
         g_error_free(error);
         return FALSE;
     }
