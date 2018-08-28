@@ -26,8 +26,10 @@ void server_pipe_over_socket(GSocket* sock, char* value, Buffer* remainder) {
     VteTerminal* terminal = get_active_terminal(NULL);
     if (terminal) {
         char* data = NULL;
-        int pipes[2] = {0, 0};
-        GtkWidget* widget = func(terminal, action.data, pipes);
+        int pipes[2];
+        int* ptr = pipes;
+
+        GtkWidget* widget = func(terminal, action.data, &ptr);
         if (action.cleanup) {
             action.cleanup(action.data);
         }
@@ -79,7 +81,7 @@ int server_recv(GSocket* sock, GIOCondition io, Buffer* buffer) {
                 if (ptr == end) break;
 
                 *ptr = '\0'; // end of line
-                char *sock_connect, *fd_connect;
+                char *sock_connect;
                 if ((sock_connect = STR_STRIP_PREFIX(buffer->data, CONNECT_SOCK))) {
                     // dup as the shift below will invalidate the data
                     sock_connect = strdup(sock_connect);

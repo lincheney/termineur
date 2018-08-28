@@ -9,7 +9,6 @@
 
 char* commands[255];
 char* sock_connect = NULL;
-char* fd_connect = NULL;
 
 void print_help(int argc, char** argv) {
     fprintf(stderr,
@@ -21,7 +20,6 @@ void print_help(int argc, char** argv) {
             "  -c CONFIG, --config CONFIG\n" \
             "  -C COMMAND, --command COMMAND\n" \
             "  --connect COMMAND\n" \
-            "  --connect-sock COMMAND\n"
         , argv[0], argv[0]);
 }
 
@@ -65,8 +63,7 @@ char** parse_args(int* argc, char** argv) {
         MATCH_FLAG("--id", app_id);
         MATCH_FLAG("-C", command_ix ++; commands[command_ix]);
         MATCH_FLAG("--command", command_ix ++; commands[command_ix]);
-        MATCH_FLAG("--connect", fd_connect);
-        MATCH_FLAG("--connect-sock", sock_connect);
+        MATCH_FLAG("--connect", sock_connect);
         if (STR_EQUAL(argv[i], "--")) {
             i ++;
         }
@@ -121,13 +118,13 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    status = commands[0] ? 0 : try_bind_sock(sock, addr, (GSourceFunc)server_recv);
+    status = (commands[0] || sock_connect) ? 0 : try_bind_sock(sock, addr, (GSourceFunc)server_recv);
     if (status > 0) {
         status = run_server(argc, argv);
     } else if (status < 0) {
         return 1;
     } else if (connect_sock(sock, addr) >= 0) {
-        status = run_client(sock, commands, argc, argv, sock_connect, fd_connect);
+        status = run_client(sock, commands, argc, argv, sock_connect);
     }
     close_socket(sock);
 

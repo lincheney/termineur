@@ -94,7 +94,7 @@ DEF_ACTION(feed_term, char* data) {
     vte_terminal_feed(terminal, data, -1);
 }
 
-GtkWidget* new_term(gchar* data, char** size, int* pipes) {
+GtkWidget* new_term(gchar* data, char** size, int** pipes) {
     gint argc;
     char* cwd = NULL;
     char **original, **argv = shell_split(data, &argc);
@@ -119,14 +119,9 @@ GtkWidget* new_term(gchar* data, char** size, int* pipes) {
     }
 
     GtkWidget* grid = NULL;
-    /*
-     * pipes == NULL -> no piping
-     * pipes == {0, 0} -> stdin, stdout piping
-     * pipes == {..., -1} -> dup all fd
-     */
-    if (pipes == NULL) {
+    if (pipes == NULL || *pipes == NULL) {
         grid = make_terminal(cwd, argc, argv);
-    } else if (pipes[0] == 0 && pipes[1] == 0) {
+    } else {
         /* read stdin, write stdin, read stdout, write stdout */
         int fds[] = {-1, -1, -1, -1};
 
@@ -136,8 +131,8 @@ GtkWidget* new_term(gchar* data, char** size, int* pipes) {
                 if (fds[i] >= 0) close(fds[i]);
             }
         } else {
-            pipes[0] = fds[1]; // stdin
-            pipes[1] = fds[2]; // stdout
+            (*pipes)[0] = fds[1]; // stdin
+            (*pipes)[1] = fds[2]; // stdout
 
             int* child_fds = malloc(sizeof(int) * 3);
             child_fds[0] = fds[0];
@@ -154,13 +149,13 @@ GtkWidget* new_term(gchar* data, char** size, int* pipes) {
     return grid;
 }
 
-GtkWidget* new_tab(VteTerminal* terminal, char* data, int* pipes) {
+GtkWidget* new_tab(VteTerminal* terminal, char* data, int** pipes) {
     GtkWidget* widget = new_term(data, NULL, pipes);
     add_tab_to_window(GTK_WIDGET(get_active_window()), widget, -1);
     return widget;
 }
 
-GtkWidget* new_window(VteTerminal* terminal, char* data, int* pipes) {
+GtkWidget* new_window(VteTerminal* terminal, char* data, int** pipes) {
     GtkWidget* widget = new_term(data, NULL, pipes);
     add_tab_to_window(make_window(), widget, -1);
     return widget;
@@ -171,7 +166,7 @@ void on_split_resize(GtkWidget* paned, GdkRectangle *rect, int value) {
     g_signal_handlers_disconnect_by_func(paned, on_split_resize, GINT_TO_POINTER(value));
 }
 
-GtkWidget* make_split(VteTerminal* terminal, char* data, GtkOrientation orientation, gboolean after, int* pipes) {
+GtkWidget* make_split(VteTerminal* terminal, char* data, GtkOrientation orientation, gboolean after, int** pipes) {
     GtkWidget* dest = term_get_grid(terminal);
     char* size_str = NULL;
     GtkWidget* grid = new_term(data, &size_str, pipes);
@@ -215,19 +210,19 @@ GtkWidget* make_split(VteTerminal* terminal, char* data, GtkOrientation orientat
     return grid;
 }
 
-GtkWidget* split_left(VteTerminal* terminal, char* data, int* pipes) {
+GtkWidget* split_left(VteTerminal* terminal, char* data, int** pipes) {
     return make_split(terminal, data, GTK_ORIENTATION_HORIZONTAL, FALSE, pipes);
 }
 
-GtkWidget* split_right(VteTerminal* terminal, char* data, int* pipes) {
+GtkWidget* split_right(VteTerminal* terminal, char* data, int** pipes) {
     return make_split(terminal, data, GTK_ORIENTATION_HORIZONTAL, TRUE, pipes);
 }
 
-GtkWidget* split_above(VteTerminal* terminal, char* data, int* pipes) {
+GtkWidget* split_above(VteTerminal* terminal, char* data, int** pipes) {
     return make_split(terminal, data, GTK_ORIENTATION_VERTICAL, FALSE, pipes);
 }
 
-GtkWidget* split_below(VteTerminal* terminal, char* data, int* pipes) {
+GtkWidget* split_below(VteTerminal* terminal, char* data, int** pipes) {
     return make_split(terminal, data, GTK_ORIENTATION_VERTICAL, TRUE, pipes);
 }
 

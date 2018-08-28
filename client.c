@@ -69,7 +69,7 @@ int client_send_line(GSocket* sock, char* line, Buffer* buffer) {
     return 0;
 }
 
-int run_client(GSocket* sock, char** commands, int argc, char** argv, char* sock_connect, char* fd_connect) {
+int run_client(GSocket* sock, char** commands, int argc, char** argv, char* sock_connect) {
     Buffer* buffer = buffer_new(1024);
 
     /* do any --command actions */
@@ -78,7 +78,7 @@ int run_client(GSocket* sock, char** commands, int argc, char** argv, char* sock
     }
 
     /* open new tab/window with remaining commands */
-    if ((! commands[0] || argc > 0) && ! (sock_connect || fd_connect)) {
+    if ((! commands[0] || argc > 0) && ! sock_connect) {
         char* quoted_argv[argc+3];
         quoted_argv[argc+2] = NULL;
 
@@ -113,8 +113,6 @@ int run_client(GSocket* sock, char** commands, int argc, char** argv, char* sock
 
     if (sock_connect) {
         return client_pipe_over_sock(sock, sock_connect);
-    } else if (fd_connect) {
-        // TODO
     }
 
     return 0;
