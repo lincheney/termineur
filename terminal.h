@@ -29,5 +29,7 @@ GtkWidget* term_get_notebook(VteTerminal* terminal);
 GtkWidget* term_get_tab(VteTerminal* terminal);
 #define term_get_window(terminal) gtk_widget_get_toplevel(GTK_WIDGET(terminal))
 void term_select_range(VteTerminal* terminal, double start_col, double start_row, double end_col, double end_row);
+void term_get_row_positions(VteTerminal* terminal, int* screen_lower, int* screen_upper, int* lower, int* upper);
+char* term_get_text(VteTerminal* terminal, glong start_row, glong start_col, glong end_row, glong end_col, gboolean ansi);
 
 #endif

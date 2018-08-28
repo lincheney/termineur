@@ -652,6 +652,60 @@ void term_setup_pipes(int pipes[2]) {
     close(pipes[1]);
 }
 
+void term_get_row_positions(VteTerminal* terminal, int* screen_lower, int* screen_upper, int* lower, int* upper) {
+    GtkAdjustment* adj = gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(terminal));
+    int value = gtk_adjustment_get_value(adj);
+
+    if (screen_lower) *screen_lower = value;
+    if (screen_upper) *screen_upper = value + gtk_adjustment_get_page_size(adj);
+    if (lower) *lower = gtk_adjustment_get_lower(adj);
+    if (upper) *upper = gtk_adjustment_get_upper(adj);
+}
+
+char* term_get_text(VteTerminal* terminal, glong start_row, glong start_col, glong end_row, glong end_col, gboolean ansi) {
+    GArray* attrs = NULL;
+    if (ansi) {
+        attrs = g_array_new(FALSE, FALSE, sizeof(VteCharAttributes));
+    }
+
+    char* text = vte_terminal_get_text_range(terminal, start_row, start_col, end_row, end_col, NULL, NULL, attrs);
+    if (ansi) {
+        GArray* output = g_array_new(TRUE, TRUE, sizeof(char));
+        VteCharAttributes prev = { 0,0, {0,0,0}, {0,0,0}, 0, 0 };
+        char buf[32];
+
+        const char* c;
+        for (c = text; *c; c++) {
+            VteCharAttributes a = g_array_index(attrs, VteCharAttributes, c - text);
+            /* no bold or italic */
+
+            // foreground
+            if (c == text || a.fore.red != prev.fore.red || a.fore.green != prev.fore.green || a.fore.blue != prev.fore.blue) {
+                int n = sprintf(buf, "\x1b[38;2;%i;%i;%im", a.fore.red>>8, a.fore.green>>8, a.fore.blue>>8);
+                g_array_append_vals(output, buf, n);
+            }
+            // background
+            if (c == text || a.back.red != prev.back.red || a.back.green != prev.back.green || a.back.blue != prev.back.blue) {
+                int n = sprintf(buf, "\x1b[48;2;%i;%i;%im", a.back.red>>8, a.back.green>>8, a.back.blue>>8);
+                g_array_append_vals(output, buf, n);
+            }
+            // underline
+            if (c == text || a.underline != prev.underline) {
+                g_array_append_vals(output, a.underline ? "\x1b[4m" : "\x1b[24m", a.underline ? 4 : 5);
+            }
+            g_array_append_val(output, *c);
+            prev = a;
+        }
+
+        free(text);
+        text = output->data;
+        g_array_free(output, FALSE);
+        g_array_free(attrs, TRUE);
+    }
+
+    return text;
+}
+
 GtkWidget* make_terminal(const char* cwd, int argc, char** argv) {
     return make_terminal_full(cwd, argc, argv, NULL, NULL, NULL);
 }

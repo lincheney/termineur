@@ -11,20 +11,18 @@
 
 GtkWidget* detaching_tab = NULL;
 
-#define DEF_ACTION(name, ...) void name(VteTerminal* terminal, __VA_ARGS__ __VA_OPT__(,) char** result)
-
 ActionFunc select_all = (ActionFunc)vte_terminal_select_all;
 ActionFunc unselect_all = (ActionFunc)vte_terminal_unselect_all;
 
-DEF_ACTION(add_css_class, char* data) {
+void add_css_class(VteTerminal* terminal, char* data) {
     term_change_css_class(terminal, data, 1);
 }
 
-DEF_ACTION(remove_css_class, char* data) {
+void remove_css_class(VteTerminal* terminal, char* data) {
     term_change_css_class(terminal, data, 0);
 }
 
-DEF_ACTION(paste_text, char* data) {
+void paste_text(VteTerminal* terminal, char* data) {
     GtkClipboard* clipboard = NULL;
     char* original = NULL;
 
@@ -41,11 +39,11 @@ DEF_ACTION(paste_text, char* data) {
     }
 }
 
-DEF_ACTION(copy_text) {
+void copy_text(VteTerminal* terminal) {
     vte_terminal_copy_clipboard_format(terminal, VTE_FORMAT_TEXT);
 }
 
-DEF_ACTION(change_font_size, char* delta) {
+void change_font_size(VteTerminal* terminal, char* delta) {
     float value = strtof(delta, NULL);
     if (delta[0] == '+' || value < 0) {
         value = vte_terminal_get_font_scale(terminal) + value;
@@ -53,7 +51,7 @@ DEF_ACTION(change_font_size, char* delta) {
     vte_terminal_set_font_scale(terminal, value);
 }
 
-DEF_ACTION(reset_terminal) {
+void reset_terminal(VteTerminal* terminal) {
     vte_terminal_reset(terminal, 1, 1);
     vte_terminal_feed_child_binary(terminal, (guint8*)"\x0c", 1); // control-l = clear
 }
@@ -62,35 +60,35 @@ DEF_ACTION(reset_terminal) {
     GtkAdjustment* adj = gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(terminal)); \
     gtk_adjustment_set_value(adj, value)
 
-DEF_ACTION(scroll_up) {
+void scroll_up(VteTerminal* terminal) {
     SCROLL(terminal, gtk_adjustment_get_value(adj) - gtk_adjustment_get_step_increment(adj));
 }
 
-DEF_ACTION(scroll_down) {
+void scroll_down(VteTerminal* terminal) {
     SCROLL(terminal, gtk_adjustment_get_value(adj) + gtk_adjustment_get_step_increment(adj));
 }
 
-DEF_ACTION(scroll_page_up) {
+void scroll_page_up(VteTerminal* terminal) {
     SCROLL(terminal, gtk_adjustment_get_value(adj) - gtk_adjustment_get_page_size(adj));
 }
 
-DEF_ACTION(scroll_page_down) {
+void scroll_page_down(VteTerminal* terminal) {
     SCROLL(terminal, gtk_adjustment_get_value(adj) + gtk_adjustment_get_page_size(adj));
 }
 
-DEF_ACTION(scroll_top) {
+void scroll_top(VteTerminal* terminal) {
     SCROLL(terminal, gtk_adjustment_get_lower(adj));
 }
 
-DEF_ACTION(scroll_bottom) {
+void scroll_bottom(VteTerminal* terminal) {
     SCROLL(terminal, gtk_adjustment_get_upper(adj));
 }
 
-DEF_ACTION(feed_data, char* data) {
+void feed_data(VteTerminal* terminal, char* data) {
     vte_terminal_feed_child_binary(terminal, (guint8*)data, strlen(data));
 }
 
-DEF_ACTION(feed_term, char* data) {
+void feed_term(VteTerminal* terminal, char* data) {
     vte_terminal_feed(terminal, data, -1);
 }
 
@@ -236,11 +234,11 @@ void jump_tab(VteTerminal* terminal, int delta) {
     gtk_notebook_set_current_page(notebook, (n+delta) % pages);
 }
 
-DEF_ACTION(prev_tab) {
+void prev_tab(VteTerminal* terminal) {
     jump_tab(terminal, -1);
 }
 
-DEF_ACTION(next_tab) {
+void next_tab(VteTerminal* terminal) {
     jump_tab(terminal, 1);
 }
 
@@ -253,15 +251,15 @@ void move_tab(VteTerminal* terminal, int delta) {
     gtk_notebook_reorder_child(notebook, tab, (n+delta) % pages);
 }
 
-DEF_ACTION(move_tab_prev) {
+void move_tab_prev(VteTerminal* terminal) {
     move_tab(terminal, -1);
 }
 
-DEF_ACTION(move_tab_next) {
+void move_tab_next(VteTerminal* terminal) {
     move_tab(terminal, 1);
 }
 
-DEF_ACTION(detach_tab) {
+void detach_tab(VteTerminal* terminal) {
     GtkWidget* tab = term_get_tab(terminal);
     GtkWidget* notebook = gtk_widget_get_parent(tab);
 
@@ -273,13 +271,13 @@ DEF_ACTION(detach_tab) {
     }
 }
 
-DEF_ACTION(cut_tab) {
+void cut_tab(VteTerminal* terminal) {
     if (detaching_tab) g_object_remove_weak_pointer(G_OBJECT(detaching_tab), (void*)&detaching_tab);
     detaching_tab = term_get_tab(terminal);
     g_object_add_weak_pointer(G_OBJECT(detaching_tab), (void*)&detaching_tab);
 }
 
-DEF_ACTION(paste_tab) {
+void paste_tab(VteTerminal* terminal) {
     if (! detaching_tab) {
         g_warning("No tab to paste");
         return;
@@ -303,19 +301,19 @@ DEF_ACTION(paste_tab) {
     detaching_tab = NULL;
 }
 
-DEF_ACTION(switch_to_tab, int num) {
+void switch_to_tab(VteTerminal* terminal, int num) {
     GtkNotebook* notebook = GTK_NOTEBOOK(term_get_notebook(terminal));
     int n = gtk_notebook_get_n_pages(notebook);
     gtk_notebook_set_current_page(notebook, num >= n ? -1 : num);
 }
 
-DEF_ACTION(tab_popup_menu) {
+void tab_popup_menu(VteTerminal* terminal) {
     GtkNotebook* notebook = GTK_NOTEBOOK(term_get_notebook(terminal));
     gboolean value;
     g_signal_emit_by_name(notebook, "popup-menu", &value);
 }
 
-DEF_ACTION(close_tab) {
+void close_tab(VteTerminal* terminal) {
     if (! prevent_tab_close(terminal)) {
         GtkWidget* tab = term_get_tab(terminal);
         GtkContainer* notebook = GTK_CONTAINER(gtk_widget_get_parent(tab));
@@ -323,7 +321,7 @@ DEF_ACTION(close_tab) {
     }
 }
 
-DEF_ACTION(reload_config, char* filename) {
+void reload_config(VteTerminal* terminal, char* filename) {
     if (actions) {
         g_array_remove_range(actions, 0, actions->len);
     }
@@ -345,22 +343,21 @@ void subprocess_finish(GObject* proc, GAsyncResult* res, void* data) {
     vte_terminal_feed_child_binary(terminal, (guint8*)buf_data, size);
 }
 
-void spawn_subprocess(VteTerminal* terminal, gchar* data_, GBytes* stdin_bytes, char** result) {
+void spawn_subprocess(VteTerminal* terminal, gchar* data_, char* text, char** result) {
     gint argc;
     char* data = data_ ? strdup(data_) : NULL;
     char** argv = shell_split(data, &argc);
 
     if (argc == 0) {
-        if (stdin_bytes && result) {
+        if (text && result) {
             // put in result instead
-            gsize size;
-            *result = (char*)g_bytes_get_data(stdin_bytes, &size);
+            *result = text;
         }
         return;
     }
 
     GSubprocessFlags flags = G_SUBPROCESS_FLAGS_STDOUT_PIPE;
-    if (stdin_bytes) {
+    if (text) {
         flags |= G_SUBPROCESS_FLAGS_STDIN_PIPE;
     }
 
@@ -410,43 +407,44 @@ void spawn_subprocess(VteTerminal* terminal, gchar* data_, GBytes* stdin_bytes, 
     }
 
     g_object_set_data(G_OBJECT(proc), "terminal", g_object_ref(terminal));
+
+    GBytes* stdin_bytes = text ? g_bytes_new_take(text, strlen(text)) : NULL;
     g_subprocess_communicate_async(proc, stdin_bytes, NULL, subprocess_finish, data);
 }
 
-DEF_ACTION(run, char* data) {
+void run(VteTerminal* terminal, char* data) {
     spawn_subprocess(terminal, data, NULL, NULL);
 }
 
-DEF_ACTION(pipe_screen, char* data) {
-    char* stdin_buf = vte_terminal_get_text_include_trailing_spaces(terminal, NULL, NULL, NULL);
-    GBytes* stdin_bytes = g_bytes_new_take(stdin_buf, strlen(stdin_buf));
-    spawn_subprocess(terminal, data, stdin_bytes, result);
+void pipe_screen(VteTerminal* terminal, char* data, char**result) {
+    int upper, lower;
+    term_get_row_positions(terminal, &lower, &upper, NULL, NULL);
+    char* text = term_get_text(terminal, lower, 0, upper, -1, FALSE);
+    spawn_subprocess(terminal, data, text, result);
 }
 
-DEF_ACTION(pipe_line, char* data) {
-    glong col, row;
-    vte_terminal_get_cursor_position(terminal, &col, &row);
-    char* stdin_buf = vte_terminal_get_text_range(terminal, row, 0, row+1, -1, NULL, NULL, NULL);
-    GBytes* stdin_bytes = g_bytes_new_take(stdin_buf, strlen(stdin_buf));
-    spawn_subprocess(terminal, data, stdin_bytes, result);
+void pipe_screen_ansi(VteTerminal* terminal, char* data, char** result) {
+    int upper, lower;
+    term_get_row_positions(terminal, &lower, &upper, NULL, NULL);
+    char* text = term_get_text(terminal, lower, 0, upper, -1, TRUE);
+    spawn_subprocess(terminal, data, text, result);
 }
 
-DEF_ACTION(pipe_all, char* data) {
-    GError* error = NULL;
-    GOutputStream* stream = g_memory_output_stream_new_resizable();
-    gboolean success = vte_terminal_write_contents_sync(terminal, stream, VTE_WRITE_DEFAULT, NULL, &error);
-    if (!success) {
-        g_warning("Failed to get data: %s", error->message);
-        g_error_free(error);
-        return;
-    }
-    g_output_stream_close(stream, NULL, NULL);
-    GBytes* stdin_bytes = g_memory_output_stream_steal_as_bytes(G_MEMORY_OUTPUT_STREAM(stream));
-
-    spawn_subprocess(terminal, data, stdin_bytes, result);
+void pipe_all(VteTerminal* terminal, char* data, char** result) {
+    int upper, lower;
+    term_get_row_positions(terminal, NULL, NULL, &lower, &upper);
+    char* text = term_get_text(terminal, lower, 0, upper, -1, FALSE);
+    spawn_subprocess(terminal, data, text, result);
 }
 
-DEF_ACTION(scrollback_lines, int value) {
+void pipe_all_ansi(VteTerminal* terminal, char* data, char** result) {
+    int upper, lower;
+    term_get_row_positions(terminal, NULL, NULL, &lower, &upper);
+    char* text = term_get_text(terminal, lower, 0, upper, -1, TRUE);
+    spawn_subprocess(terminal, data, text, result);
+}
+
+void scrollback_lines(VteTerminal* terminal, int value, char** result) {
     if (value >= -1) {
         g_object_set(G_OBJECT(terminal), "scrollback-lines", value, NULL);
     }
@@ -458,43 +456,43 @@ DEF_ACTION(scrollback_lines, int value) {
     }
 }
 
-DEF_ACTION(move_split_right) {
+void move_split_right(VteTerminal* terminal) {
     split_move(term_get_grid(terminal), GTK_ORIENTATION_HORIZONTAL, TRUE);
     gtk_widget_grab_focus(GTK_WIDGET(terminal));
 }
 
-DEF_ACTION(move_split_left) {
+void move_split_left(VteTerminal* terminal) {
     split_move(term_get_grid(terminal), GTK_ORIENTATION_HORIZONTAL, FALSE);
     gtk_widget_grab_focus(GTK_WIDGET(terminal));
 }
 
-DEF_ACTION(move_split_above) {
+void move_split_above(VteTerminal* terminal) {
     split_move(term_get_grid(terminal), GTK_ORIENTATION_VERTICAL, FALSE);
     gtk_widget_grab_focus(GTK_WIDGET(terminal));
 }
 
-DEF_ACTION(move_split_below) {
+void move_split_below(VteTerminal* terminal) {
     split_move(term_get_grid(terminal), GTK_ORIENTATION_VERTICAL, TRUE);
     gtk_widget_grab_focus(GTK_WIDGET(terminal));
 }
 
-DEF_ACTION(focus_split_right) {
+void focus_split_right(VteTerminal* terminal) {
     split_move_focus(term_get_grid(terminal), GTK_ORIENTATION_HORIZONTAL, TRUE);
 }
 
-DEF_ACTION(focus_split_left) {
+void focus_split_left(VteTerminal* terminal) {
     split_move_focus(term_get_grid(terminal), GTK_ORIENTATION_HORIZONTAL, FALSE);
 }
 
-DEF_ACTION(focus_split_above) {
+void focus_split_above(VteTerminal* terminal) {
     split_move_focus(term_get_grid(terminal), GTK_ORIENTATION_VERTICAL, FALSE);
 }
 
-DEF_ACTION(focus_split_below) {
+void focus_split_below(VteTerminal* terminal) {
     split_move_focus(term_get_grid(terminal), GTK_ORIENTATION_VERTICAL, TRUE);
 }
 
-DEF_ACTION(show_message_bar, char* data) {
+void show_message_bar(VteTerminal* terminal, char* data) {
     int timeout = -1;
     if (strncmp(data, "timeout=", sizeof("timeout=")-1) == 0) {
         timeout = strtol(data + sizeof("timeout=") - 1, &data, 10);
@@ -511,7 +509,7 @@ DEF_ACTION(show_message_bar, char* data) {
 
 ActionFunc hide_message_bar = (ActionFunc)term_hide_message_bar;
 
-DEF_ACTION(select_range, char* data) {
+void select_range(VteTerminal* terminal, char* data) {
     /* x1,y1,x2,y2 */
     long args[4];
     char* string = data;
@@ -623,8 +621,9 @@ Action make_action(char* name, char* arg) {
         MATCH_ACTION_WITH_DATA(remove_css_class, strdup(arg), free);
         MATCH_ACTION_WITH_DATA(run, strdup(arg), free);
         MATCH_ACTION_WITH_DATA(pipe_screen, strdup(arg), free);
-        MATCH_ACTION_WITH_DATA(pipe_line, strdup(arg), free);
+        MATCH_ACTION_WITH_DATA(pipe_screen_ansi, strdup(arg), free);
         MATCH_ACTION_WITH_DATA(pipe_all, strdup(arg), free);
+        MATCH_ACTION_WITH_DATA(pipe_all_ansi, strdup(arg), free);
         MATCH_ACTION_WITH_DATA_DEFAULT(scrollback_lines, GINT_TO_POINTER(atoi(arg)), NULL, GINT_TO_POINTER(-2));
         MATCH_ACTION_WITH_DATA(split_right, strdup(arg), free);
         MATCH_ACTION_WITH_DATA(split_left, strdup(arg), free);
