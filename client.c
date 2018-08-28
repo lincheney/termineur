@@ -20,12 +20,19 @@ int client_pipe_over_sock(GSocket* sock, char* value, gboolean connect_stdin, gb
     // now read connect up stdin, stdout
 
     // stdout
-    GSource* source = g_socket_create_source(sock, G_IO_IN | G_IO_ERR, NULL);
+    GSource* source;
+    if (connect_stdout) {
+        source = g_socket_create_source(sock, G_IO_IN | G_IO_HUP | G_IO_ERR, NULL);
+    } else {
+        source = g_socket_create_source(sock, G_IO_HUP | G_IO_ERR, NULL);
+    }
     g_source_set_callback(source, (GSourceFunc)dump_socket_to_fd, GINT_TO_POINTER(STDOUT_FILENO), (GDestroyNotify)gtk_main_quit);
     g_source_attach(source, NULL);
 
     // stdin
-    g_unix_fd_add(STDIN_FILENO, G_IO_IN | G_IO_ERR | G_IO_HUP, (GUnixFDSourceFunc)dump_fd_to_socket, sock);
+    if (connect_stdin) {
+        g_unix_fd_add(STDIN_FILENO, G_IO_IN | G_IO_ERR | G_IO_HUP, (GUnixFDSourceFunc)dump_fd_to_socket, sock);
+    }
 
     gtk_main();
     return 0;

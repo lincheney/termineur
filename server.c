@@ -66,14 +66,17 @@ void server_pipe_over_socket(GSocket* sock, char* value, Buffer* remainder) {
         free(data);
 
         if (widget) {
-            write_to_fd(pipes[0], remainder->data, remainder->used);
-
             // monitor the pipes
-            GSource* source = g_socket_create_source(sock, G_IO_IN | G_IO_ERR | G_IO_HUP, NULL);
-            g_source_set_callback(source, (GSourceFunc)dump_socket_to_fd, GINT_TO_POINTER(pipes[0]), NULL);
-            g_source_attach(source, NULL);
+            if (pipes[0] >= 0) {
+                write_to_fd(pipes[0], remainder->data, remainder->used);
+                GSource* source = g_socket_create_source(sock, G_IO_IN | G_IO_ERR | G_IO_HUP, NULL);
+                g_source_set_callback(source, (GSourceFunc)dump_socket_to_fd, GINT_TO_POINTER(pipes[0]), NULL);
+                g_source_attach(source, NULL);
+            }
 
-            g_unix_fd_add_full(G_PRIORITY_DEFAULT, pipes[1], G_IO_IN | G_IO_ERR | G_IO_HUP, (GUnixFDSourceFunc)dump_fd_to_socket, sock, (GDestroyNotify)pipe_is_closed);
+            if (pipes[1] >= 0) {
+                g_unix_fd_add_full(G_PRIORITY_DEFAULT, pipes[1], G_IO_IN | G_IO_ERR | G_IO_HUP, (GUnixFDSourceFunc)dump_fd_to_socket, sock, (GDestroyNotify)pipe_is_closed);
+            }
 
             // close everything when terminal exits
             g_object_set_data(G_OBJECT(sock), "stdin", GINT_TO_POINTER(pipes[0]));
