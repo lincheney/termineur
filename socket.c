@@ -66,6 +66,7 @@ int dump_socket_to_fd(GSocket* sock, GIOCondition io, int fd) {
             // fd is closed
             return G_SOURCE_REMOVE;
         }
+        return G_SOURCE_CONTINUE;
     }
 
     if (io & G_IO_ERR) {
@@ -99,6 +100,7 @@ gboolean dump_fd_to_socket(int fd, GIOCondition io, GSocket* sock) {
         if (sock_send_all(sock, buffer, len) <= 0) {
             return G_SOURCE_REMOVE;
         }
+        return G_SOURCE_CONTINUE;
     }
 
     if (io & G_IO_ERR) {
