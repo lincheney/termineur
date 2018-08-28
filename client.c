@@ -48,6 +48,7 @@ int client_pipe_over_sock(GSocket* sock, char* value, gboolean connect_stdin, gb
         );
     }
 
+    g_unix_signal_add(SIGINT, (GSourceFunc)gtk_main_quit, NULL);
     gtk_main();
     return 0;
 }
