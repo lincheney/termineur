@@ -448,7 +448,7 @@ void load_config(char* filename) {
     if (! filename) return;
     FILE* config = fopen(filename, "r");
     if (!config) {
-        /* if (error) g_warning("Error loading key file: %s", error->message); */
+        g_warning("Failed to open %s: %s", filename, strerror(errno));
         return;
     }
 
