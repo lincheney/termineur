@@ -376,7 +376,10 @@ void update_window_title(GtkWindow* window, VteTerminal* terminal) {
     if (terminal) {
         char buffer[1024] = "";
         if (construct_title(window_title_format, terminal, FALSE, buffer, sizeof(buffer)-1)) {
-            gtk_window_set_title(window, buffer);
+            const char* old_title = gtk_window_get_title(window);
+            if (! old_title || ! STR_EQUAL(old_title, buffer)) {
+                gtk_window_set_title(window, buffer);
+            }
         }
     }
 }
