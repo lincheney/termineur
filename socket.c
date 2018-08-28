@@ -82,9 +82,7 @@ int dump_socket_to_fd(GSocket* sock, GIOCondition io, int fd) {
     return G_SOURCE_CONTINUE;
 }
 
-gboolean dump_fd_to_socket(GIOChannel* source, GIOCondition io, GSocket* sock) {
-    int fd = g_io_channel_unix_get_fd(source);
-
+gboolean dump_fd_to_socket(int fd, GIOCondition io, GSocket* sock) {
     if (io & G_IO_IN) {
         char buffer[BUFFER_DEFAULT_SIZE];
         ssize_t len = read(fd, buffer, sizeof(buffer));

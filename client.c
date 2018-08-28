@@ -1,3 +1,4 @@
+#include <glib-unix.h>
 #include "client.h"
 #include "socket.h"
 #include "config.h"
@@ -17,8 +18,7 @@ int client_pipe_over_sock(GSocket* sock, char* value) {
     g_source_attach(source, NULL);
 
     // stdin
-    GIOChannel* channel = g_io_channel_unix_new(STDIN_FILENO);
-    g_io_add_watch(channel, G_IO_IN | G_IO_ERR | G_IO_HUP, (GIOFunc)dump_fd_to_socket, sock);
+    g_unix_fd_add(STDIN_FILENO, G_IO_IN | G_IO_ERR | G_IO_HUP, (GUnixFDSourceFunc)dump_fd_to_socket, sock);
 
     gtk_main();
     return 0;

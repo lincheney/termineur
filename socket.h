@@ -22,7 +22,7 @@ void buffer_free(Buffer*);
 
 int write_to_fd(int fd, char* buffer, ssize_t size);
 int dump_socket_to_fd(GSocket* sock, GIOCondition io, int fd);
-gboolean dump_fd_to_socket(GIOChannel* source, GIOCondition condition, GSocket* sock);
+gboolean dump_fd_to_socket(int fd, GIOCondition condition, GSocket* sock);
 gboolean make_sock(const char* path, GSocket** sock, GSocketAddress** addr);
 int try_bind_sock(GSocket* sock, GSocketAddress* addr, GSourceFunc callback);
 int connect_sock(GSocket* sock, GSocketAddress* addr);

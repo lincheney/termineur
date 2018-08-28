@@ -1,3 +1,4 @@
+#include <glib-unix.h>
 #include "server.h"
 #include "socket.h"
 #include "config.h"
@@ -43,8 +44,7 @@ void server_pipe_over_socket(GSocket* sock, char* value, Buffer* remainder) {
             g_source_set_callback(source, (GSourceFunc)dump_socket_to_fd, GINT_TO_POINTER(pipes[0]), NULL);
             g_source_attach(source, NULL);
 
-            GIOChannel* channel = g_io_channel_unix_new(pipes[1]);
-            g_io_add_watch(channel, G_IO_IN | G_IO_ERR | G_IO_HUP, (GIOFunc)dump_fd_to_socket, sock);
+            g_unix_fd_add(pipes[1], G_IO_IN | G_IO_ERR | G_IO_HUP, (GUnixFDSourceFunc)dump_fd_to_socket, sock);
 
             // close everything when terminal exits
             terminal = g_object_get_data(G_OBJECT(widget), "terminal");
