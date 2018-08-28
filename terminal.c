@@ -543,9 +543,15 @@ gboolean draw_overlay_widget(GtkWidget* widget, cairo_t* cr, GtkWidget* terminal
 gboolean overlay_position_term(GtkWidget* overlay, GtkWidget* widget, GdkRectangle* rect) {
     if (VTE_IS_TERMINAL(widget)) {
         gtk_widget_get_allocation(overlay, rect);
-        int margin = rect->height % vte_terminal_get_char_height(VTE_TERMINAL(widget));
-        rect->y = margin;
-        rect->x = 0;
+        int min, natural;
+        gtk_widget_get_preferred_height(widget, &min, &natural);
+
+        if (rect->height > min) {
+            // shrink only if > 1 row
+            int margin = rect->height % vte_terminal_get_char_height(VTE_TERMINAL(widget));
+            rect->y = margin;
+            rect->x = 0;
+        }
         return TRUE;
     }
     if (GTK_IS_SCROLLBAR(widget)) {
