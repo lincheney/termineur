@@ -517,7 +517,6 @@ gboolean draw_overlay_widget_post(GtkWidget* widget, cairo_t* cr, GtkWidget* ter
 
     GdkRectangle rect;
     gtk_widget_get_allocation(widget, &rect);
-
     GtkStyleContext* context = gtk_widget_get_style_context(widget);
     gtk_render_background(context, cr, rect.x, rect.y, rect.width, rect.height);
 
@@ -530,19 +529,9 @@ gboolean draw_overlay_widget(GtkWidget* widget, cairo_t* cr, GtkWidget* terminal
      * since this draw handler gets called first
      */
 
-    cairo_save(cr);
-
-    GdkRectangle rect;
-    gtk_widget_get_allocation(widget, &rect);
-
-    GtkStyleContext* context = gtk_widget_get_style_context(terminal);
-    gtk_render_background(context, cr, rect.x, rect.y, rect.width, rect.height);
-
     cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
     cairo_set_source_rgba(cr, BACKGROUND.red, BACKGROUND.green, BACKGROUND.blue, BACKGROUND.alpha);
     cairo_paint(cr);
-
-    cairo_restore(cr);
     return FALSE;
 }
 
@@ -784,6 +773,7 @@ GtkWidget* make_terminal_full(const char* cwd, int argc, char** argv, GSpawnChil
     g_signal_connect(terminal, "button-press-event", G_CALLBACK(terminal_button_press_event), NULL);
     g_signal_connect(overlay, "draw", G_CALLBACK(draw_overlay_widget), terminal);
     g_signal_connect_after(overlay, "draw", G_CALLBACK(draw_overlay_widget_post), terminal);
+    gtk_widget_set_app_paintable(overlay, TRUE);
 
     char **args;
     char *fallback_args[] = {NULL, NULL};

@@ -394,7 +394,7 @@ void spawn_subprocess(VteTerminal* terminal, gchar* data_, char* text, char** re
 
     // get x11 windowid
 #ifdef GDK_WINDOWING_X11
-    GdkWindow* window = gtk_widget_get_window(GTK_WIDGET(terminal));
+    GdkWindow* window = gtk_widget_get_window(gtk_widget_get_toplevel(GTK_WIDGET(terminal)));
     GdkDisplay* display = gdk_window_get_display(window);
     if (GDK_IS_X11_DISPLAY(display)) {
         Window winid = gdk_x11_window_get_xid(window);
