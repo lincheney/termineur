@@ -30,12 +30,25 @@ typedef struct {
 } FormatObject;
 GArray* widget_formatters = NULL;
 
-void set_tab_label_format(char* string, PangoEllipsizeMode ellipsize, float xalign) {
+gboolean validate_ui_definition(const char* string) {
+    GtkBuilder* builder = gtk_builder_new();
+    GError* error = NULL;
+
+    gboolean result = gtk_builder_add_from_string(builder, string, -1, &error);
+    if (! result) {
+        g_warning("Invalid UI definition: %s", error->message);
+    }
+
+    g_object_unref(builder);
+    return result;
+}
+
+gboolean set_tab_label_format(char* string, PangoEllipsizeMode ellipsize, float xalign) {
     GError* error = NULL;
     if (! pango_parse_markup(string, -1, 0, NULL, NULL, NULL, &error)) {
         g_warning("Invalid markup, %s: %s", error->message, string);
         g_error_free(error);
-        return;
+        return FALSE;
     }
 
     char* ellipsize_str;
@@ -50,16 +63,21 @@ void set_tab_label_format(char* string, PangoEllipsizeMode ellipsize, float xali
             ellipsize_str = "none"; break;
     }
 
-    set_tab_title_ui(g_markup_printf_escaped(DEFAULT_UI, string, ellipsize_str, xalign));
+    return set_tab_title_ui(g_markup_printf_escaped(DEFAULT_UI, string, ellipsize_str, xalign));
 }
 
-void set_tab_title_ui(char* string) {
+gboolean set_tab_title_ui(char* string) {
+    if (! validate_ui_definition(string)) {
+        return FALSE;
+    }
+
     if (tab_title_ui) {
         free(tab_title_ui);
         tab_title_ui = NULL;
     }
 
     tab_title_ui = strdup(string);
+    return TRUE;
 }
 
 void destroy_all_tab_title_uis() {

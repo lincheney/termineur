@@ -233,7 +233,7 @@ int set_config_from_str(char* line, size_t len) {
     MAP_LINE(foreground,               gdk_rgba_parse(palette+1, value));
     MAP_LINE(window-title-format,      set_window_title_format(value));
     MAP_LINE(tab-label-format,         tab_label_format              = strdup(value));
-    MAP_LINE(tab-title-ui,             set_tab_title_ui(value); tab_label_format = NULL);
+    MAP_LINE(tab-title-ui,             if (set_tab_title_ui(value)) tab_label_format = NULL);
     MAP_LINE(tab-fill,                 tab_fill                      = PARSE_BOOL(value));
     MAP_LINE(tab-expand,               tab_expand                    = PARSE_BOOL(value));
     MAP_LINE(tab-enable-popup,         notebook_enable_popup         = PARSE_BOOL(value));
