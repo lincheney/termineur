@@ -180,7 +180,9 @@ void add_tab_to_window(GtkWidget* window, GtkWidget* widget, int position) {
     configure_tab(GTK_CONTAINER(notebook), tab);
 
     gtk_widget_show_all(tab);
-    gtk_widget_show_all(title_widget);
+    if (title_widget) {
+        gtk_widget_show_all(title_widget);
+    }
     gtk_widget_realize(terminal);
     gtk_notebook_set_current_page(notebook, page);
     gtk_notebook_set_tab_detachable(GTK_NOTEBOOK(notebook), tab, TRUE);
