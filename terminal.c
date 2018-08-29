@@ -16,12 +16,8 @@ guint timer_id = 0;
 const gint ERROR_EXIT_CODE = 127;
 #define DEFAULT_SHELL "/bin/sh"
 
-typedef struct {
-    char* data;
-    int length;
-} TitleFormat;
-TitleFormat tab_title_format = {NULL, 0};
-TitleFormat window_title_format = {NULL, 0};
+char* tab_title_format = NULL;
+char* window_title_format = NULL;
 
 #define TERMINAL_NO_STATE 0
 #define TERMINAL_ACTIVE 1
@@ -236,78 +232,27 @@ int is_running_foreground_process(VteTerminal* terminal) {
     return get_pid(terminal) != get_foreground_pid(terminal);
 }
 
-gboolean construct_title(TitleFormat format, VteTerminal* terminal, gboolean escape_markup, char* buffer, size_t length) {
-    if (! format.data) return FALSE;
+gboolean construct_title(char* format, VteTerminal* terminal, gboolean escape_markup, char* buffer, size_t length) {
+    if (! format) return FALSE;
 
-    char dir[1024] = "", name[1024] = "", number[4] = "";
     char* title = NULL;
+    g_object_get(G_OBJECT(terminal), "window-title", &title, NULL);
+    title = title ? title : "";
 
-    int len;
-#define APPEND_TO_BUFFER(val) \
-    len = strlen(val); \
-    strncpy(buffer, val, length); \
-    if (length <= len) return FALSE; \
-    length -= len; \
-    buffer += len;
+    char dir[1024] = "", name[1024] = "";
 
-    APPEND_TO_BUFFER(format.data);
+    get_foreground_info(terminal, 0, name, NULL);
 
-    /*
-     * loop through and repeatedly append segments to buffer
-     * all except the first segment actually begin with a % format specifier
-     * that got replaced with a \0 in set_tab_title_format()
-     * so check the first char and insert extra text as appropriate
-     */
-    char* p = format.data + len + 1;
-    while (p <= format.data+format.length) {
-        char* val;
-        switch (*p) {
-            case 'd':
-                if (*dir == '\0') {
-                    get_current_dir(terminal, dir, sizeof(dir));
-                    // basename but leave slash if top level
-                    char* base = strrchr(dir, '/');
-                    if (base && base != dir)
-                        memmove(dir, base+1, strlen(base));
-                }
-                val = dir;
-                break;
-            case 'n':
-                if (*name == '\0') {
-                    get_foreground_info(terminal, 0, name, NULL);
-                }
-                val = name;
-                break;
-            case 't':
-                if (! title) {
-                    g_object_get(G_OBJECT(terminal), "window-title", &title, NULL);
-                    if (! title) title = "";
-                }
-                val = title;
-                break;
-            case 'N':
-                if (*number == '\0') {
-                    int n = get_tab_number(terminal);
-#pragma GCC diagnostic ignored "-Wformat-truncation"
-                    if (n >= 0) snprintf(number, sizeof(number), "%i", n+1);
-#pragma GCC diagnostic pop
-                }
-                val = number;
-                break;
-            default:
-                val = "%";
-                p--;
-                break;
-        }
-
-        if (escape_markup) val = g_markup_escape_text(val, -1);
-        APPEND_TO_BUFFER(val);
-        if (escape_markup) g_free(val);
-        APPEND_TO_BUFFER(p+1);
-        p += len+2;
+    get_current_dir(terminal, dir, sizeof(dir));
+    // basename but leave slash if top level
+    char* base = strrchr(dir, '/');
+    if (base && base != dir) {
+        memmove(dir, base+1, strlen(base));
     }
-#undef APPEND_TO_BUFFER
-    return TRUE;
+
+    int tab_number = get_tab_number(terminal)+1;
+
+    return snprintf(buffer, length, format, title, name, dir, tab_number) >= 0;
 }
 
 void update_terminal_title(VteTerminal* terminal) {
@@ -395,20 +340,49 @@ void create_timer(guint interval) {
     timer_id = g_timeout_add(interval, refresh_all_terminals, NULL);
 }
 
-void parse_title_format(char* string, TitleFormat* dest) {
-    free(dest->data);
-    dest->length = strlen(string);
-    dest->data = strdup(string);
+void parse_title_format(char* string, char** dest) {
+    free(*dest);
 
-    // just replace all % with \0
-    char* p = dest->data;
+    char* pieces[256] = {0};
+
+    int i = 0;
     while (1) {
-        p = strchr(p, '%');
-        if (! p) break;
-        *p = '\0';
-        if (*(p+1) == '\0') break;
-        p += 2;
+        char* end = strchr(string, '%');
+        pieces[i] = string;
+        i ++;
+
+        if (! end) break;
+
+        *end = '\0';
+        switch (*(end+1)) {
+            case 't': // title
+                pieces[i] = "%1$s";
+                break;
+            case 'n': // process name
+                pieces[i] = "%2$s";
+                break;
+            case 'd': // cwd
+                pieces[i] = "%3$s";
+                break;
+            case 'N': // tab numer
+                pieces[i] = "%4$i";
+                break;
+            case '\0':
+                end --;
+            case '%':
+                pieces[i] = "%%";
+                break;
+            default:
+                pieces[i] = "%% ";
+                pieces[i][2] = *(end+1);
+                break;
+        }
+        // skip the %X
+        string = end + 2;
+        i ++;
     }
+
+    *dest = g_strjoinv(NULL, pieces);
 }
 
 void set_tab_title_format(char* string) {
