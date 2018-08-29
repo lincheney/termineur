@@ -56,7 +56,6 @@ char* terminal_word_char_exceptions = NULL;
 
 gboolean tab_expand = TRUE;
 gboolean tab_fill = TRUE;
-gboolean tab_title_markup = FALSE;
 gboolean notebook_enable_popup = FALSE;
 gboolean notebook_scrollable = FALSE;
 gboolean notebook_show_tabs = FALSE;
@@ -125,7 +124,7 @@ void configure_tab(GtkContainer* notebook, GtkWidget* tab) {
     g_object_set(G_OBJECT(label),
             "ellipsize",  tab_title_ellipsize_mode,
             "xalign",     tab_title_alignment,
-            "use-markup", tab_title_markup,
+            "use-markup", TRUE,
             NULL);
 }
 
