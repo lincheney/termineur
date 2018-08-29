@@ -386,13 +386,13 @@ void parse_title_format(char* string, char** dest) {
                 pieces[i] = "%4$i";
                 break;
             case '\0':
-                end --;
+                end --; // back out one so we don't go past end of array
             case '%':
                 pieces[i] = "%%";
                 break;
             default:
-                pieces[i] = "%% ";
-                pieces[i][2] = *(end+1);
+                pieces[i] = "%%";
+                end --; // back out one to include the extra char next round
                 break;
         }
         // skip the %X
