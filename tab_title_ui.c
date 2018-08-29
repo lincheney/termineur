@@ -67,10 +67,12 @@ void destroy_all_tab_title_uis() {
         GtkWidget* notebook = window_get_notebook(GTK_WIDGET(window));
         FOREACH_TAB(tab, window) {
             GtkWidget* ui = g_object_get_data(G_OBJECT(tab), "tab_title");
-            gtk_notebook_set_tab_label(GTK_NOTEBOOK(notebook), tab, NULL);
-            gtk_widget_destroy(ui);
-            g_object_unref(ui);
-            g_object_set_data(G_OBJECT(tab), "tab_title", NULL);
+            if (ui) {
+                gtk_notebook_set_tab_label(GTK_NOTEBOOK(notebook), tab, NULL);
+                gtk_widget_destroy(ui);
+                g_object_unref(ui);
+                g_object_set_data(G_OBJECT(tab), "tab_title", NULL);
+            }
         }
     }
 }
