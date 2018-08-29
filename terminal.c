@@ -239,20 +239,38 @@ gboolean construct_title(char* format, VteTerminal* terminal, gboolean escape_ma
     g_object_get(G_OBJECT(terminal), "window-title", &title, NULL);
     title = title ? title : "";
 
-    char dir[1024] = "", name[1024] = "";
+    char *dir = NULL, *name = NULL;
+    char dirbuffer[1024] = "", namebuffer[1024] = "";
 
-    get_foreground_info(terminal, 0, name, NULL);
+    name = namebuffer;
+    get_foreground_info(terminal, 0, namebuffer, NULL);
 
-    get_current_dir(terminal, dir, sizeof(dir));
-    // basename but leave slash if top level
-    char* base = strrchr(dir, '/');
-    if (base && base != dir) {
-        memmove(dir, base+1, strlen(base));
+    dir = dirbuffer;
+    if (get_current_dir(terminal, dirbuffer, sizeof(dirbuffer))) {
+        // basename but leave slash if top level
+        char* base = strrchr(dir, '/');
+        if (base && base != dirbuffer) {
+            dir = base+1;
+        }
     }
 
     int tab_number = get_tab_number(terminal)+1;
 
-    return snprintf(buffer, length, format, title, name, dir, tab_number) >= 0;
+    if (escape_markup) {
+        title = g_markup_escape_text(title, -1);
+        name = g_markup_escape_text(name, -1);
+        dir = g_markup_escape_text(dir, -1);
+    }
+
+    int result = snprintf(buffer, length, format, title, name, dir, tab_number) >= 0;
+
+    if (escape_markup) {
+        g_free(title);
+        g_free(name);
+        g_free(dir);
+    }
+
+    return result;
 }
 
 void update_terminal_title(VteTerminal* terminal) {
