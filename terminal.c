@@ -16,8 +16,16 @@ guint timer_id = 0;
 const gint ERROR_EXIT_CODE = 127;
 #define DEFAULT_SHELL "/bin/sh"
 
-char* tab_title_format = NULL;
-char* window_title_format = NULL;
+typedef struct {
+    int flags;
+    char* data;
+} TabTitleFormat;
+#define TAB_TITLE_TITLE 1
+#define TAB_TITLE_NAME 2
+#define TAB_TITLE_CWD 3
+#define TAB_TITLE_NUM 4
+TabTitleFormat tab_title_format = {0, NULL};
+TabTitleFormat window_title_format = {0, NULL};
 
 #define TERMINAL_NO_STATE 0
 #define TERMINAL_ACTIVE 1
@@ -232,9 +240,10 @@ int is_running_foreground_process(VteTerminal* terminal) {
     return get_pid(terminal) != get_foreground_pid(terminal);
 }
 
-gboolean construct_title(char* format, VteTerminal* terminal, gboolean escape_markup, char* buffer, size_t length) {
-    if (! format) return FALSE;
+gboolean construct_title(TabTitleFormat format, VteTerminal* terminal, gboolean escape_markup, char* buffer, size_t length) {
+    if (! format.data) return FALSE;
 
+    // get title
     char* title = NULL;
     g_object_get(G_OBJECT(terminal), "window-title", &title, NULL);
     title = title ? title : "";
@@ -242,11 +251,15 @@ gboolean construct_title(char* format, VteTerminal* terminal, gboolean escape_ma
     char *dir = NULL, *name = NULL;
     char dirbuffer[1024] = "", namebuffer[1024] = "";
 
+    // get name
     name = namebuffer;
-    get_foreground_info(terminal, 0, namebuffer, NULL);
+    if (format.flags & TAB_TITLE_NAME) {
+        get_foreground_info(terminal, 0, namebuffer, NULL);
+    }
 
+    // get cwd
     dir = dirbuffer;
-    if (get_current_dir(terminal, dirbuffer, sizeof(dirbuffer))) {
+    if ((format.flags & TAB_TITLE_CWD) && get_current_dir(terminal, dirbuffer, sizeof(dirbuffer))) {
         // basename but leave slash if top level
         char* base = strrchr(dir, '/');
         if (base && base != dirbuffer) {
@@ -254,6 +267,7 @@ gboolean construct_title(char* format, VteTerminal* terminal, gboolean escape_ma
         }
     }
 
+    // tab number
     int tab_number = get_tab_number(terminal)+1;
 
     if (escape_markup) {
@@ -262,7 +276,7 @@ gboolean construct_title(char* format, VteTerminal* terminal, gboolean escape_ma
         dir = g_markup_escape_text(dir, -1);
     }
 
-    int result = snprintf(buffer, length, format, title, name, dir, tab_number) >= 0;
+    int result = snprintf(buffer, length, format.data, title, name, dir, tab_number) >= 0;
 
     if (escape_markup) {
         g_free(title);
@@ -358,10 +372,11 @@ void create_timer(guint interval) {
     timer_id = g_timeout_add(interval, refresh_all_terminals, NULL);
 }
 
-void parse_title_format(char* string, char** dest) {
-    free(*dest);
+void parse_title_format(char* string, TabTitleFormat* dest) {
+    free(dest->data);
 
     char* pieces[256] = {0};
+    int flags = 0;
 
     int i = 0;
     while (1) {
@@ -375,15 +390,19 @@ void parse_title_format(char* string, char** dest) {
         switch (*(end+1)) {
             case 't': // title
                 pieces[i] = "%1$s";
+                flags |= TAB_TITLE_TITLE;
                 break;
             case 'n': // process name
                 pieces[i] = "%2$s";
+                flags |= TAB_TITLE_NAME;
                 break;
             case 'd': // cwd
                 pieces[i] = "%3$s";
+                flags |= TAB_TITLE_CWD;
                 break;
             case 'N': // tab numer
                 pieces[i] = "%4$i";
+                flags |= TAB_TITLE_NUM;
                 break;
             case '\0':
                 end --; // back out one so we don't go past end of array
@@ -400,7 +419,8 @@ void parse_title_format(char* string, char** dest) {
         i ++;
     }
 
-    *dest = g_strjoinv(NULL, pieces);
+    dest->data = g_strjoinv(NULL, pieces);
+    dest->flags = flags;
 }
 
 void set_tab_title_format(char* string) {
