@@ -23,6 +23,7 @@ char* config_filename;
 char** default_args;
 int inactivity_duration;
 char* default_open_action;
+gboolean tab_expand;
 guint terminal_default_scrollback_lines;
 gboolean show_scrollbar;
 

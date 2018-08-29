@@ -11,31 +11,20 @@
 #include "split.h"
 #include "label.h"
 #include "utils.h"
+#include "tab_title_ui.h"
 
-guint timer_id = 0;
 const gint ERROR_EXIT_CODE = 127;
 #define DEFAULT_SHELL "/bin/sh"
 
-typedef struct {
-    int flags;
-    char* data;
-} TabTitleFormat;
-#define TAB_TITLE_TITLE 1
-#define TAB_TITLE_NAME 2
-#define TAB_TITLE_CWD 3
-#define TAB_TITLE_NUM 4
-TabTitleFormat tab_title_format = {0, NULL};
-TabTitleFormat window_title_format = {0, NULL};
+TitleFormat tab_title_format = {0, NULL};
+TitleFormat window_title_format = {0, NULL};
+char* tab_ui_definition = NULL;
 
 #define TERMINAL_NO_STATE 0
 #define TERMINAL_ACTIVE 1
 #define TERMINAL_INACTIVE 2
 
 #define SELECTION_SCROLLOFF 5
-
-void update_terminal_ui(VteTerminal* terminal);
-void update_terminal_title(VteTerminal* terminal);
-void update_terminal_label_class(VteTerminal* terminal);
 
 GtkWidget* term_get_grid(VteTerminal* terminal) {
     return gtk_widget_get_ancestor(GTK_WIDGET(terminal), GTK_TYPE_GRID);
@@ -97,7 +86,7 @@ gboolean terminal_button_press_event(VteTerminal* terminal, GdkEvent* event) {
     return FALSE;
 }
 
-void term_spawn_callback(GtkWidget* terminal, GPid pid, GError *error, GtkWidget* grid) {
+void term_spawn_callback(VteTerminal* terminal, GPid pid, GError *error, GtkWidget* grid) {
     // close any left over fds
     int* fds = g_object_get_data(G_OBJECT(terminal), "child_fds");
     if (fds) {
@@ -114,15 +103,16 @@ void term_spawn_callback(GtkWidget* terminal, GPid pid, GError *error, GtkWidget
     }
     g_object_set_data(G_OBJECT(terminal), "pid", GINT_TO_POINTER(pid));
 
-    update_terminal_ui(VTE_TERMINAL(terminal));
-    update_window_title(GTK_WINDOW(gtk_widget_get_toplevel(terminal)), NULL);
+    update_tab_titles(terminal);
+    update_terminal_css_class(terminal);
+    update_window_title(GTK_WINDOW(gtk_widget_get_toplevel(GTK_WIDGET(terminal))), NULL);
 }
 
 void change_terminal_state(VteTerminal* terminal, int new_state) {
     int old_state = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(terminal), "activity_state"));
     if (old_state != new_state) {
         g_object_set_data(G_OBJECT(terminal), "activity_state", GINT_TO_POINTER(new_state));
-        update_terminal_label_class(terminal);
+        update_terminal_css_class(terminal);
     }
 }
 
@@ -240,8 +230,8 @@ int is_running_foreground_process(VteTerminal* terminal) {
     return get_pid(terminal) != get_foreground_pid(terminal);
 }
 
-gboolean construct_title(TabTitleFormat format, VteTerminal* terminal, gboolean escape_markup, char* buffer, size_t length) {
-    if (! format.data) return FALSE;
+gboolean term_construct_title(const char* format, int flags, VteTerminal* terminal, gboolean escape_markup, char* buffer, size_t length) {
+    if (! format) return FALSE;
 
     // get title
     char* title = NULL;
@@ -253,13 +243,13 @@ gboolean construct_title(TabTitleFormat format, VteTerminal* terminal, gboolean 
 
     // get name
     name = namebuffer;
-    if (format.flags & TAB_TITLE_NAME) {
+    if (flags & TITLE_FORMAT_NAME) {
         get_foreground_info(terminal, 0, namebuffer, NULL);
     }
 
     // get cwd
     dir = dirbuffer;
-    if ((format.flags & TAB_TITLE_CWD) && get_current_dir(terminal, dirbuffer, sizeof(dirbuffer))) {
+    if ((flags & TITLE_FORMAT_CWD) && get_current_dir(terminal, dirbuffer, sizeof(dirbuffer))) {
         // basename but leave slash if top level
         char* base = strrchr(dir, '/');
         if (base && base != dirbuffer) {
@@ -276,7 +266,7 @@ gboolean construct_title(TabTitleFormat format, VteTerminal* terminal, gboolean 
         dir = g_markup_escape_text(dir, -1);
     }
 
-    int result = snprintf(buffer, length, format.data, title, name, dir, tab_number) >= 0;
+    int result = snprintf(buffer, length, format, title, name, dir, tab_number) >= 0;
 
     if (escape_markup) {
         g_free(title);
@@ -287,24 +277,14 @@ gboolean construct_title(TabTitleFormat format, VteTerminal* terminal, gboolean 
     return result;
 }
 
-void update_terminal_title(VteTerminal* terminal) {
-    char buffer[1024] = "";
-    GtkWidget* tab = term_get_tab(terminal);
-    GtkLabel* label = GTK_LABEL(g_object_get_data(G_OBJECT(tab), "label"));
-    gboolean escape_markup = gtk_label_get_use_markup(label);
-    if (construct_title(tab_title_format, terminal, escape_markup, buffer, sizeof(buffer)-1)) {
-        if (! STR_EQUAL(gtk_label_get_label(label), buffer)) {
-            gtk_label_set_label(label, buffer);
-        }
-    }
-}
-
-GtkStyleContext* get_label_context(GtkWidget* terminal) {
+GtkStyleContext* get_tab_title_context(GtkWidget* terminal) {
     GtkWidget* tab = term_get_tab(VTE_TERMINAL(terminal));
     if (terminal == split_get_active_term(tab)) {
-        GtkWidget* label = g_object_get_data(G_OBJECT(tab), "label");
-        GtkStyleContext* context = gtk_widget_get_style_context(label);
-        return context;
+        GtkWidget* label = g_object_get_data(G_OBJECT(tab), "tab_title");
+        if (label) {
+            GtkStyleContext* context = gtk_widget_get_style_context(label);
+            return context;
+        }
     }
     return NULL;
 }
@@ -312,17 +292,18 @@ GtkStyleContext* get_label_context(GtkWidget* terminal) {
 void term_change_css_class(VteTerminal* terminal, char* class, gboolean add) {
     void(*func)(GtkStyleContext*, const gchar*) = add ? gtk_style_context_add_class : gtk_style_context_remove_class;
 
-    GtkStyleContext* context = get_label_context(GTK_WIDGET(terminal));
+    GtkStyleContext* context = get_tab_title_context(GTK_WIDGET(terminal));
     if (context && (add ^ gtk_style_context_has_class(context, class))) {
         func(context, class);
     }
+
     context = gtk_widget_get_style_context(term_get_grid(terminal));
     if (add ^ gtk_style_context_has_class(context, class)) {
         func(context, class);
     }
 }
 
-void update_terminal_label_class(VteTerminal* terminal) {
+void update_terminal_css_class(VteTerminal* terminal) {
     int state = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(terminal), "activity_state"));
     switch (state) {
         case TERMINAL_ACTIVE:
@@ -340,19 +321,11 @@ void update_terminal_label_class(VteTerminal* terminal) {
     }
 }
 
-void update_terminal_ui(VteTerminal* terminal) {
-    GtkWidget* root = term_get_tab(terminal);
-    if (split_get_active_term(root) == GTK_WIDGET(terminal)) {
-        update_terminal_title(terminal);
-        update_terminal_label_class(terminal);
-    }
-}
-
 void update_window_title(GtkWindow* window, VteTerminal* terminal) {
     terminal = terminal ? terminal : get_active_terminal(GTK_WIDGET(window));
     if (terminal) {
         char buffer[1024] = "";
-        if (construct_title(window_title_format, terminal, FALSE, buffer, sizeof(buffer)-1)) {
+        if (term_construct_title(window_title_format.format, window_title_format.flags, terminal, FALSE, buffer, sizeof(buffer)-1)) {
             const char* old_title = gtk_window_get_title(window);
             if (! old_title || ! STR_EQUAL(old_title, buffer)) {
                 gtk_window_set_title(window, buffer);
@@ -361,69 +334,7 @@ void update_window_title(GtkWindow* window, VteTerminal* terminal) {
     }
 }
 
-gboolean refresh_all_terminals(gpointer data) {
-    foreach_terminal((GFunc)update_terminal_ui, data);
-    foreach_window((GFunc)update_window_title, NULL);
-    return TRUE;
-}
-
-void create_timer(guint interval) {
-    if (timer_id) g_source_remove(timer_id);
-    timer_id = g_timeout_add(interval, refresh_all_terminals, NULL);
-}
-
-void parse_title_format(char* string, TabTitleFormat* dest) {
-    free(dest->data);
-
-    char* pieces[256] = {0};
-    int flags = 0;
-
-    int i = 0;
-    while (1) {
-        char* end = strchr(string, '%');
-        pieces[i] = string;
-        i ++;
-
-        if (! end) break;
-
-        *end = '\0';
-        switch (*(end+1)) {
-            case 't': // title
-                pieces[i] = "%1$s";
-                flags |= TAB_TITLE_TITLE;
-                break;
-            case 'n': // process name
-                pieces[i] = "%2$s";
-                flags |= TAB_TITLE_NAME;
-                break;
-            case 'd': // cwd
-                pieces[i] = "%3$s";
-                flags |= TAB_TITLE_CWD;
-                break;
-            case 'N': // tab numer
-                pieces[i] = "%4$i";
-                flags |= TAB_TITLE_NUM;
-                break;
-            case '\0':
-                end --; // back out one so we don't go past end of array
-            case '%':
-                pieces[i] = "%%";
-                break;
-            default:
-                pieces[i] = "%%";
-                end --; // back out one to include the extra char next round
-                break;
-        }
-        // skip the %X
-        string = end + 2;
-        i ++;
-    }
-
-    dest->data = g_strjoinv(NULL, pieces);
-    dest->flags = flags;
-}
-
-void set_tab_title_format(char* string) {
+void set_tab_label_format(char* string) {
     GError* error = NULL;
     if (pango_parse_markup(string, -1, 0, NULL, NULL, NULL, &error)) {
         parse_title_format(string, &tab_title_format);
@@ -784,12 +695,13 @@ GtkWidget* make_terminal_full(const char* cwd, int argc, char** argv, GSpawnChil
     g_signal_connect(terminal, "focus-in-event", G_CALLBACK(term_focus_in_event), NULL);
     g_signal_connect(terminal, "child-exited", G_CALLBACK(term_exited), grid);
     g_signal_connect(terminal, "destroy", G_CALLBACK(term_destroyed), grid);
-    g_signal_connect(terminal, "window-title-changed", G_CALLBACK(update_terminal_title), NULL);
+    g_signal_connect(terminal, "window-title-changed", G_CALLBACK(update_tab_titles), NULL);
     g_signal_connect(terminal, "contents-changed", G_CALLBACK(terminal_activity), NULL);
     g_signal_connect(terminal, "bell", G_CALLBACK(terminal_bell), NULL);
     g_signal_connect(terminal, "hyperlink-hover-uri-changed", G_CALLBACK(terminal_hyperlink_hover), NULL);
     g_signal_connect(terminal, "button-press-event", G_CALLBACK(terminal_button_press_event), NULL);
     g_signal_connect(overlay, "draw", G_CALLBACK(draw_overlay_widget), terminal);
+
     g_signal_connect_after(overlay, "draw", G_CALLBACK(draw_overlay_widget_post), terminal);
     gtk_widget_set_app_paintable(overlay, TRUE);
 

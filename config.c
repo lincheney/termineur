@@ -8,7 +8,9 @@
 #include "terminal.h"
 #include "split.h"
 #include "utils.h"
+#include "tab_title_ui.h"
 
+guint timer_id = 0;
 char* config_filename = NULL;
 char* app_id = NULL;
 
@@ -62,7 +64,7 @@ gboolean notebook_show_tabs = FALSE;
 GtkPositionType notebook_tab_pos = GTK_POS_TOP;
 int ui_refresh_interval = 5000;
 PangoEllipsizeMode tab_title_ellipsize_mode = PANGO_ELLIPSIZE_END;
-gfloat tab_title_alignment = 0.5;
+gfloat tab_label_alignment = 0.5;
 int inactivity_duration = 10000;
 gboolean window_close_confirm = TRUE;
 gint tab_close_confirm = CLOSE_CONFIRM_SMART;
@@ -120,12 +122,11 @@ void configure_tab(GtkContainer* notebook, GtkWidget* tab) {
             "tab-fill",   tab_fill,
             NULL);
 
-    GtkWidget* label = g_object_get_data(G_OBJECT(tab), "label");
-    g_object_set(G_OBJECT(label),
-            "ellipsize",  tab_title_ellipsize_mode,
-            "xalign",     tab_title_alignment,
-            "use-markup", TRUE,
-            NULL);
+    /* GtkWidget* label = g_object_get_data(G_OBJECT(tab), "label"); */
+    /* g_object_set(G_OBJECT(label), */
+            /* "ellipsize",  tab_title_ellipsize_mode, */
+            /* "xalign",     tab_label_alignment, */
+            /* NULL); */
 }
 
 void configure_window(GtkWindow* window) {
@@ -139,19 +140,20 @@ void configure_window(GtkWindow* window) {
             NULL);
 }
 
-void reconfigure_window(GtkWindow* window) {
-    configure_window(window);
+void reconfigure_window(GtkWidget* window) {
+    configure_window(GTK_WINDOW(window));
 
-    GtkWidget *terminal, *tab;
-    GtkNotebook* notebook = g_object_get_data(G_OBJECT(window), "notebook");
-    int n = gtk_notebook_get_n_pages(notebook);
-    for (int i = 0; i < n; i ++) {
-        tab = gtk_notebook_get_nth_page(notebook, i);
-        configure_tab(GTK_CONTAINER(notebook), tab);
-        terminal = split_get_active_term(tab);
-        configure_terminal(terminal);
-        update_terminal_ui(VTE_TERMINAL(terminal));
+    GtkContainer* notebook = GTK_CONTAINER(window_get_notebook(GTK_WIDGET(window)));
+    FOREACH_TAB(tab, GTK_WIDGET(window)) {
+        configure_tab(notebook, tab);
+
+        FOREACH_TERMINAL(terminal, tab) {
+            configure_terminal(GTK_WIDGET(terminal));
+            update_terminal_css_class(terminal);
+        }
+        update_tab_titles(VTE_TERMINAL(split_get_active_term(tab)));
     }
+    update_window_title(GTK_WINDOW(window), NULL);
 }
 
 Action lookup_action(char* value) {
@@ -230,7 +232,8 @@ int set_config_from_str(char* line, size_t len) {
     MAP_LINE(background,               gdk_rgba_parse(palette, value));
     MAP_LINE(foreground,               gdk_rgba_parse(palette+1, value));
     MAP_LINE(window-title-format,      set_window_title_format(value));
-    MAP_LINE(tab-title-format,         set_tab_title_format(value));
+    MAP_LINE(tab_label_format,         set_tab_label_format(value));
+    MAP_LINE(tab-title-ui,             set_tab_title_ui(value));
     MAP_LINE(tab-fill,                 tab_fill                      = PARSE_BOOL(value));
     MAP_LINE(tab-expand,               tab_expand                    = PARSE_BOOL(value));
     MAP_LINE(tab-enable-popup,         notebook_enable_popup         = PARSE_BOOL(value));
@@ -293,7 +296,7 @@ int set_config_from_str(char* line, size_t len) {
             {"end",    PANGO_ELLIPSIZE_END},
     );
 
-    MAP_LINE_VALUE(tab-title-alignment, int, tab_title_alignment,
+    MAP_LINE_VALUE(tab_label_alignment, int, tab_label_alignment,
             {"left",   0},
             {"right",  1},
             {"center", 0.5},
@@ -377,10 +380,21 @@ int set_config_from_str(char* line, size_t len) {
     return 0;
 }
 
+gboolean refresh_ui() {
+    FOREACH_WINDOW(window) {
+        refresh_ui_window(window);
+    }
+    return TRUE;
+}
+
 void reconfigure_all() {
     // reload config everywhere
-    foreach_window((GFunc)reconfigure_window, NULL);
-    create_timer(ui_refresh_interval);
+    FOREACH_WINDOW(window) {
+        reconfigure_window(window);
+    }
+
+    if (timer_id) g_source_remove(timer_id);
+    timer_id = g_timeout_add(ui_refresh_interval, refresh_ui, NULL);
 }
 
 int trigger_action(VteTerminal* terminal, guint key, int metadata) {

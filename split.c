@@ -1,5 +1,6 @@
 #include "split.h"
 #include "terminal.h"
+#include "tab_title_ui.h"
 #include "label.h"
 
 #define RESIZE TRUE
@@ -18,10 +19,11 @@ GtkWidget* split_new_root() {
     GtkStyleContext* context = gtk_widget_get_style_context(paned);
     gtk_style_context_add_class(context, ROOT_SPLIT_CLASS);
 
-    // label
-    GtkWidget* label = label_new(NULL);
-    g_object_set_data(G_OBJECT(paned), "label", label);
-    g_object_ref(label);
+    GtkWidget* widget = make_tab_title_ui(paned);
+    if (widget) {
+        g_object_set_data(G_OBJECT(paned), "tab_title", widget);
+        gtk_widget_show_all(widget);
+    }
 
     return paned;
 }
@@ -75,8 +77,10 @@ void split_cleanup(GtkWidget* paned) {
 
     if (!child1 && !child2) {
         // no children, this can only be the root, so destroy everything
-        GtkWidget* label = g_object_get_data(G_OBJECT(paned), "label");
-        g_object_unref(label);
+        GtkWidget* label = g_object_get_data(G_OBJECT(paned), "tab_title");
+        if (label) {
+            g_object_unref(label);
+        }
         gtk_widget_destroy(paned);
         return;
     }
@@ -205,6 +209,7 @@ gboolean split_move_focus(GtkWidget* widget, GtkOrientation orientation, gboolea
 }
 
 GtkWidget* split_get_active_term(GtkWidget* paned) {
+    if (! G_IS_OBJECT(paned)) return NULL;
     GSList* node = g_object_get_data(G_OBJECT(paned), TERMINAL_FOCUS_KEY);
     return node ? GTK_WIDGET(node->data) : NULL;
 }
@@ -212,8 +217,10 @@ GtkWidget* split_get_active_term(GtkWidget* paned) {
 void split_remove_term_from_chain(VteTerminal* terminal) {
     GtkWidget* paned = term_get_tab(terminal);
     GSList* list = g_object_get_data(G_OBJECT(paned), TERMINAL_FOCUS_KEY);
-    list = g_slist_remove(list, terminal);
-    g_object_set_data(G_OBJECT(paned), TERMINAL_FOCUS_KEY, list);
+    GSList* new = g_slist_remove(list, terminal);
+    if (new != list) {
+        g_object_set_data(G_OBJECT(paned), TERMINAL_FOCUS_KEY, new);
+    }
 }
 
 void split_set_active_term(VteTerminal* terminal) {
@@ -221,6 +228,7 @@ void split_set_active_term(VteTerminal* terminal) {
     GSList* list = g_object_get_data(G_OBJECT(paned), TERMINAL_FOCUS_KEY);
     list = g_slist_remove(list, terminal);
     list = g_slist_prepend(list, terminal);
+    // list always changes
     g_object_set_data(G_OBJECT(paned), TERMINAL_FOCUS_KEY, list);
 }
 

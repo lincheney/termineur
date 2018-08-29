@@ -3,6 +3,7 @@
 #include "window.h"
 #include "config.h"
 #include "terminal.h"
+#include "tab_title_ui.h"
 #include "split.h"
 
 GList* toplevel_windows = NULL;
@@ -38,6 +39,18 @@ VteTerminal* get_active_terminal(GtkWidget* window) {
     return get_nth_terminal(window, index);
 }
 
+void refresh_ui_window(GtkWidget* window) {
+    update_window_title(GTK_WINDOW(window), NULL);
+
+    FOREACH_TAB(tab, window) {
+        update_tab_titles(VTE_TERMINAL(split_get_active_term(tab)));
+
+        FOREACH_TERMINAL(terminal, tab) {
+            update_terminal_css_class(terminal);
+        }
+    }
+}
+
 gboolean key_pressed(GtkWidget* window, GdkEventKey* event, gpointer data) {
     guint modifiers = event->state & gtk_accelerator_get_default_mod_mask();
     VteTerminal* terminal = get_active_terminal(window);
@@ -48,6 +61,31 @@ gint get_tab_number(VteTerminal* terminal) {
     GtkWidget* tab = term_get_tab(terminal);
     GtkNotebook* notebook = GTK_NOTEBOOK(gtk_widget_get_parent(tab));
     return gtk_notebook_page_num(notebook, tab);
+}
+
+void notebook_size_allocate(GtkNotebook* notebook, GdkRectangle* alloc) {
+    // resize tab titles to be all the same size
+
+    // don't bother if tabs don't expand
+    if (! tab_expand) return;
+
+    int n = gtk_notebook_get_n_pages(notebook);
+    // defaults work fine for 0,1 tabs
+    if (n < 2) return;
+
+    GtkPositionType pos = gtk_notebook_get_tab_pos(notebook);
+
+    for (int i = 0; i < n; i ++) {
+        GtkWidget* page = gtk_notebook_get_nth_page(notebook, i);
+        GtkWidget* label = gtk_notebook_get_tab_label(notebook, page);
+        if (label) {
+            if (pos == GTK_POS_LEFT || pos == GTK_POS_RIGHT) {
+                gtk_widget_set_size_request(label, -1, alloc->height/n);
+            } else {
+                gtk_widget_set_size_request(label, alloc->width/n, -1);
+            }
+        }
+    }
 }
 
 void notebook_tab_removed(GtkWidget* notebook, GtkWidget *child, guint page_num) {
@@ -67,8 +105,8 @@ void notebook_switch_page(GtkNotebook* notebook, GtkWidget* tab, guint num) {
     update_window_title(GTK_WINDOW(gtk_widget_get_toplevel(GTK_WIDGET(notebook))), VTE_TERMINAL(terminal));
 }
 
-void notebook_pages_changed(GtkNotebook* notebook) {
-    refresh_all_terminals(NULL);
+void notebook_pages_changed(GtkWidget* notebook) {
+    refresh_ui_window(gtk_widget_get_toplevel(notebook));
 }
 
 gint run_confirm_close_dialog(GtkWidget* window, char* message) {
@@ -136,7 +174,7 @@ void add_tab_to_window(GtkWidget* window, GtkWidget* widget, int position) {
         split_set_active_term(VTE_TERMINAL(terminal));
     }
 
-    GtkWidget* label = g_object_get_data(G_OBJECT(tab), "label");
+    GtkWidget* label = g_object_get_data(G_OBJECT(tab), "tab_title");
     GtkNotebook* notebook = GTK_NOTEBOOK(window_get_notebook(window));
     int page = gtk_notebook_insert_page(notebook, tab, label, position);
     configure_tab(GTK_CONTAINER(notebook), tab);
@@ -145,7 +183,14 @@ void add_tab_to_window(GtkWidget* window, GtkWidget* widget, int position) {
     gtk_widget_realize(terminal);
     gtk_notebook_set_current_page(notebook, page);
     gtk_notebook_set_tab_detachable(GTK_NOTEBOOK(notebook), tab, TRUE);
-    update_terminal_ui(VTE_TERMINAL(terminal));
+
+    update_tab_titles(VTE_TERMINAL(terminal));
+    update_terminal_css_class(VTE_TERMINAL(terminal));
+
+    // reallocate the sizes of the tab titles
+    GdkRectangle rect;
+    gtk_widget_get_allocation(GTK_WIDGET(notebook), &rect);
+    notebook_size_allocate(notebook, &rect);
 }
 
 void add_terminal_full(GtkWidget* window, const char* cwd, int argc, char** argv) {
@@ -166,6 +211,7 @@ GtkWidget* make_window() {
     g_signal_connect(window, "focus-in-event", G_CALLBACK(window_focus_event), NULL);
 
     gtk_notebook_set_show_border(GTK_NOTEBOOK(notebook), FALSE);
+    g_signal_connect(notebook, "size-allocate", G_CALLBACK(notebook_size_allocate), NULL);
     g_signal_connect(notebook, "page-removed", G_CALLBACK(notebook_tab_removed), NULL);
     g_signal_connect(notebook, "create-window", G_CALLBACK(notebook_create_window), NULL);
     g_signal_connect(notebook, "switch-page", G_CALLBACK(notebook_switch_page), NULL);
@@ -189,25 +235,4 @@ GtkWidget* make_new_window_full(GtkWidget* tab, const char* cwd, int argc, char*
     }
     add_tab_to_window(window, tab, -1);
     return window;
-}
-
-void foreach_window(GFunc callback, gpointer data) {
-    g_list_foreach(toplevel_windows, callback, data);
-}
-void foreach_terminal_in_window(GtkWidget* window, GFunc callback, gpointer data) {
-    GtkWidget* tab;
-    GtkNotebook* notebook = GTK_NOTEBOOK(window_get_notebook(window));
-
-    int n = gtk_notebook_get_n_pages(notebook);
-    for (int i = 0; i < n; i ++) {
-        tab = gtk_notebook_get_nth_page(notebook, i);
-        for (GSList* node = g_object_get_data(G_OBJECT(tab), TERMINAL_FOCUS_KEY); node ; node = node->next) {
-            callback(node->data, data);
-        }
-    }
-}
-void foreach_terminal(GFunc callback, gpointer data) {
-    for (GList* node = toplevel_windows; node; node = node->next) {
-        foreach_terminal_in_window(GTK_WIDGET(node->data), callback, data);
-    }
 }
