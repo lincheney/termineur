@@ -4,6 +4,20 @@
 #include "utils.h"
 #include "label.h"
 #include "split.h"
+#include "config.h"
+#include "window.h"
+
+const char* DEFAULT_UI =
+    "<interface>"
+        "<object class='GtkLabel'>"
+            "<property name='label'>%s</property>"
+            "<property name='use-markup'>yes</property>"
+            "<property name='ellipsize'>%s</property>"
+            "<property name='xalign'>%f</property>"
+            "<signal name='event' handler='format:escaped:label' />"
+        "</object>"
+    "</interface>"
+;
 
 char* tab_title_ui = NULL;
 
@@ -16,14 +30,52 @@ typedef struct {
 } FormatObject;
 GArray* widget_formatters = NULL;
 
+void set_tab_label_format(char* string, PangoEllipsizeMode ellipsize, float xalign) {
+    GError* error = NULL;
+    if (! pango_parse_markup(string, -1, 0, NULL, NULL, NULL, &error)) {
+        g_warning("Invalid markup, %s: %s", error->message, string);
+        g_error_free(error);
+        return;
+    }
+
+    char* ellipsize_str;
+    switch (ellipsize) {
+        case PANGO_ELLIPSIZE_END:
+            ellipsize_str = "end"; break;
+        case PANGO_ELLIPSIZE_MIDDLE:
+            ellipsize_str = "middle"; break;
+        case PANGO_ELLIPSIZE_START:
+            ellipsize_str = "start"; break;
+        default:
+            ellipsize_str = "none"; break;
+    }
+
+    set_tab_title_ui(g_markup_printf_escaped(DEFAULT_UI, string, ellipsize_str, xalign));
+}
+
 void set_tab_title_ui(char* string) {
-    free(tab_title_ui);
+    if (tab_title_ui) {
+        free(tab_title_ui);
+        tab_title_ui = NULL;
+    }
+
     tab_title_ui = strdup(string);
 }
 
-void parse_title_format(char* string, TitleFormat* dest) {
-    free(dest->format);
+void destroy_all_tab_title_uis() {
+    FOREACH_WINDOW(window) {
+        GtkWidget* notebook = window_get_notebook(GTK_WIDGET(window));
+        FOREACH_TAB(tab, window) {
+            GtkWidget* ui = g_object_get_data(G_OBJECT(tab), "tab_title");
+            gtk_notebook_set_tab_label(GTK_NOTEBOOK(notebook), tab, NULL);
+            gtk_widget_destroy(ui);
+            g_object_unref(ui);
+            g_object_set_data(G_OBJECT(tab), "tab_title", NULL);
+        }
+    }
+}
 
+TitleFormat parse_title_format(char* string) {
     char* pieces[256] = {0};
     int flags = 0;
 
@@ -68,8 +120,8 @@ void parse_title_format(char* string, TitleFormat* dest) {
         i ++;
     }
 
-    dest->format = g_strjoinv(NULL, pieces);
-    dest->flags = flags;
+    TitleFormat fmt = {flags, g_strjoinv(NULL, pieces)};
+    return fmt;
 }
 
 void update_tab_titles(VteTerminal* terminal) {
@@ -97,7 +149,7 @@ void update_tab_titles(VteTerminal* terminal) {
 
 void unregister_widget(GtkWidget* widget) {
     // start from end as we are modifying while iterating
-    for (int i = widget_formatters->len; i >= 0; i --) {
+    for (int i = widget_formatters->len - 1; i >= 0; i --) {
         FormatObject* fo = &g_array_index(widget_formatters, FormatObject, i);
         if (fo->widget == widget) {
             free(fo->property);
@@ -107,19 +159,20 @@ void unregister_widget(GtkWidget* widget) {
     }
 }
 
-void register_widget(GtkWidget* widget, GtkWidget* root_split, const char* prop, const char* format, gboolean escaped) {
+void register_widget_parsed(GtkWidget* widget, GtkWidget* root_split, const char* prop, TitleFormat format, gboolean escaped) {
     if (! widget_formatters) {
         widget_formatters = g_array_new(FALSE, FALSE, sizeof(FormatObject));
     }
 
-    char* fmt = strdup(format);
-    TitleFormat tf = {0, NULL};
-    parse_title_format(fmt, &tf);
-    free(fmt);
-
-    FormatObject fo = {widget, root_split, strdup(prop), tf, escaped};
+    FormatObject fo = {widget, root_split, strdup(prop), format, escaped};
     g_array_append_val(widget_formatters, fo);
     g_signal_connect(widget, "destroy", G_CALLBACK(unregister_widget), NULL);
+}
+
+void register_widget(GtkWidget* widget, GtkWidget* root_split, const char* prop, const char* format, gboolean escaped) {
+    char* fmt = strdup(format);
+    register_widget_parsed(widget, root_split, prop, parse_title_format(fmt), escaped);
+    free(fmt);
 }
 
 void builder_widget_connector(
@@ -182,12 +235,12 @@ GtkWidget* make_tab_title_ui(GtkWidget* paned) {
 
     GSList* list = gtk_builder_get_objects(builder);
     GtkWidget* widget = NULL;
-    // find first widget with no parent ; any other top levels will get dropped
     for ( ; list; list = list->next) {
         GtkWidget* w = GTK_WIDGET(list->data);
-        if (gtk_widget_get_parent(w) == NULL) {
+
+        // find first widget with no parent ; any other top levels will get dropped
+        if (!widget && gtk_widget_get_parent(w) == NULL) {
             widget = w;
-            break;
         }
     }
     g_slist_free(list);
@@ -201,14 +254,18 @@ GtkWidget* make_tab_title_ui(GtkWidget* paned) {
     gtk_builder_connect_signals_full(builder, (GtkBuilderConnectFunc)builder_widget_connector, paned);
     g_object_ref(widget); // ref or builder will destroy it
     g_object_unref(builder);
-    return widget;
-}
 
-GtkWidget* make_tab_title_label(GtkWidget* paned) {
-    GtkWidget* widget = label_new(NULL);
-    // markup is always enabled
-    g_object_set(G_OBJECT(widget), "use-markup", TRUE, NULL);
-    register_widget(widget, paned, "widget", "", TRUE);
-    g_object_ref(widget);
+    g_object_set_data(G_OBJECT(paned), "tab_title", widget);
+
+    GtkWidget* notebook = gtk_widget_get_parent(paned);
+    if (notebook) {
+        gtk_notebook_set_tab_label(GTK_NOTEBOOK(notebook), paned, widget);
+        GtkWidget* terminal = split_get_active_term(paned);
+        if (terminal) {
+            update_tab_titles(VTE_TERMINAL(terminal));
+        }
+        gtk_widget_show_all(widget);
+    }
+
     return widget;
 }

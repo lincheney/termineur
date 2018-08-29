@@ -40,6 +40,7 @@ GtkCssProvider* css_provider = NULL;
 char** default_args = NULL;
 char* window_icon = NULL;
 char* default_open_action = "new_window";
+char* tab_label_format = "%t";
 
 // terminal props
 VteCursorBlinkMode terminal_cursor_blink_mode = VTE_CURSOR_BLINK_SYSTEM;
@@ -63,7 +64,7 @@ gboolean notebook_scrollable = FALSE;
 gboolean notebook_show_tabs = FALSE;
 GtkPositionType notebook_tab_pos = GTK_POS_TOP;
 int ui_refresh_interval = 5000;
-PangoEllipsizeMode tab_title_ellipsize_mode = PANGO_ELLIPSIZE_END;
+PangoEllipsizeMode tab_label_ellipsize_mode = PANGO_ELLIPSIZE_END;
 gfloat tab_label_alignment = 0.5;
 int inactivity_duration = 10000;
 gboolean window_close_confirm = TRUE;
@@ -122,16 +123,15 @@ void configure_tab(GtkContainer* notebook, GtkWidget* tab) {
             "tab-fill",   tab_fill,
             NULL);
 
-    /* GtkWidget* label = g_object_get_data(G_OBJECT(tab), "label"); */
-    /* g_object_set(G_OBJECT(label), */
-            /* "ellipsize",  tab_title_ellipsize_mode, */
-            /* "xalign",     tab_label_alignment, */
-            /* NULL); */
+    GtkWidget* ui = g_object_get_data(G_OBJECT(tab), "tab_title");
+    if (! ui) {
+        make_tab_title_ui(tab);
+    }
 }
 
 void configure_window(GtkWindow* window) {
     gtk_window_set_icon_name(window, window_icon);
-    GtkWidget* notebook = g_object_get_data(G_OBJECT(window), "notebook");
+    GtkWidget* notebook = window_get_notebook(GTK_WIDGET(window));
     g_object_set(notebook,
             "enable-popup", notebook_enable_popup,
             "scrollable",   notebook_scrollable,
@@ -146,12 +146,12 @@ void reconfigure_window(GtkWidget* window) {
     GtkContainer* notebook = GTK_CONTAINER(window_get_notebook(GTK_WIDGET(window)));
     FOREACH_TAB(tab, GTK_WIDGET(window)) {
         configure_tab(notebook, tab);
+        update_tab_titles(VTE_TERMINAL(split_get_active_term(tab)));
 
         FOREACH_TERMINAL(terminal, tab) {
             configure_terminal(GTK_WIDGET(terminal));
             update_terminal_css_class(terminal);
         }
-        update_tab_titles(VTE_TERMINAL(split_get_active_term(tab)));
     }
     update_window_title(GTK_WINDOW(window), NULL);
 }
@@ -232,8 +232,8 @@ int set_config_from_str(char* line, size_t len) {
     MAP_LINE(background,               gdk_rgba_parse(palette, value));
     MAP_LINE(foreground,               gdk_rgba_parse(palette+1, value));
     MAP_LINE(window-title-format,      set_window_title_format(value));
-    MAP_LINE(tab_label_format,         set_tab_label_format(value));
-    MAP_LINE(tab-title-ui,             set_tab_title_ui(value));
+    MAP_LINE(tab-label-format,         tab_label_format              = strdup(value));
+    MAP_LINE(tab-title-ui,             set_tab_title_ui(value); tab_label_format = NULL);
     MAP_LINE(tab-fill,                 tab_fill                      = PARSE_BOOL(value));
     MAP_LINE(tab-expand,               tab_expand                    = PARSE_BOOL(value));
     MAP_LINE(tab-enable-popup,         notebook_enable_popup         = PARSE_BOOL(value));
@@ -290,13 +290,13 @@ int set_config_from_str(char* line, size_t len) {
             {"right",  GTK_POS_RIGHT},
     );
 
-    MAP_LINE_VALUE(tab-title-ellipsize-mode, int, tab_title_ellipsize_mode,
+    MAP_LINE_VALUE(tab-title-ellipsize-mode, int, tab_label_ellipsize_mode,
             {"start",  PANGO_ELLIPSIZE_START},
             {"middle", PANGO_ELLIPSIZE_MIDDLE},
             {"end",    PANGO_ELLIPSIZE_END},
     );
 
-    MAP_LINE_VALUE(tab_label_alignment, int, tab_label_alignment,
+    MAP_LINE_VALUE(tab-label-alignment, int, tab_label_alignment,
             {"left",   0},
             {"right",  1},
             {"center", 0.5},
@@ -388,6 +388,11 @@ gboolean refresh_ui() {
 }
 
 void reconfigure_all() {
+    if (tab_label_format) {
+        set_tab_label_format(tab_label_format, tab_label_ellipsize_mode, tab_label_alignment);
+    }
+    destroy_all_tab_title_uis();
+
     // reload config everywhere
     FOREACH_WINDOW(window) {
         reconfigure_window(window);

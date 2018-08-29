@@ -174,12 +174,13 @@ void add_tab_to_window(GtkWidget* window, GtkWidget* widget, int position) {
         split_set_active_term(VTE_TERMINAL(terminal));
     }
 
-    GtkWidget* label = g_object_get_data(G_OBJECT(tab), "tab_title");
+    GtkWidget* title_widget = g_object_get_data(G_OBJECT(tab), "tab_title");
     GtkNotebook* notebook = GTK_NOTEBOOK(window_get_notebook(window));
-    int page = gtk_notebook_insert_page(notebook, tab, label, position);
+    int page = gtk_notebook_insert_page(notebook, tab, title_widget, position);
     configure_tab(GTK_CONTAINER(notebook), tab);
 
     gtk_widget_show_all(tab);
+    gtk_widget_show_all(title_widget);
     gtk_widget_realize(terminal);
     gtk_notebook_set_current_page(notebook, page);
     gtk_notebook_set_tab_detachable(GTK_NOTEBOOK(notebook), tab, TRUE);

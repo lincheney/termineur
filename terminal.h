@@ -9,7 +9,6 @@
 void term_setup_pipes(int pipes[2]);
 GtkWidget* make_terminal(const char* cwd, int argc, char** argv);
 GtkWidget* make_terminal_full(const char* cwd, int argc, char** argv, GSpawnChildSetupFunc child_setup, void* child_setup_data, GDestroyNotify child_setup_destroy);
-void set_tab_label_format(char*);
 void set_window_title_format(char*);
 gboolean term_construct_title(const char* format, int flags, VteTerminal* terminal, gboolean escape_markup, char* buffer, size_t length);
 int get_foreground_pid(VteTerminal* terminal);

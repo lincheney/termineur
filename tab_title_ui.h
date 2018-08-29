@@ -15,9 +15,10 @@ typedef struct {
 } TitleFormat;
 
 void update_tab_titles(VteTerminal* terminal);
+void set_tab_label_format(char* string, PangoEllipsizeMode ellipsize, float xalign);
 void set_tab_title_ui(char* string);
-void parse_title_format(char* string, TitleFormat* dest);
+void destroy_all_tab_title_uis();
+TitleFormat parse_title_format(char* string);
 GtkWidget* make_tab_title_ui(GtkWidget* paned);
-GtkWidget* make_tab_title_label(GtkWidget* paned);
 
 #endif

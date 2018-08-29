@@ -19,11 +19,7 @@ GtkWidget* split_new_root() {
     GtkStyleContext* context = gtk_widget_get_style_context(paned);
     gtk_style_context_add_class(context, ROOT_SPLIT_CLASS);
 
-    GtkWidget* widget = make_tab_title_ui(paned);
-    if (widget) {
-        g_object_set_data(G_OBJECT(paned), "tab_title", widget);
-        gtk_widget_show_all(widget);
-    }
+    make_tab_title_ui(paned);
 
     return paned;
 }
