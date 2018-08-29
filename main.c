@@ -22,6 +22,8 @@ void print_help(int argc, char** argv) {
             "  -C CONFIG, --config CONFIG\n" \
             "  -c COMMAND, --command COMMAND\n" \
             "  --connect COMMAND\n" \
+            "  --no-connect-stdin\n" \
+            "  --no-connect-stdout\n" \
         , argv[0], argv[0]);
 }
 
