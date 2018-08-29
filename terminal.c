@@ -412,7 +412,13 @@ void parse_title_format(char* string, TitleFormat* dest) {
 }
 
 void set_tab_title_format(char* string) {
-    parse_title_format(string, &tab_title_format);
+    GError* error = NULL;
+    if (pango_parse_markup(string, -1, 0, NULL, NULL, NULL, &error)) {
+        parse_title_format(string, &tab_title_format);
+    } else {
+        g_warning("Invalid markup: %s", string);
+        g_error_free(error);
+    }
 }
 
 void set_window_title_format(char* string) {
