@@ -237,7 +237,6 @@ int set_config_from_str(char* line, size_t len) {
     MAP_LINE(tab-scrollable,           notebook_scrollable           = PARSE_BOOL(value));
     MAP_LINE(show-tabs,                notebook_show_tabs            = PARSE_BOOL(value));
     MAP_LINE(ui-refresh-interval,      ui_refresh_interval           = atoi(value));
-    MAP_LINE(tab-title-markup,         tab_title_markup              = PARSE_BOOL(value));
     MAP_LINE(inactivity-duration,      inactivity_duration           = atoi(value));
     MAP_LINE(encoding,                 free(terminal_encoding); terminal_encoding = strdup(value));
     MAP_LINE(font,                     terminal_font                 = pango_font_description_from_string(value));
