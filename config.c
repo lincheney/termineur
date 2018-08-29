@@ -344,6 +344,7 @@ int set_config_from_str(char* line, size_t len) {
             MAP_EVENT(bell, BELL);
             MAP_EVENT(hyperlink-hover, HYPERLINK_HOVER);
             MAP_EVENT(hyperlink-click, HYPERLINK_CLICK);
+            MAP_EVENT(focus, FOCUS_IN);
             break;
         }
 

@@ -127,6 +127,8 @@ gboolean term_focus_in_event(VteTerminal* terminal, GdkEvent* event, gpointer da
     split_set_active_term(terminal);
     // clear activity once terminal is focused
     change_terminal_state(terminal, TERMINAL_NO_STATE);
+
+    trigger_action(terminal, -1, FOCUS_IN_EVENT);
     return FALSE;
 }
 
