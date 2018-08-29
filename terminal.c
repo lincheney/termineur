@@ -416,7 +416,7 @@ void set_tab_title_format(char* string) {
     if (pango_parse_markup(string, -1, 0, NULL, NULL, NULL, &error)) {
         parse_title_format(string, &tab_title_format);
     } else {
-        g_warning("Invalid markup: %s", string);
+        g_warning("Invalid markup, %s: %s", error->message, string);
         g_error_free(error);
     }
 }
