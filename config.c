@@ -40,7 +40,7 @@ GtkCssProvider* css_provider = NULL;
 char** default_args = NULL;
 char* window_icon = NULL;
 char* default_open_action = "new_window";
-char* tab_label_format = "%t";
+char* tab_label_format = NULL;
 char* tab_title_ui_format = NULL;
 
 // terminal props
@@ -175,16 +175,17 @@ void unset_action(guint key, int metadata) {
     }
 }
 
-int set_config_from_str(char* line, size_t len) {
+int handle_config(char* line, size_t len, char** result) {
     char* tmp;
     char* value = strchr(line, '=');
-    if (! value) return 0; // invalid line
 
-    *value = '\0';
-    value ++;
-    // whitespace trimming
+    if (value) {
+        *value = '\0';
+        value ++;
+        g_strstrip(value);
+    }
+
     g_strstrip(line);
-    g_strstrip(value);
 
 #define LINE_EQUALS(string) (STR_EQUAL(line, (#string)))
 #define MAP_LINE(string, body) \
@@ -195,25 +196,16 @@ int set_config_from_str(char* line, size_t len) {
 #define MAP_VALUE(type, var, ...) do { \
         struct mapping {char* name; type value; } map[] = {__VA_ARGS__}; \
         for(int i = 0; i < sizeof(map) / sizeof(struct mapping); i++) { \
-            if (g_ascii_strcasecmp(value, map[i].name) == 0) { \
+            if (value && g_ascii_strcasecmp(value, map[i].name) == 0) { \
                 var = map[i].value; \
+                break; \
+            } else if (! value && var == map[i].value) { \
+                *result = strdup(map[i].name); \
                 break; \
             } \
         } \
     } while(0)
 #define MAP_LINE_VALUE(string, type, ...) MAP_LINE(string, MAP_VALUE(type, __VA_ARGS__))
-
-    // palette colours
-    tmp = STR_STRIP_PREFIX(line, "col");
-    if (tmp) {
-        errno = 0;
-        char* endptr = NULL;
-        int n = strtol(tmp, &endptr, 10);
-        if (!errno && *endptr == '\0' && 0 <= n && n < 16) {
-            gdk_rgba_parse(palette+2+n, value);
-            return 1;
-        }
-    }
 
 #define PARSE_BOOL(string) ( ! ( \
     g_ascii_strcasecmp((string), "no") == 0 \
@@ -222,64 +214,129 @@ int set_config_from_str(char* line, size_t len) {
     || STR_EQUAL((string), "") \
     || STR_EQUAL((string), "0") \
     ))
+#define MAP_BOOL(var) \
+    if (value) { var = PARSE_BOOL(value); } \
+    else { *result = strdup(var ? "1" : "0"); }
+#define MAP_INT(var) \
+    if (value) { var = atoi(value); } \
+    else { *result = g_strdup_printf("%i", var); }
+#define MAP_STR(var) \
+    if (value) { free(var); var = strdup(value); } \
+    else { *result = strdup(var); }
+#define MAP_COLOUR(val) \
+    if (value) { gdk_rgba_parse((val), value); } \
+    else { *result = gdk_rgba_to_string(val); } \
+
+    // palette colours
+    if ((tmp = STR_STRIP_PREFIX(line, "col"))) {
+        errno = 0;
+        char* endptr = NULL;
+        int n = strtol(tmp, &endptr, 10);
+        if (!errno && *endptr == '\0' && 0 <= n && n < 16) {
+            MAP_COLOUR(palette+2+n);
+            return 1;
+        }
+    }
 
     if (LINE_EQUALS(css)) {
-        gtk_css_provider_load_from_data(css_provider, value, -1, NULL);
-        GdkScreen* screen = gdk_screen_get_default();
-        gtk_style_context_add_provider_for_screen(screen, GTK_STYLE_PROVIDER(css_provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+        if (value) {
+            gtk_css_provider_load_from_data(css_provider, value, -1, NULL);
+            GdkScreen* screen = gdk_screen_get_default();
+            gtk_style_context_add_provider_for_screen(screen, GTK_STYLE_PROVIDER(css_provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+        } else {
+            *result = gtk_css_provider_to_string(css_provider);
+        }
         return 1;
     }
 
-    MAP_LINE(background,               gdk_rgba_parse(palette, value));
-    MAP_LINE(foreground,               gdk_rgba_parse(palette+1, value));
-    MAP_LINE(window-title-format,      set_window_title_format(value));
-    MAP_LINE(tab-label-format,         tab_label_format = strdup(value); tab_title_ui_format = NULL);
-    MAP_LINE(tab-title-ui,             tab_title_ui_format = strdup(value);     tab_label_format = NULL);
-    MAP_LINE(tab-fill,                 tab_fill                      = PARSE_BOOL(value));
-    MAP_LINE(tab-expand,               tab_expand                    = PARSE_BOOL(value));
-    MAP_LINE(tab-enable-popup,         notebook_enable_popup         = PARSE_BOOL(value));
-    MAP_LINE(tab-scrollable,           notebook_scrollable           = PARSE_BOOL(value));
-    MAP_LINE(show-tabs,                notebook_show_tabs            = PARSE_BOOL(value));
-    MAP_LINE(ui-refresh-interval,      ui_refresh_interval           = atoi(value));
-    MAP_LINE(inactivity-duration,      inactivity_duration           = atoi(value));
-    MAP_LINE(encoding,                 free(terminal_encoding); terminal_encoding = strdup(value));
-    MAP_LINE(font,                     terminal_font                 = pango_font_description_from_string(value));
-    MAP_LINE(font-scale,               terminal_font_scale           = strtod(value, NULL));
-    MAP_LINE(audible-bell,             terminal_audible_bell         = PARSE_BOOL(value));
-    MAP_LINE(allow-hyperlink,          terminal_allow_hyperlink      = PARSE_BOOL(value));
-    MAP_LINE(pointer-autohide,         terminal_pointer_autohide     = PARSE_BOOL(value));
-    MAP_LINE(rewrap-on-resize,         terminal_rewrap_on_resize     = PARSE_BOOL(value));
-    MAP_LINE(scroll-on-keystroke,      terminal_scroll_on_keystroke  = PARSE_BOOL(value));
-    MAP_LINE(scroll-on-output,         terminal_scroll_on_output     = PARSE_BOOL(value));
-    MAP_LINE(default-scrollback-lines, terminal_default_scrollback_lines     = atoi(value));
-    MAP_LINE(word-char-exceptions,     free(terminal_word_char_exceptions); terminal_word_char_exceptions = strdup(value));
-    MAP_LINE(window-icon,              free(window_icon);  window_icon = strdup(value));
-    MAP_LINE(window-close-confirm,     window_close_confirm          = PARSE_BOOL(value));
+    MAP_LINE(background,                MAP_COLOUR(palette));
+    MAP_LINE(foreground,                MAP_COLOUR(palette+1));
+    MAP_LINE(window-title-format,       if (value) set_window_title_format(value));
+    MAP_LINE(tab-label-format,          MAP_STR(tab_label_format); if (value) { free(tab_title_ui_format); tab_title_ui_format = NULL; } );
+    MAP_LINE(tab-title-ui,              MAP_STR(tab_title_ui_format); if (value) { free(tab_label_format); tab_label_format= NULL; } );
+    MAP_LINE(tab-fill,                  MAP_BOOL(tab_fill));
+    MAP_LINE(tab-expand,                MAP_BOOL(tab_expand));
+    MAP_LINE(tab-enable-popup,          MAP_BOOL(notebook_enable_popup));
+    MAP_LINE(tab-scrollable,            MAP_BOOL(notebook_scrollable));
+    MAP_LINE(show-tabs,                 MAP_BOOL(notebook_show_tabs));
+    MAP_LINE(ui-refresh-interval,       MAP_INT(ui_refresh_interval));
+    MAP_LINE(inactivity-duration,       MAP_INT(inactivity_duration));
+    MAP_LINE(encoding,                  MAP_STR(terminal_encoding));
+    MAP_LINE(font,                      terminal_font                 = pango_font_description_from_string(value));
+    MAP_LINE(font-scale,                terminal_font_scale           = strtod(value, NULL));
+    MAP_LINE(audible-bell,              MAP_BOOL(terminal_audible_bell));
+    MAP_LINE(allow-hyperlink,           MAP_BOOL(terminal_allow_hyperlink));
+    MAP_LINE(pointer-autohide,          MAP_BOOL(terminal_pointer_autohide));
+    MAP_LINE(rewrap-on-resize,          MAP_BOOL(terminal_rewrap_on_resize));
+    MAP_LINE(scroll-on-keystroke,       MAP_BOOL(terminal_scroll_on_keystroke));
+    MAP_LINE(scroll-on-output,          MAP_BOOL(terminal_scroll_on_output));
+    MAP_LINE(default-scrollback-lines,  MAP_INT(terminal_default_scrollback_lines));
+    MAP_LINE(word-char-exceptions,      MAP_STR(terminal_word_char_exceptions));
+    MAP_LINE(window-icon,               MAP_STR(window_icon));
+    MAP_LINE(window-close-confirm,      MAP_BOOL(window_close_confirm));
 
     if (LINE_EQUALS(tab-close-confirm)) {
-        if (g_ascii_strcasecmp(value, "smart") == 0) {
-            tab_close_confirm = CLOSE_CONFIRM_SMART;
-        } else if (PARSE_BOOL(value)) {
-            tab_close_confirm = CLOSE_CONFIRM_YES;
+        if (value) {
+            if (g_ascii_strcasecmp(value, "smart") == 0) {
+                tab_close_confirm = CLOSE_CONFIRM_SMART;
+            } else if (PARSE_BOOL(value)) {
+                tab_close_confirm = CLOSE_CONFIRM_YES;
+            } else {
+                tab_close_confirm = CLOSE_CONFIRM_NO;
+            }
         } else {
-            tab_close_confirm = CLOSE_CONFIRM_NO;
+            switch (tab_close_confirm) {
+                case CLOSE_CONFIRM_SMART:
+                    *result = strdup("smart"); break;
+                case CLOSE_CONFIRM_YES:
+                    *result = strdup("1"); break;
+                case CLOSE_CONFIRM_NO:
+                    *result = strdup("0"); break;
+            }
         }
         return 1;
     }
 
     if (LINE_EQUALS(default-args)) {
-        g_strfreev(default_args);
-        default_args = shell_split(value, NULL);
+        // TODO
+        if (value) {
+            g_strfreev(default_args);
+            default_args = shell_split(value, NULL);
+        } else if (default_args) {
+            int n;
+            for (n = 0; default_args[n]; n++) ;
+
+            char* args[n+1];
+            args[n] = NULL;
+            for (n = 0; default_args[n]; n++) {
+                args[n] = g_shell_quote(default_args[n]);
+            }
+
+            *result = g_strjoinv(NULL, args);
+            g_strfreev(args);
+        }
         return 1;
     }
 
     if (LINE_EQUALS(show-scrollbar)) {
-        if (STR_EQUAL(value, "auto") || STR_EQUAL(value, "automatic")) {
-            scrollbar_policy = GTK_POLICY_AUTOMATIC;
-        } else if (! PARSE_BOOL(value) || STR_EQUAL(value, "never")) {
-            scrollbar_policy = GTK_POLICY_NEVER;
+        if (value) {
+            if (STR_EQUAL(value, "auto") || STR_EQUAL(value, "automatic")) {
+                scrollbar_policy = GTK_POLICY_AUTOMATIC;
+            } else if (! PARSE_BOOL(value) || STR_EQUAL(value, "never")) {
+                scrollbar_policy = GTK_POLICY_NEVER;
+            } else {
+                scrollbar_policy = GTK_POLICY_ALWAYS;
+            }
         } else {
-            scrollbar_policy = GTK_POLICY_ALWAYS;
+            switch (scrollbar_policy) {
+                case GTK_POLICY_AUTOMATIC:
+                    *result = strdup("auto"); break;
+                case GTK_POLICY_NEVER:
+                    *result = strdup("never"); break;
+                case GTK_POLICY_ALWAYS:
+                    *result = strdup("always"); break;
+                default: break;
+            }
         }
         return 1;
     }
@@ -326,56 +383,59 @@ int set_config_from_str(char* line, size_t len) {
             {"window",    "new_window"},
     );
 
-    // ONLY events/actions from here on
+    // ONLY events from here on
+    // events must take a value
+    if (value) {
 
-    ActionData action = {0, 0, {NULL, NULL, NULL}};
+        ActionData action = {0, 0, {NULL, NULL, NULL}};
 
-    tmp = STR_STRIP_PREFIX(line, "on-");
-    if (tmp) {
-        char* event = tmp;
-        action.key = -1;
+        tmp = STR_STRIP_PREFIX(line, "on-");
+        if (tmp) {
+            char* event = tmp;
+            action.key = -1;
 
 #define MAP_EVENT(string, value) \
-        if (STR_EQUAL(event, #string)) { \
-            action.metadata = value; \
-            break; \
-        }
-
-        while (1) {
-            MAP_EVENT(bell, BELL_EVENT);
-            MAP_EVENT(hyperlink-hover, HYPERLINK_HOVER_EVENT);
-            MAP_EVENT(hyperlink-click, HYPERLINK_CLICK_EVENT);
-            MAP_EVENT(focus, FOCUS_IN_EVENT);
-            MAP_EVENT(start, START_EVENT);
-            break;
-        }
-
-    }
-
-    tmp = STR_STRIP_PREFIX(line, "key-");
-    if (tmp) {
-        char* shortcut = tmp;
-
-        gtk_accelerator_parse(shortcut, &(action.key), (GdkModifierType*) &(action.metadata));
-        if (action.metadata & GDK_SHIFT_MASK) {
-            action.key = gdk_keyval_to_upper(action.key);
-        }
-    }
-
-    if (action.key) {
-        if (STR_EQUAL(value, "")) {
-            // unset this shortcut
-            unset_action(action.key, action.metadata);
-            return 1;
-        } else {
-            Action a = lookup_action(value);
-            if (a.func) {
-                action.action = a;
-                g_array_append_val(actions, action);
-            } else {
-                g_warning("Unrecognised action: %s", value);
+            if (STR_EQUAL(event, #string)) { \
+                action.metadata = value; \
+                break; \
             }
-            return 1;
+
+            while (1) {
+                MAP_EVENT(bell, BELL_EVENT);
+                MAP_EVENT(hyperlink-hover, HYPERLINK_HOVER_EVENT);
+                MAP_EVENT(hyperlink-click, HYPERLINK_CLICK_EVENT);
+                MAP_EVENT(focus, FOCUS_IN_EVENT);
+                MAP_EVENT(start, START_EVENT);
+                break;
+            }
+
+        }
+
+        tmp = STR_STRIP_PREFIX(line, "key-");
+        if (tmp) {
+            char* shortcut = tmp;
+
+            gtk_accelerator_parse(shortcut, &(action.key), (GdkModifierType*) &(action.metadata));
+            if (action.metadata & GDK_SHIFT_MASK) {
+                action.key = gdk_keyval_to_upper(action.key);
+            }
+        }
+
+        if (action.key) {
+            if (STR_EQUAL(value, "")) {
+                // unset this shortcut
+                unset_action(action.key, action.metadata);
+                return 1;
+            } else {
+                Action a = lookup_action(value);
+                if (a.func) {
+                    action.action = a;
+                    g_array_append_val(actions, action);
+                } else {
+                    g_warning("Unrecognised action: %s", value);
+                }
+                return 1;
+            }
         }
     }
 
@@ -392,10 +452,10 @@ gboolean refresh_ui() {
 
 void reconfigure_all() {
     gboolean tab_titles_changed = FALSE;
-    if (tab_label_format) {
-        tab_titles_changed = set_tab_label_format(tab_label_format, tab_label_ellipsize_mode, tab_label_alignment);
-    } else if (tab_title_ui_format) {
+    if (tab_title_ui_format) {
         tab_titles_changed = set_tab_title_ui(tab_title_ui_format);
+    } else {
+        tab_titles_changed = set_tab_label_format(tab_label_format ? tab_label_format : "%t", tab_label_ellipsize_mode, tab_label_alignment);
     }
 
     if (tab_titles_changed) {
@@ -432,13 +492,15 @@ void free_action_data(ActionData* c) {
 
 void* execute_line(char* line, int size, gboolean reconfigure, gboolean do_actions) {
     char* line_copy;
+    char* result = NULL;
 
     line_copy = strdup(line);
-    int result = set_config_from_str(line_copy, size);
+    int handled = handle_config(line_copy, size, &result);
     free(line_copy);
-    if (result) {
-        if (reconfigure) reconfigure_all();
-        return NULL;
+
+    if (handled) {
+        if (reconfigure && !result) reconfigure_all();
+        return result;
     }
 
     if (! do_actions) {
@@ -451,12 +513,11 @@ void* execute_line(char* line, int size, gboolean reconfigure, gboolean do_actio
     if (action.func) {
         VteTerminal* terminal = get_active_terminal(NULL);
         if (terminal) {
-            char* data = NULL;
-            action.func(terminal, action.data, &data);
+            action.func(terminal, action.data, &result);
             if (action.cleanup) {
                 action.cleanup(action.data);
             }
-            return data;
+            return result;
         }
         return NULL;
     }
