@@ -337,15 +337,16 @@ int set_config_from_str(char* line, size_t len) {
 
 #define MAP_EVENT(string, value) \
         if (STR_EQUAL(event, #string)) { \
-            action.metadata = value ## _EVENT; \
+            action.metadata = value; \
             break; \
         }
 
         while (1) {
-            MAP_EVENT(bell, BELL);
-            MAP_EVENT(hyperlink-hover, HYPERLINK_HOVER);
-            MAP_EVENT(hyperlink-click, HYPERLINK_CLICK);
-            MAP_EVENT(focus, FOCUS_IN);
+            MAP_EVENT(bell, BELL_EVENT);
+            MAP_EVENT(hyperlink-hover, HYPERLINK_HOVER_EVENT);
+            MAP_EVENT(hyperlink-click, HYPERLINK_CLICK_EVENT);
+            MAP_EVENT(focus, FOCUS_IN_EVENT);
+            MAP_EVENT(start, START_EVENT);
             break;
         }
 

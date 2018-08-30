@@ -175,7 +175,8 @@ int run_server(int argc, char** argv) {
     gtk_style_context_add_provider_for_screen(screen, GTK_STYLE_PROVIDER(css_provider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
 
     load_config(config_filename);
-    make_new_window_full(NULL, NULL, argc, argv);
+    GtkWidget* window = make_new_window_full(NULL, NULL, argc, argv);
+    trigger_action(get_active_terminal(window), -1, START_EVENT);
 
     g_unix_signal_add(SIGINT, (GSourceFunc)gtk_main_quit, NULL);
     gtk_main();

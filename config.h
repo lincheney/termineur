@@ -37,6 +37,7 @@ gint tab_close_confirm;
 #define HYPERLINK_HOVER_EVENT 2
 #define HYPERLINK_CLICK_EVENT 3
 #define FOCUS_IN_EVENT 4
+#define START_EVENT 5
 
 GArray* actions;
 
