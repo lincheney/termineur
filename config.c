@@ -220,9 +220,12 @@ int handle_config(char* line, size_t len, char** result) {
 #define MAP_INT(var) \
     if (value) { var = atoi(value); } \
     else { *result = g_strdup_printf("%i", var); }
+#define MAP_FLOAT(var) \
+    if (value) { var = strtod(value, NULL); } \
+    else { *result = g_strdup_printf("%f", var); }
 #define MAP_STR(var) \
     if (value) { free(var); var = strdup(value); } \
-    else { *result = strdup(var); }
+    else if (var) { *result = strdup(var); }
 #define MAP_COLOUR(val) \
     if (value) { gdk_rgba_parse((val), value); } \
     else { *result = gdk_rgba_to_string(val); } \
@@ -251,7 +254,7 @@ int handle_config(char* line, size_t len, char** result) {
 
     MAP_LINE(background,                MAP_COLOUR(palette));
     MAP_LINE(foreground,                MAP_COLOUR(palette+1));
-    MAP_LINE(window-title-format,       if (value) set_window_title_format(value));
+    MAP_LINE(window-title-format,       if (value) set_window_title_format(value)); // TODO
     MAP_LINE(tab-label-format,          MAP_STR(tab_label_format); if (value) { free(tab_title_ui_format); tab_title_ui_format = NULL; } );
     MAP_LINE(tab-title-ui,              MAP_STR(tab_title_ui_format); if (value) { free(tab_label_format); tab_label_format= NULL; } );
     MAP_LINE(tab-fill,                  MAP_BOOL(tab_fill));
@@ -262,8 +265,9 @@ int handle_config(char* line, size_t len, char** result) {
     MAP_LINE(ui-refresh-interval,       MAP_INT(ui_refresh_interval));
     MAP_LINE(inactivity-duration,       MAP_INT(inactivity_duration));
     MAP_LINE(encoding,                  MAP_STR(terminal_encoding));
-    MAP_LINE(font,                      terminal_font                 = pango_font_description_from_string(value));
-    MAP_LINE(font-scale,                terminal_font_scale           = strtod(value, NULL));
+    MAP_LINE(font,                      if (value) { terminal_font = pango_font_description_from_string(value); }
+                                        else if (terminal_font) { *result = pango_font_description_to_string(terminal_font); } );
+    MAP_LINE(font-scale,                MAP_FLOAT(terminal_font_scale));
     MAP_LINE(audible-bell,              MAP_BOOL(terminal_audible_bell));
     MAP_LINE(allow-hyperlink,           MAP_BOOL(terminal_allow_hyperlink));
     MAP_LINE(pointer-autohide,          MAP_BOOL(terminal_pointer_autohide));
