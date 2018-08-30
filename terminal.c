@@ -135,18 +135,12 @@ gboolean term_focus_in_event(VteTerminal* terminal, GdkEvent* event, gpointer da
 }
 
 gboolean terminal_inactivity(VteTerminal* terminal) {
-    // don't track activity while we have focus
-    if (gtk_widget_has_focus(GTK_WIDGET(terminal))) return FALSE;
-
     change_terminal_state(terminal, TERMINAL_INACTIVE);
     g_object_set_data(G_OBJECT(terminal), "inactivity_timer", NULL);
     return FALSE;
 }
 
 void terminal_activity(VteTerminal* terminal) {
-    // don't track activity while we have focus
-    if (gtk_widget_has_focus(GTK_WIDGET(terminal))) return;
-
     change_terminal_state(terminal, TERMINAL_ACTIVE);
     GSource* inactivity_timer = g_object_get_data(G_OBJECT(terminal), "inactivity_timer");
     if (inactivity_timer) {
