@@ -275,6 +275,21 @@ int handle_config(char* line, size_t len, char** result) {
     MAP_LINE(window-icon,               MAP_STR(window_icon));
     MAP_LINE(window-close-confirm,      MAP_BOOL(window_close_confirm));
 
+    if (LINE_EQUALS(scrollback-lines)) {
+        // this only affects the *current* terminal
+        VteTerminal* terminal = get_active_terminal(NULL);
+        if (terminal) {
+            if (value) {
+                g_object_set(G_OBJECT(terminal), "scrollback-lines", atoi(value), NULL);
+            } else {
+                int lines;
+                g_object_get(G_OBJECT(terminal), "scrollback-lines", &lines, NULL);
+                *result = g_strdup_printf("%i", lines);
+            }
+        }
+        return 1;
+    }
+
     if (LINE_EQUALS(tab-close-confirm)) {
         if (value) {
             if (g_ascii_strcasecmp(value, "smart") == 0) {

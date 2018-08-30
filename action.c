@@ -447,18 +447,6 @@ void pipe_all_ansi(VteTerminal* terminal, char* data, char** result) {
     spawn_subprocess(terminal, data, text, result);
 }
 
-void scrollback_lines(VteTerminal* terminal, int value, char** result) {
-    if (value >= -1) {
-        g_object_set(G_OBJECT(terminal), "scrollback-lines", value, NULL);
-    }
-
-    if (result) {
-        // return the value
-        g_object_get(G_OBJECT(terminal), "scrollback-lines", &value, NULL);
-        *result = g_strdup_printf("%i", value);
-    }
-}
-
 void move_split_right(VteTerminal* terminal) {
     split_move(term_get_grid(terminal), GTK_ORIENTATION_HORIZONTAL, TRUE);
     gtk_widget_grab_focus(GTK_WIDGET(terminal));
@@ -635,7 +623,6 @@ Action make_action(char* name, char* arg) {
         MATCH_ACTION_WITH_DATA(pipe_screen_ansi, strdup(arg), free);
         MATCH_ACTION_WITH_DATA(pipe_all, strdup(arg), free);
         MATCH_ACTION_WITH_DATA(pipe_all_ansi, strdup(arg), free);
-        MATCH_ACTION_WITH_DATA_DEFAULT(scrollback_lines, GINT_TO_POINTER(atoi(arg)), NULL, GINT_TO_POINTER(-2));
         MATCH_ACTION_WITH_DATA(split_right, strdup(arg), free);
         MATCH_ACTION_WITH_DATA(split_left, strdup(arg), free);
         MATCH_ACTION_WITH_DATA(split_above, strdup(arg), free);
