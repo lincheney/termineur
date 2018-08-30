@@ -127,7 +127,7 @@ int server_recv(GSocket* sock, GIOCondition io, Buffer* buffer) {
                     return G_SOURCE_REMOVE;
                 }
 
-                void* data = execute_line(buffer->data, ptr - buffer->data, TRUE);
+                void* data = execute_line(buffer->data, ptr - buffer->data, TRUE, TRUE);
                 int result;
                 if (data) {
                     result = sock_send_all(sock, data, strlen(data)+1);

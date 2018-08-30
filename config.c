@@ -429,7 +429,7 @@ void free_action_data(ActionData* c) {
         c->action.cleanup(c->action.data);
 }
 
-void* execute_line(char* line, int size, gboolean reconfigure) {
+void* execute_line(char* line, int size, gboolean reconfigure, gboolean do_actions) {
     char* line_copy;
 
     line_copy = strdup(line);
@@ -437,6 +437,10 @@ void* execute_line(char* line, int size, gboolean reconfigure) {
     free(line_copy);
     if (result) {
         if (reconfigure) reconfigure_all();
+        return NULL;
+    }
+
+    if (! do_actions) {
         return NULL;
     }
 
@@ -501,7 +505,7 @@ void load_config(char* filename) {
         }
 
         if (line[0] == '#' || line[0] == ';') continue; // comment
-        free(execute_line(line, len, FALSE));
+        free(execute_line(line, len, FALSE, FALSE));
     }
 
     fclose(config);

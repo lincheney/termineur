@@ -44,7 +44,7 @@ char** shell_split(char* string, gint* argc);
 int set_config_from_str(char* line, size_t len);
 Action lookup_action(char* value);
 void reconfigure_all();
-void* execute_line(char* line, int size, gboolean reconfigure);
+void* execute_line(char* line, int size, gboolean reconfigure, gboolean do_actions);
 void load_config(char* filename);
 void configure_terminal(GtkWidget*);
 void configure_tab(GtkContainer*, GtkWidget*);
