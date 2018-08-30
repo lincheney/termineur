@@ -5,6 +5,8 @@
 #include <fcntl.h>
 #include <math.h>
 #include <string.h>
+#define PCRE2_CODE_UNIT_WIDTH 8
+#include <pcre2.h>
 #include "config.h"
 #include "terminal.h"
 #include "window.h"
@@ -653,6 +655,71 @@ char* term_get_text(VteTerminal* terminal, glong start_row, glong start_col, glo
 
     return text;
 }
+
+gboolean term_search(VteTerminal* terminal, char* data, int direction) {
+    // return TRUE if match found
+
+    char* old = g_object_get_data(G_OBJECT(terminal), "search-pattern");
+    if (STR_EQUAL(data, "")) data = NULL;
+
+    if (old == NULL && data == NULL) return FALSE;
+
+    if (search_use_regex && data) {
+        data = strdup(data);
+    } else if (data) {
+        data = g_regex_escape_string(data, -1);
+    }
+
+    gboolean pattern_changed = FALSE;
+    if (!old || !data || !STR_EQUAL(old, data)) {
+        free(old);
+        g_object_set_data(G_OBJECT(terminal), "search-pattern", data);
+        pattern_changed = TRUE;
+    }
+
+    int flags = PCRE2_MULTILINE | PCRE2_CASELESS;
+    switch (search_case_sensitive) {
+        case REGEX_CASE_SENSITIVE:
+            flags &= ~PCRE2_CASELESS; break;
+        case REGEX_CASE_SMART:
+            for (const char* c = data; data && *c; c++) {
+                if (*c == '\\' && *(c+1)) c++;
+                else if (g_ascii_isupper(*c)) {
+                    flags &= ~PCRE2_CASELESS;
+                    break;
+                }
+            }
+    }
+
+    VteRegex* old_regex = vte_terminal_search_get_regex(terminal);
+    VteRegex* regex = NULL;
+    gboolean flags_changed = (flags != GPOINTER_TO_INT(g_object_get_data(G_OBJECT(terminal), "flags")));
+
+    if (pattern_changed || flags_changed) {
+        g_object_set_data(G_OBJECT(terminal), "flags", GINT_TO_POINTER(flags));
+        if (data) {
+            regex = vte_regex_new_for_search(data, -1, flags, NULL);
+        }
+        vte_terminal_search_set_regex(terminal, regex, 0);
+    } else {
+        regex = old_regex;
+    }
+
+    if (! regex) return FALSE;
+
+    // next = 1, previous = -1
+    if (direction > 0) {
+        return vte_terminal_search_find_next(terminal);
+    } else if (direction < 0) {
+        return vte_terminal_search_find_previous(terminal);
+    } else if (vte_terminal_get_has_selection(terminal)) {
+        vte_terminal_search_find_next(terminal);
+        return vte_terminal_search_find_previous(terminal);
+    } else {
+        return vte_terminal_search_find_previous(terminal);
+    }
+}
+
 
 GtkWidget* make_terminal(const char* cwd, int argc, char** argv) {
     return make_terminal_full(cwd, argc, argv, NULL, NULL, NULL);

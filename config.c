@@ -71,6 +71,10 @@ int inactivity_duration = 10000;
 gboolean window_close_confirm = TRUE;
 gint tab_close_confirm = CLOSE_CONFIRM_SMART;
 
+// search options
+int search_case_sensitive = REGEX_CASE_SMART;
+gboolean search_use_regex = FALSE;
+
 char** shell_split(char* string, gint* argc) {
     if (! string || *string == '\0') {
         if (argc) *argc = 0;
@@ -208,9 +212,9 @@ int handle_config(char* line, size_t len, char** result) {
 #define MAP_LINE_VALUE(string, type, ...) MAP_LINE(string, MAP_VALUE(type, __VA_ARGS__))
 
 #define PARSE_BOOL(string) ( ! ( \
-    g_ascii_strcasecmp((string), "no") == 0 \
-    || g_ascii_strcasecmp((string), "n") == 0 \
-    || g_ascii_strcasecmp((string), "false") == 0 \
+    STR_IEQUAL((string), "no") \
+    || STR_IEQUAL((string), "n") \
+    || STR_IEQUAL((string), "false") \
     || STR_EQUAL((string), "") \
     || STR_EQUAL((string), "0") \
     ))
@@ -224,8 +228,8 @@ int handle_config(char* line, size_t len, char** result) {
     if (value) { var = strtod(value, NULL); } \
     else { *result = g_strdup_printf("%f", var); }
 #define MAP_STR(var) \
-    if (value) { free(var); var = strdup(value); } \
-    else if (var) { *result = strdup(var); }
+    if (value && ! (var && STR_EQUAL(var, value))) { free(var); var = strdup(value); } \
+    else if (!value && var) { *result = strdup(var); }
 #define MAP_COLOUR(val) \
     if (value) { gdk_rgba_parse((val), value); } \
     else { *result = gdk_rgba_to_string(val); } \
@@ -278,6 +282,21 @@ int handle_config(char* line, size_t len, char** result) {
     MAP_LINE(word-char-exceptions,      MAP_STR(terminal_word_char_exceptions));
     MAP_LINE(window-icon,               MAP_STR(window_icon));
     MAP_LINE(window-close-confirm,      MAP_BOOL(window_close_confirm));
+    MAP_LINE(search-use-regex,          MAP_BOOL(search_use_regex));
+
+    if (LINE_EQUALS(search-pattern)) {
+        // this only affects the *current* terminal
+        VteTerminal* terminal = get_active_terminal(NULL);
+        if (terminal) {
+            if (value) {
+                term_search(terminal, value, 0);
+            } else {
+                char* old = g_object_get_data(G_OBJECT(terminal), "search-pattern");
+                if (old) *result = strdup(old);
+            }
+        }
+        return 1;
+    }
 
     if (LINE_EQUALS(scrollback-lines)) {
         // this only affects the *current* terminal
@@ -339,9 +358,9 @@ int handle_config(char* line, size_t len, char** result) {
 
     if (LINE_EQUALS(show-scrollbar)) {
         if (value) {
-            if (STR_EQUAL(value, "auto") || STR_EQUAL(value, "automatic")) {
+            if (STR_IEQUAL(value, "auto") || STR_IEQUAL(value, "automatic")) {
                 scrollbar_policy = GTK_POLICY_AUTOMATIC;
-            } else if (! PARSE_BOOL(value) || STR_EQUAL(value, "never")) {
+            } else if (! PARSE_BOOL(value) || STR_IEQUAL(value, "never")) {
                 scrollbar_policy = GTK_POLICY_NEVER;
             } else {
                 scrollbar_policy = GTK_POLICY_ALWAYS;
@@ -354,6 +373,29 @@ int handle_config(char* line, size_t len, char** result) {
                     *result = strdup("never"); break;
                 case GTK_POLICY_ALWAYS:
                     *result = strdup("always"); break;
+                default: break;
+            }
+        }
+        return 1;
+    }
+
+    if (LINE_EQUALS(search-case-sensitive)) {
+        if (value) {
+            if (STR_IEQUAL(value, "smart")) {
+                search_case_sensitive = REGEX_CASE_SMART;
+            } else if (PARSE_BOOL(value)) {
+                search_case_sensitive = REGEX_CASE_SENSITIVE;
+            } else {
+                search_case_sensitive = REGEX_CASE_INSENSITIVE;
+            }
+        } else {
+            switch (search_case_sensitive) {
+                case REGEX_CASE_SMART:
+                    *result = strdup("smart"); break;
+                case REGEX_CASE_SENSITIVE:
+                    *result = strdup("1"); break;
+                case REGEX_CASE_INSENSITIVE:
+                    *result = strdup("0"); break;
                 default: break;
             }
         }

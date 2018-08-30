@@ -30,8 +30,16 @@ gboolean show_scrollbar;
 #define CLOSE_CONFIRM_NO 0
 #define CLOSE_CONFIRM_YES 1
 #define CLOSE_CONFIRM_SMART 2
-gboolean window_close_confirm;
 gint tab_close_confirm;
+gboolean window_close_confirm;
+
+// search options
+#define REGEX_CASE_SENSITIVE 0
+#define REGEX_CASE_INSENSITIVE 1
+#define REGEX_CASE_SMART 2
+int search_case_sensitive;
+gboolean search_use_regex;
+char* search_pattern;
 
 #define BELL_EVENT 1
 #define HYPERLINK_HOVER_EVENT 2

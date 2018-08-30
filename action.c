@@ -526,6 +526,21 @@ void select_block(VteTerminal* terminal, char* data) {
     do_terminal_select(terminal, data, GDK_CONTROL_MASK | GDK_MOD1_MASK);
 }
 
+#define SEARCH(dir) \
+    *result = g_strdup_printf("%i\n", term_search(terminal, data, dir) ? 1 : 0);
+
+void search_down(VteTerminal* terminal, char* data, char** result) {
+    SEARCH(1);
+}
+
+void search_up(VteTerminal* terminal, char* data, char** result) {
+    SEARCH(-1);
+}
+
+void search(VteTerminal* terminal, char* data, char** result) {
+    SEARCH(0);
+}
+
 char* str_unescape(char* string) {
     // modifies in place
     char* p = string;
@@ -639,6 +654,9 @@ Action make_action(char* name, char* arg) {
         MATCH_ACTION(hide_message_bar);
         MATCH_ACTION_WITH_DATA(select_range, strdup(arg), free);
         MATCH_ACTION_WITH_DATA(select_block, strdup(arg), free);
+        MATCH_ACTION_WITH_DATA(search_down, strdup(arg), free);
+        MATCH_ACTION_WITH_DATA(search_up, strdup(arg), free);
+        MATCH_ACTION_WITH_DATA(search, strdup(arg), free);
         break;
     }
     return action;
