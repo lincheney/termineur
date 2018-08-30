@@ -74,6 +74,7 @@ gint tab_close_confirm = CLOSE_CONFIRM_SMART;
 // search options
 int search_case_sensitive = REGEX_CASE_SMART;
 gboolean search_use_regex = FALSE;
+gboolean search_wrap_around = TRUE;
 
 char** shell_split(char* string, gint* argc) {
     if (! string || *string == '\0') {
@@ -116,6 +117,7 @@ void configure_terminal(GtkWidget* terminal) {
             NULL
     );
     vte_terminal_set_word_char_exceptions(VTE_TERMINAL(terminal), terminal_word_char_exceptions);
+    vte_terminal_search_set_wrap_around(VTE_TERMINAL(terminal), search_wrap_around);
     // populate palette
     vte_terminal_set_colors(VTE_TERMINAL(terminal), &FOREGROUND, &BACKGROUND, palette+2, PALETTE_SIZE);
 
@@ -283,6 +285,7 @@ int handle_config(char* line, size_t len, char** result) {
     MAP_LINE(window-icon,               MAP_STR(window_icon));
     MAP_LINE(window-close-confirm,      MAP_BOOL(window_close_confirm));
     MAP_LINE(search-use-regex,          MAP_BOOL(search_use_regex));
+    MAP_LINE(search-wrap-aroud,         MAP_BOOL(search_wrap_around));
 
     if (LINE_EQUALS(search-pattern)) {
         // this only affects the *current* terminal
