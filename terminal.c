@@ -486,7 +486,7 @@ gboolean overlay_position_term(GtkWidget* overlay, GtkWidget* widget, GdkRectang
     return FALSE;
 }
 
-void term_select_range(VteTerminal* terminal, double start_col, double start_row, double end_col, double end_row) {
+void term_select_range(VteTerminal* terminal, double start_col, double start_row, double end_col, double end_row, int modifiers) {
     /*
      * hacks
      * vte doesn't have a direct API for changing selection
@@ -534,7 +534,6 @@ void term_select_range(VteTerminal* terminal, double start_col, double start_row
 
     /* printf("start=%f end=%f value=%f lower=%f upper=%f page=%f\n", start_row, end_row, value, lower, upper, page_size); */
 
-    guint state = GDK_SHIFT_MASK;
     int width = vte_terminal_get_char_width(terminal);
     int height = vte_terminal_get_char_height(terminal);
 
@@ -550,7 +549,7 @@ void term_select_range(VteTerminal* terminal, double start_col, double start_row
         window, TRUE, 0,
         start_col*width, (start_row-value)*height,
         NULL,
-        state,
+        modifiers,
         1, /* left mouse button */
         device, 0., 0.,
     };
@@ -562,7 +561,7 @@ void term_select_range(VteTerminal* terminal, double start_col, double start_row
         window, TRUE, 0,
         button.x+width, button.y,
         NULL,
-        state,
+        modifiers,
         FALSE, device, 0, 0,
     };
     GTK_WIDGET_GET_CLASS(terminal)->motion_notify_event(GTK_WIDGET(terminal), &motion);

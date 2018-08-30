@@ -512,7 +512,7 @@ void show_message_bar(VteTerminal* terminal, char* data) {
 
 ActionFunc hide_message_bar = (ActionFunc)term_hide_message_bar;
 
-void select_range(VteTerminal* terminal, char* data) {
+void do_terminal_select(VteTerminal* terminal, char* data, int modifiers) {
     /* x1,y1,x2,y2 */
     long args[4];
     char* string = data;
@@ -527,7 +527,15 @@ void select_range(VteTerminal* terminal, char* data) {
         if (string) string ++;
     }
 
-    term_select_range(terminal, args[0], args[1], args[2], args[3]);
+    term_select_range(terminal, args[0], args[1], args[2], args[3], modifiers);
+}
+
+void select_range(VteTerminal* terminal, char* data) {
+    do_terminal_select(terminal, data, GDK_SHIFT_MASK);
+}
+
+void select_block(VteTerminal* terminal, char* data) {
+    do_terminal_select(terminal, data, GDK_CONTROL_MASK | GDK_MOD1_MASK);
 }
 
 char* str_unescape(char* string) {
@@ -643,6 +651,7 @@ Action make_action(char* name, char* arg) {
         MATCH_ACTION_WITH_DATA(show_message_bar, strdup(arg), free);
         MATCH_ACTION(hide_message_bar);
         MATCH_ACTION_WITH_DATA(select_range, strdup(arg), free);
+        MATCH_ACTION_WITH_DATA(select_block, strdup(arg), free);
         break;
     }
     return action;
