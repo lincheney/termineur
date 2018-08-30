@@ -41,6 +41,7 @@ char** default_args = NULL;
 char* window_icon = NULL;
 char* default_open_action = "new_window";
 char* tab_label_format = "%t";
+char* tab_title_ui_format = NULL;
 
 // terminal props
 VteCursorBlinkMode terminal_cursor_blink_mode = VTE_CURSOR_BLINK_SYSTEM;
@@ -232,8 +233,8 @@ int set_config_from_str(char* line, size_t len) {
     MAP_LINE(background,               gdk_rgba_parse(palette, value));
     MAP_LINE(foreground,               gdk_rgba_parse(palette+1, value));
     MAP_LINE(window-title-format,      set_window_title_format(value));
-    MAP_LINE(tab-label-format,         tab_label_format              = strdup(value));
-    MAP_LINE(tab-title-ui,             if (set_tab_title_ui(value)) tab_label_format = NULL);
+    MAP_LINE(tab-label-format,         tab_label_format = strdup(value); tab_title_ui_format = NULL);
+    MAP_LINE(tab-title-ui,             tab_title_ui_format = strdup(value);     tab_label_format = NULL);
     MAP_LINE(tab-fill,                 tab_fill                      = PARSE_BOOL(value));
     MAP_LINE(tab-expand,               tab_expand                    = PARSE_BOOL(value));
     MAP_LINE(tab-enable-popup,         notebook_enable_popup         = PARSE_BOOL(value));
@@ -389,10 +390,16 @@ gboolean refresh_ui() {
 }
 
 void reconfigure_all() {
+    gboolean tab_titles_changed = FALSE;
     if (tab_label_format) {
-        set_tab_label_format(tab_label_format, tab_label_ellipsize_mode, tab_label_alignment);
+        tab_titles_changed = set_tab_label_format(tab_label_format, tab_label_ellipsize_mode, tab_label_alignment);
+    } else if (tab_title_ui_format) {
+        tab_titles_changed = set_tab_title_ui(tab_title_ui_format);
     }
-    destroy_all_tab_title_uis();
+
+    if (tab_titles_changed) {
+        destroy_all_tab_title_uis();
+    }
 
     // reload config everywhere
     FOREACH_WINDOW(window) {

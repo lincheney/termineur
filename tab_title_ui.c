@@ -67,7 +67,13 @@ gboolean set_tab_label_format(char* string, PangoEllipsizeMode ellipsize, float 
 }
 
 gboolean set_tab_title_ui(char* string) {
+    // return TRUE if changed
+
     if (! validate_ui_definition(string)) {
+        return FALSE;
+    }
+
+    if (tab_title_ui && STR_EQUAL(tab_title_ui, string)) {
         return FALSE;
     }
 
