@@ -754,7 +754,7 @@ GtkWidget* make_terminal_full(const char* cwd, int argc, char** argv, GSpawnChil
     g_signal_connect(terminal, "child-exited", G_CALLBACK(term_exited), grid);
     g_signal_connect(terminal, "destroy", G_CALLBACK(term_destroyed), grid);
     g_signal_connect(terminal, "window-title-changed", G_CALLBACK(update_tab_titles), NULL);
-    g_signal_connect(terminal, "contents-changed", G_CALLBACK(terminal_activity), NULL);
+    g_signal_connect(terminal, "text-inserted", G_CALLBACK(terminal_activity), NULL);
     g_signal_connect(terminal, "bell", G_CALLBACK(terminal_bell), NULL);
     g_signal_connect(terminal, "hyperlink-hover-uri-changed", G_CALLBACK(terminal_hyperlink_hover), NULL);
     g_signal_connect(terminal, "button-press-event", G_CALLBACK(terminal_button_press_event), NULL);
