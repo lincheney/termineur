@@ -44,6 +44,20 @@ gboolean focus_widget(GtkWidget* widget) {
     return FALSE;
 }
 
+void search_bar_show(GtkWidget* bar) {
+    if (! gtk_search_bar_get_search_mode(GTK_SEARCH_BAR(bar))) {
+        GtkWidget* entry = g_object_get_data(G_OBJECT(bar), "entry");
+        VteTerminal* terminal = g_object_get_data(G_OBJECT(entry), "terminal");
+        const char* pattern = g_object_get_data(G_OBJECT(terminal), "search-pattern");
+        if (! pattern) {
+            pattern = "";
+        }
+        gtk_entry_set_text(GTK_ENTRY(entry), "");
+        g_signal_emit_by_name(entry, "insert-at-cursor", pattern);
+    }
+    gtk_search_bar_set_search_mode(GTK_SEARCH_BAR(bar), TRUE);
+}
+
 GtkWidget* search_bar_new(VteTerminal* terminal) {
     GtkWidget* entry = gtk_search_entry_new();
     g_signal_connect(entry, "key-press-event", G_CALLBACK(search_key_pressed), NULL);

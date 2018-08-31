@@ -8,6 +8,7 @@
 #include "config.h"
 #include "split.h"
 #include "utils.h"
+#include "search_bar.h"
 
 GtkWidget* detaching_tab = NULL;
 
@@ -544,13 +545,13 @@ void search(VteTerminal* terminal, char* data, char** result) {
 void focus_searchbar(VteTerminal* terminal) {
     GtkWidget* grid = term_get_grid(terminal);
     GtkWidget* bar = g_object_get_data(G_OBJECT(grid), "searchbar");
-    gtk_search_bar_set_search_mode(GTK_SEARCH_BAR(bar), TRUE);
+    search_bar_show(bar);
 }
 
 void hide_searchbar(VteTerminal* terminal) {
     GtkWidget* grid = term_get_grid(terminal);
     GtkWidget* bar = g_object_get_data(G_OBJECT(grid), "searchbar");
-    gtk_search_bar_set_search_mode(GTK_SEARCH_BAR(bar), FALSE);
+    search_bar_hide(bar);
 }
 
 char* str_unescape(char* string) {
