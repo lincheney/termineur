@@ -656,7 +656,7 @@ gboolean term_search(VteTerminal* terminal, const char* data, int direction) {
     // return TRUE if match found
 
     char* old = g_object_get_data(G_OBJECT(terminal), "search-pattern");
-    if (STR_EQUAL(data, "")) data = NULL;
+    if (data && STR_EQUAL(data, "")) data = NULL;
 
     if (old == NULL && data == NULL) return FALSE;
 
