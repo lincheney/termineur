@@ -541,6 +541,18 @@ void search(VteTerminal* terminal, char* data, char** result) {
     SEARCH(0);
 }
 
+void focus_searchbar(VteTerminal* terminal) {
+    GtkWidget* grid = term_get_grid(terminal);
+    GtkWidget* bar = g_object_get_data(G_OBJECT(grid), "searchbar");
+    gtk_search_bar_set_search_mode(GTK_SEARCH_BAR(bar), TRUE);
+}
+
+void hide_searchbar(VteTerminal* terminal) {
+    GtkWidget* grid = term_get_grid(terminal);
+    GtkWidget* bar = g_object_get_data(G_OBJECT(grid), "searchbar");
+    gtk_search_bar_set_search_mode(GTK_SEARCH_BAR(bar), FALSE);
+}
+
 char* str_unescape(char* string) {
     // modifies in place
     char* p = string;
@@ -657,6 +669,8 @@ Action make_action(char* name, char* arg) {
         MATCH_ACTION_WITH_DATA(search_down, strdup(arg), free);
         MATCH_ACTION_WITH_DATA(search_up, strdup(arg), free);
         MATCH_ACTION_WITH_DATA(search, strdup(arg), free);
+        MATCH_ACTION(focus_searchbar);
+        MATCH_ACTION(hide_searchbar);
         break;
     }
     return action;

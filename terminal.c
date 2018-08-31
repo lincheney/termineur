@@ -14,6 +14,7 @@
 #include "label.h"
 #include "utils.h"
 #include "tab_title_ui.h"
+#include "search_bar.h"
 
 const gint ERROR_EXIT_CODE = 127;
 #define DEFAULT_SHELL "/bin/sh"
@@ -435,7 +436,7 @@ gboolean draw_overlay_widget_post(GtkWidget* widget, cairo_t* cr, GtkWidget* ter
     GdkRectangle rect;
     gtk_widget_get_allocation(widget, &rect);
     GtkStyleContext* context = gtk_widget_get_style_context(widget);
-    gtk_render_background(context, cr, rect.x, rect.y, rect.width, rect.height);
+    gtk_render_background(context, cr, rect.x, 0, rect.width, rect.height);
 
     return FALSE;
 }
@@ -475,6 +476,7 @@ gboolean overlay_position_term(GtkWidget* overlay, GtkWidget* widget, GdkRectang
         gtk_widget_get_preferred_height(widget, &min, &natural);
         rect->height = MAX(min, rect->height);
 
+        rect->y = 0;
         rect->x = rect->width - width;
         rect->width = width;
         return TRUE;
@@ -650,7 +652,7 @@ char* term_get_text(VteTerminal* terminal, glong start_row, glong start_col, glo
     return text;
 }
 
-gboolean term_search(VteTerminal* terminal, char* data, int direction) {
+gboolean term_search(VteTerminal* terminal, const char* data, int direction) {
     // return TRUE if match found
 
     char* old = g_object_get_data(G_OBJECT(terminal), "search-pattern");
@@ -658,16 +660,17 @@ gboolean term_search(VteTerminal* terminal, char* data, int direction) {
 
     if (old == NULL && data == NULL) return FALSE;
 
+    char* pattern = NULL;
     if (search_use_regex && data) {
-        data = strdup(data);
+        pattern = strdup(data);
     } else if (data) {
-        data = g_regex_escape_string(data, -1);
+        pattern = g_regex_escape_string(data, -1);
     }
 
     gboolean pattern_changed = FALSE;
-    if (!old || !data || !STR_EQUAL(old, data)) {
+    if (!old || !pattern || !STR_EQUAL(old, pattern)) {
         free(old);
-        g_object_set_data(G_OBJECT(terminal), "search-pattern", data);
+        g_object_set_data(G_OBJECT(terminal), "search-pattern", pattern);
         pattern_changed = TRUE;
     }
 
@@ -676,7 +679,7 @@ gboolean term_search(VteTerminal* terminal, char* data, int direction) {
         case REGEX_CASE_SENSITIVE:
             flags &= ~PCRE2_CASELESS; break;
         case REGEX_CASE_SMART:
-            for (const char* c = data; data && *c; c++) {
+            for (const char* c = pattern; pattern && *c; c++) {
                 if (*c == '\\' && *(c+1)) c++;
                 else if (g_ascii_isupper(*c)) {
                     flags &= ~PCRE2_CASELESS;
@@ -691,8 +694,8 @@ gboolean term_search(VteTerminal* terminal, char* data, int direction) {
 
     if (pattern_changed || flags_changed) {
         g_object_set_data(G_OBJECT(terminal), "flags", GINT_TO_POINTER(flags));
-        if (data) {
-            regex = vte_regex_new_for_search(data, -1, flags, NULL);
+        if (pattern) {
+            regex = vte_regex_new_for_search(pattern, -1, flags, NULL);
         }
         vte_terminal_search_set_regex(terminal, regex, 0);
     } else {
@@ -732,10 +735,14 @@ GtkWidget* make_terminal_full(const char* cwd, int argc, char** argv, GSpawnChil
     g_signal_connect(overlay, "get-child-position", G_CALLBACK(overlay_position_term), NULL);
     gtk_overlay_add_overlay(GTK_OVERLAY(overlay), terminal);
 
+    GtkWidget* searchbar = search_bar_new(VTE_TERMINAL(terminal));
+
     GtkWidget* grid = gtk_grid_new();
     g_object_set_data(G_OBJECT(grid), "terminal", terminal);
     g_object_set_data(G_OBJECT(grid), "msg_bar", msg_bar);
-    gtk_container_add(GTK_CONTAINER(grid), overlay);
+    g_object_set_data(G_OBJECT(grid), "searchbar", searchbar);
+    gtk_grid_attach(GTK_GRID(grid), overlay, 0, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), searchbar, 0, -1, 2, 1);
     g_signal_connect_swapped(grid, "destroy", G_CALLBACK(g_object_unref), msg_bar);
     g_signal_connect_swapped(msg_bar, "focus-in-event", G_CALLBACK(gtk_widget_grab_focus), terminal);
 
