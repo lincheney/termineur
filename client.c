@@ -55,10 +55,8 @@ int client_pipe_over_sock(GSocket* sock, char* value, gboolean connect_stdin, gb
 
 int client_send_line(GSocket* sock, char* line, Buffer* buffer) {
     GError* error = NULL;
-    line = g_strescape(line, "\"");
     int len = strlen(line) + 1;
     int result = sock_send_all(sock, line, len);
-    free(line);
     if (! result) {
         return 1;
     }
