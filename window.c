@@ -106,7 +106,10 @@ void notebook_switch_page(GtkNotebook* notebook, GtkWidget* tab, guint num) {
 }
 
 void notebook_pages_changed(GtkWidget* notebook) {
-    refresh_ui_window(gtk_widget_get_toplevel(notebook));
+    GtkWidget* window = gtk_widget_get_toplevel(notebook);
+    if (gtk_widget_is_toplevel(window)) {
+        refresh_ui_window(window);
+    }
 }
 
 gint run_confirm_close_dialog(GtkWidget* window, char* message) {
