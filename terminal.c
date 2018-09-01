@@ -818,7 +818,7 @@ GtkWidget* make_terminal_full(const char* cwd, int argc, char** argv, GSpawnChil
     g_signal_connect_swapped(grid, "destroy", G_CALLBACK(g_object_unref), msg_bar);
     g_signal_connect_swapped(msg_bar, "focus-in-event", G_CALLBACK(gtk_widget_grab_focus), terminal);
 
-    configure_terminal(terminal);
+    configure_terminal(VTE_TERMINAL(terminal));
     g_object_set(terminal, "expand", TRUE, "scrollback-lines", terminal_default_scrollback_lines, NULL);
     g_object_set_data(G_OBJECT(terminal), "activity_state", GINT_TO_POINTER(TERMINAL_NO_STATE));
     vte_terminal_set_clear_background(VTE_TERMINAL(terminal), FALSE);

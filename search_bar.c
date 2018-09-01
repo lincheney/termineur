@@ -98,5 +98,6 @@ GtkWidget* search_bar_new(VteTerminal* terminal) {
     g_object_set(bar, "search-mode-enabled", FALSE, NULL);
     g_object_set_data(G_OBJECT(bar), "entry", entry);
     g_object_set_data(G_OBJECT(entry), "bar", bar);
+
     return bar;
 }

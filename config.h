@@ -55,7 +55,7 @@ Action lookup_action(char* value);
 void reconfigure_all();
 void* execute_line(char* line, int size, gboolean reconfigure, gboolean do_actions);
 void load_config(char* filename);
-void configure_terminal(GtkWidget*);
+void configure_terminal(VteTerminal*);
 void configure_tab(GtkContainer*, GtkWidget*);
 void configure_window(GtkWindow*);
 int trigger_action(VteTerminal* terminal, guint key, int metadata);

@@ -75,6 +75,7 @@ gint tab_close_confirm = CLOSE_CONFIRM_SMART;
 int search_case_sensitive = REGEX_CASE_SMART;
 gboolean search_use_regex = FALSE;
 gboolean search_wrap_around = TRUE;
+guint search_bar_animation_duration = 250;
 
 char** shell_split(char* string, gint* argc) {
     if (! string || *string == '\0') {
@@ -101,7 +102,7 @@ float ptr_to_float(void* x) {
 }
 
 
-void configure_terminal(GtkWidget* terminal) {
+void configure_terminal(VteTerminal* terminal) {
     g_object_set(G_OBJECT(terminal),
             "cursor-blink-mode",   terminal_cursor_blink_mode,
             "cursor-shape",        terminal_cursor_shape,
@@ -116,12 +117,18 @@ void configure_terminal(GtkWidget* terminal) {
             "scroll-on-output",    terminal_scroll_on_output,
             NULL
     );
-    vte_terminal_set_word_char_exceptions(VTE_TERMINAL(terminal), terminal_word_char_exceptions);
-    vte_terminal_search_set_wrap_around(VTE_TERMINAL(terminal), search_wrap_around);
+    vte_terminal_set_word_char_exceptions(terminal, terminal_word_char_exceptions);
+    vte_terminal_search_set_wrap_around(terminal, search_wrap_around);
     // populate palette
-    vte_terminal_set_colors(VTE_TERMINAL(terminal), &FOREGROUND, &BACKGROUND, palette+2, PALETTE_SIZE);
+    vte_terminal_set_colors(terminal, &FOREGROUND, &BACKGROUND, palette+2, PALETTE_SIZE);
 
-    configure_terminal_scrollbar(VTE_TERMINAL(terminal), scrollbar_policy);
+    GtkWidget* grid = term_get_grid(terminal);
+    GtkWidget* searchbar = g_object_get_data(G_OBJECT(grid), "searchbar");
+    GtkWidget* revealer = gtk_bin_get_child(GTK_BIN(searchbar));
+    if (GTK_IS_REVEALER(revealer)) {
+        gtk_revealer_set_transition_duration(GTK_REVEALER(revealer), search_bar_animation_duration);
+    }
+
 }
 
 void configure_tab(GtkContainer* notebook, GtkWidget* tab) {
@@ -156,7 +163,7 @@ void reconfigure_window(GtkWidget* window) {
         update_tab_titles(VTE_TERMINAL(split_get_active_term(tab)));
 
         FOREACH_TERMINAL(terminal, tab) {
-            configure_terminal(GTK_WIDGET(terminal));
+            configure_terminal(terminal);
             update_terminal_css_class(terminal);
         }
     }
@@ -286,6 +293,7 @@ int handle_config(char* line, size_t len, char** result) {
     MAP_LINE(window-close-confirm,      MAP_BOOL(window_close_confirm));
     MAP_LINE(search-use-regex,          MAP_BOOL(search_use_regex));
     MAP_LINE(search-wrap-around,        MAP_BOOL(search_wrap_around));
+    MAP_LINE(search-bar-animation-duration, MAP_INT(search_bar_animation_duration));
 
     if (LINE_EQUALS(search-pattern)) {
         // this only affects the *current* terminal
