@@ -203,10 +203,10 @@ int handle_config(char* line, size_t len, char** result) {
     if (value) {
         *value = '\0';
         value ++;
-        g_strstrip(value);
+        value = g_strstrip(value);
     }
 
-    g_strstrip(line);
+    line = g_strstrip(line);
     if (STR_EQUAL(line, "")) {
         return 1;
     }

@@ -691,6 +691,7 @@ Action make_action(char* name, char* arg) {
     if (STR_EQUAL(name, #_name)) { \
         action.func = (ActionFunc)_name; \
         if (arg) { \
+            arg = g_strstrip(arg); \
             arg = str_unescape(arg); \
             action.data = processor; \
             action.cleanup = _cleanup; \
