@@ -381,8 +381,7 @@ int handle_config(char* line, size_t len, char** result) {
     }
 
     if (LINE_EQUALS("show-scrollbar")) {
-        TRY_MAP_VALUE(scrollbar_policy, GTK_POLICY_AUTOMATIC, "auto", FALSE);
-        TRY_MAP_VALUE(scrollbar_policy, GTK_POLICY_AUTOMATIC, "automatic", FALSE);
+        TRY_MAP_VALUE(scrollbar_policy, GTK_POLICY_AUTOMATIC, "overlay", FALSE);
         TRY_MAP_VALUE(scrollbar_policy, GTK_POLICY_NEVER, "never", FALSE);
         TRY_MAP_VALUE(scrollbar_policy, GTK_POLICY_NEVER, "never", !PARSE_BOOL(value));
         TRY_MAP_VALUE(scrollbar_policy, GTK_POLICY_ALWAYS, "always", TRUE);
