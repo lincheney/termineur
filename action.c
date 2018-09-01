@@ -516,7 +516,7 @@ void do_terminal_select(VteTerminal* terminal, char* data, int modifiers) {
         if (string) string ++;
     }
 
-    term_select_range(terminal, args[0], args[1], args[2], args[3], modifiers);
+    term_select_range(terminal, args[0], args[1], args[2], args[3], modifiers, FALSE);
 }
 
 void select_range(VteTerminal* terminal, char* data) {

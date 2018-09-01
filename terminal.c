@@ -484,7 +484,7 @@ gboolean overlay_position_term(GtkWidget* overlay, GtkWidget* widget, GdkRectang
     return FALSE;
 }
 
-void term_select_range(VteTerminal* terminal, double start_col, double start_row, double end_col, double end_row, int modifiers) {
+void term_select_range(VteTerminal* terminal, double start_col, double start_row, double end_col, double end_row, int modifiers, gboolean double_click) {
     /*
      * hacks
      * vte doesn't have a direct API for changing selection
@@ -505,13 +505,18 @@ void term_select_range(VteTerminal* terminal, double start_col, double start_row
     long columns = vte_terminal_get_column_count(terminal);
     double rows = upper - lower;
     /* handle negative offsets */
-    if (end_col < 0) end_col += columns + 1;
     if (start_col < 0) start_col += columns;
-    if (end_row < 0) end_row += rows;
     if (start_row < 0) start_row += rows;
 
-    if (start_row > end_row || (start_row == end_row && start_col >= end_col)) {
-        return;
+    if (double_click) {
+        end_row = start_row;
+        end_col = start_col;
+    } else {
+        if (end_col < 0) end_col += columns + 1;
+        if (end_row < 0) end_row += rows;
+        if (start_row > end_row || (start_row == end_row && start_col >= end_col)) {
+            return;
+        }
     }
     start_row += lower;
     end_row += lower;
@@ -557,32 +562,39 @@ void term_select_range(VteTerminal* terminal, double start_col, double start_row
     };
     GTK_WIDGET_GET_CLASS(terminal)->button_press_event(GTK_WIDGET(terminal), &button);
 
-    /* first motion to start selection before we scroll */
-    GdkEventMotion motion = {
-        GDK_MOTION_NOTIFY,
-        window, TRUE, 0,
-        button.x+width, button.y,
-        NULL,
-        modifiers,
-        FALSE, device, 0, 0,
-    };
-    GTK_WIDGET_GET_CLASS(terminal)->motion_notify_event(GTK_WIDGET(terminal), &motion);
+    if (double_click) {
+        /* double click */
+        button.type = GDK_2BUTTON_PRESS;
+        GTK_WIDGET_GET_CLASS(terminal)->button_press_event(GTK_WIDGET(terminal), &button);
 
-    /* scroll until end row is in view */
-    if (value+page_size < end_row) {
-        value = CLAMP(end_row + scrolloff - page_size, lower, upper - page_size);
-        gtk_adjustment_set_value(adjustment, value);
+    } else {
+        /* first motion to start selection before we scroll */
+        GdkEventMotion motion = {
+            GDK_MOTION_NOTIFY,
+            window, TRUE, 0,
+            button.x+width, button.y,
+            NULL,
+            modifiers,
+            FALSE, device, 0, 0,
+        };
+        GTK_WIDGET_GET_CLASS(terminal)->motion_notify_event(GTK_WIDGET(terminal), &motion);
+
+        /* scroll until end row is in view */
+        if (value+page_size < end_row) {
+            value = CLAMP(end_row + scrolloff - page_size, lower, upper - page_size);
+            gtk_adjustment_set_value(adjustment, value);
+        }
+
+        /* select to end */
+        motion.x = end_col*width;
+        motion.y = (end_row-value)*height;
+        GTK_WIDGET_GET_CLASS(terminal)->motion_notify_event(GTK_WIDGET(terminal), &motion);
     }
-
-    /* select to end */
-    motion.x = end_col*width;
-    motion.y = (end_row-value)*height;
-    GTK_WIDGET_GET_CLASS(terminal)->motion_notify_event(GTK_WIDGET(terminal), &motion);
 
     /* release */
     button.type = GDK_BUTTON_RELEASE;
-    button.x = motion.x;
-    button.y = motion.y;
+    button.x = end_col*width;
+    button.y = (end_row-value)*height;
     GTK_WIDGET_GET_CLASS(terminal)->button_release_event(GTK_WIDGET(terminal), &button);
 
     /* scroll back to original if possible */
@@ -590,7 +602,11 @@ void term_select_range(VteTerminal* terminal, double start_col, double start_row
         gtk_adjustment_set_value(adjustment, original);
     }
 
-    gtk_widget_grab_focus(focused);
+    if (GTK_IS_ENTRY(focused)) {
+        gtk_entry_grab_focus_without_selecting(GTK_ENTRY(focused));
+    } else {
+        gtk_widget_grab_focus(focused);
+    }
 }
 
 void term_setup_pipes(int* pipes) {
@@ -713,6 +729,7 @@ gboolean term_search(VteTerminal* terminal, const char* data, int direction) {
 
     int start, end, max, min;
     term_get_row_positions(terminal, &start, &end, &min, &max);
+#define SELECT_CORNER() term_select_range(terminal, -1, end-min-1, -1, -1, GDK_SHIFT_MASK, TRUE)
 
     // vte_terminal_get_has_selection is unreliable, it can have empty selections
     AtkText* text = ATK_TEXT(gtk_widget_get_accessible(GTK_WIDGET(terminal)));
@@ -726,25 +743,24 @@ gboolean term_search(VteTerminal* terminal, const char* data, int direction) {
     // next/down = 1, previous/up = -1
     if (direction > 0) {
         if (! selected) {
-            term_select_range(terminal, -2, start, -1, start+1, GDK_SHIFT_MASK);
+            SELECT_CORNER();
         }
         return vte_terminal_search_find_next(terminal);
 
     } else if (direction < 0) {
         if (! selected) {
-            term_select_range(terminal, -2, end-1, -1, end-1, GDK_SHIFT_MASK);
+            SELECT_CORNER();
         }
         return vte_terminal_search_find_previous(terminal);
 
     } else if (! selected) {
-        term_select_range(terminal, -2, end-1, -1, end-1, GDK_SHIFT_MASK);
+        SELECT_CORNER();
         return vte_terminal_search_find_previous(terminal);
 
     } else {
         // search regex, but keep same selection as much as possible
 
         gboolean found;
-        GtkAdjustment* adj = gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(terminal));
         // prevent wrap around making the scrollbar jump
         // we restore this later
         gboolean wrap = vte_terminal_search_get_wrap_around(terminal);
@@ -752,6 +768,7 @@ gboolean term_search(VteTerminal* terminal, const char* data, int direction) {
 
         // vte will jump to the match (async arrggh) if match is not in range
         // since this is a dummy match we adjust the page size so everything below is in range
+        GtkAdjustment* adj = gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(terminal));
         gtk_adjustment_set_page_size(adj, max-start);
         // find first match below
         found = vte_terminal_search_find_next(terminal);
@@ -759,7 +776,7 @@ gboolean term_search(VteTerminal* terminal, const char* data, int direction) {
         if (! found) {
             // no match, vte makes empty selection at original selection
             // so we reset it to the corner
-            term_select_range(terminal, -2, end-1, -1, end-1, GDK_SHIFT_MASK);
+            SELECT_CORNER();
         }
 
         // restore page size + wrap around
@@ -772,8 +789,8 @@ gboolean term_search(VteTerminal* terminal, const char* data, int direction) {
 
         return found;
     }
+#undef SELECT_CORNER
 }
-
 
 GtkWidget* make_terminal(const char* cwd, int argc, char** argv) {
     return make_terminal_full(cwd, argc, argv, NULL, NULL, NULL);
