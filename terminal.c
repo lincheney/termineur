@@ -530,6 +530,10 @@ void term_select_range(VteTerminal* terminal, double start_col, double start_row
         return;
     }
 
+    // restore focus to this widget afterwards
+    GtkWidget* focused = gtk_window_get_focus(GTK_WINDOW(gtk_widget_get_toplevel(GTK_WIDGET(terminal))));
+    if (! focused) focused = GTK_WIDGET(terminal);
+
     /* printf("start=%f end=%f value=%f lower=%f upper=%f page=%f\n", start_row, end_row, value, lower, upper, page_size); */
 
     int width = vte_terminal_get_char_width(terminal);
@@ -585,6 +589,8 @@ void term_select_range(VteTerminal* terminal, double start_col, double start_row
     if (original < end_row && original+page_size >= start_row) {
         gtk_adjustment_set_value(adjustment, original);
     }
+
+    gtk_widget_grab_focus(focused);
 }
 
 void term_setup_pipes(int* pipes) {
@@ -704,16 +710,67 @@ gboolean term_search(VteTerminal* terminal, const char* data, int direction) {
 
     if (! regex) return FALSE;
 
-    // next = 1, previous = -1
+
+    int start, end, max, min;
+    term_get_row_positions(terminal, &start, &end, &min, &max);
+
+    // vte_terminal_get_has_selection is unreliable, it can have empty selections
+    AtkText* text = ATK_TEXT(gtk_widget_get_accessible(GTK_WIDGET(terminal)));
+    char* selected = atk_text_get_selection(text, 0, NULL, NULL);
+    if (selected && STR_EQUAL(selected, "")) {
+        free(selected);
+        selected = NULL;
+    }
+    free(selected);
+
+    // next/down = 1, previous/up = -1
     if (direction > 0) {
+        if (! selected) {
+            term_select_range(terminal, -2, start, -1, start+1, GDK_SHIFT_MASK);
+        }
         return vte_terminal_search_find_next(terminal);
+
     } else if (direction < 0) {
+        if (! selected) {
+            term_select_range(terminal, -2, end-1, -1, end-1, GDK_SHIFT_MASK);
+        }
         return vte_terminal_search_find_previous(terminal);
-    } else if (vte_terminal_get_has_selection(terminal)) {
-        vte_terminal_search_find_next(terminal);
+
+    } else if (! selected) {
+        term_select_range(terminal, -2, end-1, -1, end-1, GDK_SHIFT_MASK);
         return vte_terminal_search_find_previous(terminal);
+
     } else {
-        return vte_terminal_search_find_previous(terminal);
+        // search regex, but keep same selection as much as possible
+
+        gboolean found;
+        GtkAdjustment* adj = gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(terminal));
+        // prevent wrap around making the scrollbar jump
+        // we restore this later
+        gboolean wrap = vte_terminal_search_get_wrap_around(terminal);
+        vte_terminal_search_set_wrap_around(terminal, FALSE);
+
+        // vte will jump to the match (async arrggh) if match is not in range
+        // since this is a dummy match we adjust the page size so everything below is in range
+        gtk_adjustment_set_page_size(adj, max-start);
+        // find first match below
+        found = vte_terminal_search_find_next(terminal);
+
+        if (! found) {
+            // no match, vte makes empty selection at original selection
+            // so we reset it to the corner
+            term_select_range(terminal, -2, end-1, -1, end-1, GDK_SHIFT_MASK);
+        }
+
+        // restore page size + wrap around
+        gtk_adjustment_set_page_size(adj, end-start);
+        vte_terminal_search_set_wrap_around(terminal, wrap);
+        // find first match above
+        // which will reselect the original if it matches
+        // or select something matching above that
+        found = vte_terminal_search_find_previous(terminal);
+
+        return found;
     }
 }
 

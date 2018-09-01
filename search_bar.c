@@ -45,8 +45,9 @@ gboolean focus_widget(GtkWidget* widget) {
 }
 
 void search_bar_show(GtkWidget* bar) {
+    GtkWidget* entry = g_object_get_data(G_OBJECT(bar), "entry");
+
     if (! gtk_search_bar_get_search_mode(GTK_SEARCH_BAR(bar))) {
-        GtkWidget* entry = g_object_get_data(G_OBJECT(bar), "entry");
         VteTerminal* terminal = g_object_get_data(G_OBJECT(entry), "terminal");
         const char* pattern = g_object_get_data(G_OBJECT(terminal), "search-pattern");
         if (! pattern) {
@@ -55,6 +56,7 @@ void search_bar_show(GtkWidget* bar) {
         gtk_entry_set_text(GTK_ENTRY(entry), "");
         g_signal_emit_by_name(entry, "insert-at-cursor", pattern);
     }
+    gtk_entry_grab_focus_without_selecting(GTK_ENTRY(entry));
     gtk_search_bar_set_search_mode(GTK_SEARCH_BAR(bar), TRUE);
 }
 
@@ -63,6 +65,7 @@ GtkWidget* search_bar_new(VteTerminal* terminal) {
     g_signal_connect(entry, "key-press-event", G_CALLBACK(search_key_pressed), NULL);
     g_signal_connect(entry, "next-match", G_CALLBACK(search_match), GINT_TO_POINTER(-1));
     g_signal_connect(entry, "previous-match", G_CALLBACK(search_match), GINT_TO_POINTER(1));
+    g_signal_connect(entry, "search-changed", G_CALLBACK(search_match), GINT_TO_POINTER(0));
     g_object_set_data(G_OBJECT(entry), "terminal", terminal);
     g_signal_connect_swapped(entry, "stop-search", G_CALLBACK(focus_widget), terminal);
 
