@@ -250,6 +250,8 @@ void builder_widget_connector(
 }
 
 GtkWidget* make_tab_title_ui(GtkWidget* paned) {
+    if (! tab_title_ui) return NULL;
+
     GtkBuilder* builder = gtk_builder_new();
     GError* error = NULL;
 
