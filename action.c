@@ -723,6 +723,7 @@ Action make_action(char* name, char* arg) {
         MATCH_ACTION(next_tab);
         MATCH_ACTION(move_tab_prev);
         MATCH_ACTION(move_tab_next);
+        MATCH_ACTION(close_tab);
         MATCH_ACTION(detach_tab);
         MATCH_ACTION(cut_tab);
         MATCH_ACTION(paste_tab);
@@ -731,7 +732,6 @@ Action make_action(char* name, char* arg) {
         MATCH_ACTION_WITH_DATA_DEFAULT(switch_to_tab, GINT_TO_POINTER(atoi(arg)), NULL, 0);
         MATCH_ACTION(tab_popup_menu);
         MATCH_ACTION_WITH_DATA(reload_config, strdup(arg), free);
-        MATCH_ACTION(close_tab);
         MATCH_ACTION_WITH_DATA(add_css_class, strdup(arg), free);
         MATCH_ACTION_WITH_DATA(remove_css_class, strdup(arg), free);
         MATCH_ACTION_WITH_DATA(run, strdup(arg), free);

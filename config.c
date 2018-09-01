@@ -409,7 +409,7 @@ int handle_config(char* line, size_t len, char** result) {
             {"right",  GTK_POS_RIGHT},
     );
 
-    MAP_LINE_VALUE("tab-title-ellipsize-mode", int, tab_label_ellipsize_mode,
+    MAP_LINE_VALUE("tab-label-ellipsize-mode", int, tab_label_ellipsize_mode,
             {"start",  PANGO_ELLIPSIZE_START},
             {"middle", PANGO_ELLIPSIZE_MIDDLE},
             {"end",    PANGO_ELLIPSIZE_END},
