@@ -464,14 +464,17 @@ void spawn_subprocess(VteTerminal* terminal, gchar* data_, char* text, char** re
     cursory -= gtk_adjustment_get_value(adj);
 
     g_subprocess_launcher_setenv(launcher, "TERM", TERM_ENV_VAR, TRUE);
+    sprintf(buffer, "%li", (long int)(gtk_adjustment_get_upper(adj) - gtk_adjustment_get_lower(adj)));
+    g_subprocess_launcher_setenv(launcher, "LINES", buffer, TRUE);
+    sprintf(buffer, "%li", vte_terminal_get_column_count(terminal));
+    g_subprocess_launcher_setenv(launcher, "COLUMNS", buffer, TRUE);
+
     SET_ENVIRON(PATH, app_path);
     FMT_ENVIRON(PID, "%i", get_pid(terminal));
     FMT_ENVIRON(FGPID, "%i", get_foreground_pid(terminal));
     FMT_ENVIRON(CURSORX, "%li", cursorx);
     FMT_ENVIRON(CURSORY, "%li", cursory);
     FMT_ENVIRON(CONTROL_FLOW, "%i", get_term_attr(terminal).c_iflag & IXON ? 1 : 0);
-    FMT_ENVIRON(COLUMNS, "%li", vte_terminal_get_column_count(terminal));
-    FMT_ENVIRON(LINES, "%li", (long int)(gtk_adjustment_get_upper(adj) - gtk_adjustment_get_lower(adj)));
     FMT_ENVIRON(ROWS, "%li", vte_terminal_get_row_count(terminal));
     /* TODO TERM? */
     if (hyperlink) SET_ENVIRON(HYPERLINK, hyperlink);
