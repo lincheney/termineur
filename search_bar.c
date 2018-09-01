@@ -1,5 +1,6 @@
 #include "search_bar.h"
 #include "terminal.h"
+#include "utils.h"
 
 void search_bar_size_allocate(GtkWidget* bar, GdkRectangle* alloc, GtkWidget* grid) {
     GdkRectangle rect;
@@ -14,11 +15,10 @@ void search_match(GtkWidget* entry, int direction) {
     gboolean found = term_search(terminal, gtk_entry_get_text(GTK_ENTRY(entry)), direction);
 
     GtkWidget* bar = g_object_get_data(G_OBJECT(entry), "bar");
-    GtkStyleContext* context = gtk_widget_get_style_context(bar);
     if (found) {
-        gtk_style_context_remove_class(context, "not-found");
+        REMOVE_CSS_CLASS(bar, "not-found");
     } else {
-        gtk_style_context_add_class(context, "not-found");
+        ADD_CSS_CLASS(bar, "not-found");
     }
 }
 

@@ -5,6 +5,7 @@
 #include "terminal.h"
 #include "tab_title_ui.h"
 #include "split.h"
+#include "utils.h"
 
 GList* toplevel_windows = NULL;
 
@@ -206,6 +207,8 @@ void add_terminal_full(GtkWidget* window, const char* cwd, int argc, char** argv
 
 GtkWidget* make_window() {
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    ADD_CSS_CLASS(window, APP_PREFIX);
+
     // first window
     if (! toplevel_windows) {
         toplevel_windows = g_list_prepend(toplevel_windows, window);

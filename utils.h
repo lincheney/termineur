@@ -11,4 +11,7 @@
 
 #define STR_STRIP_PREFIX(x, y) (STR_STARTSWITH((x), (y)) ? (x)+sizeof(y)-1 : NULL)
 
+#define ADD_CSS_CLASS(widget, class) gtk_style_context_add_class(gtk_widget_get_style_context(widget), class)
+#define REMOVE_CSS_CLASS(widget, class) gtk_style_context_remove_class(gtk_widget_get_style_context(widget), class)
+
 #endif

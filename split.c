@@ -1,6 +1,7 @@
 #include "split.h"
 #include "terminal.h"
 #include "tab_title_ui.h"
+#include "utils.h"
 #include "label.h"
 
 #define RESIZE TRUE
@@ -20,8 +21,7 @@ GtkWidget* split_new_root() {
     gtk_paned_set_wide_handle(GTK_PANED(paned), TRUE);
     g_object_set_data(G_OBJECT(paned), TERMINAL_FOCUS_KEY, NULL);
 
-    GtkStyleContext* context = gtk_widget_get_style_context(paned);
-    gtk_style_context_add_class(context, ROOT_SPLIT_CLASS);
+    ADD_CSS_CLASS(paned, ROOT_SPLIT_CLASS);
 
     make_tab_title_ui(paned);
 

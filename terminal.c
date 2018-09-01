@@ -372,11 +372,10 @@ void term_show_message_bar(VteTerminal* terminal, const char* message, int timeo
 
 gboolean
 scrollbar_hover(GtkWidget* scrollbar, GdkEvent* event, gboolean inside) {
-    GtkStyleContext* context = gtk_widget_get_style_context(scrollbar);
     if (inside) {
-        gtk_style_context_add_class(context, "hovering");
+        ADD_CSS_CLASS(scrollbar, "hovering");
     } else {
-        gtk_style_context_remove_class(context, "hovering");
+        REMOVE_CSS_CLASS(scrollbar, "hovering");
     }
     return FALSE;
 }
@@ -413,8 +412,7 @@ void configure_terminal_scrollbar(VteTerminal* terminal, GtkPolicyType scrollbar
         // overlay on top of terminal
         gtk_overlay_add_overlay(GTK_OVERLAY(overlay), scrollbar);
 
-        GtkStyleContext* context = gtk_widget_get_style_context(scrollbar);
-        gtk_style_context_add_class(context, "overlay-indicator");
+        ADD_CSS_CLASS(scrollbar, "overlay-indicator");
         g_signal_connect(scrollbar, "enter-notify-event", G_CALLBACK(scrollbar_hover), GINT_TO_POINTER(TRUE));
         g_signal_connect(scrollbar, "leave-notify-event", G_CALLBACK(scrollbar_hover), GINT_TO_POINTER(FALSE));
 
