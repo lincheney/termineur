@@ -285,7 +285,7 @@ int handle_config(char* line, size_t len, char** result) {
     MAP_LINE(window-icon,               MAP_STR(window_icon));
     MAP_LINE(window-close-confirm,      MAP_BOOL(window_close_confirm));
     MAP_LINE(search-use-regex,          MAP_BOOL(search_use_regex));
-    MAP_LINE(search-wrap-aroud,         MAP_BOOL(search_wrap_around));
+    MAP_LINE(search-wrap-around,        MAP_BOOL(search_wrap_around));
 
     if (LINE_EQUALS(search-pattern)) {
         // this only affects the *current* terminal
