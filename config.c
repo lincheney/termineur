@@ -608,43 +608,44 @@ void load_config(char* filename) {
     }
 
     if (! filename) filename = config_filename;
-    if (! filename) return;
-    FILE* config = fopen(filename, "r");
-    if (!config) {
-        g_warning("Failed to open %s: %s", filename, strerror(errno));
-        return;
-    }
 
-    char* line = NULL;
-    char* buffer = NULL;
-    size_t size = 0, bufsize = 0;
-    ssize_t len, l;
-    while ((len = getline(&line, &size, config)) != -1) {
-        // multilines
-        if (len >= 4 && STR_EQUAL(line+len-4, "\"\"\"\n")) {
-            len -= 4;
-            while ((l = getline(&buffer, &bufsize, config)) != -1) {
-                len += l;
-                if (len >= size) {
-                    size = len+1;
-                    line = realloc(line, size);
-                }
-                memcpy(line+len-l, buffer, l);
+    if (filename) {
+        FILE* file = fopen(filename, "r");
+        if (! file) {
+            g_warning("Failed to open %s: %s", filename, strerror(errno));
 
-                if (STR_STARTSWITH(line+len-4, "\"\"\"\n")) {
-                    line[len-4] = '\0';
-                    break;
+        } else {
+            char* line = NULL;
+            char* buffer = NULL;
+            size_t size = 0, bufsize = 0;
+            ssize_t len, l;
+            while ((len = getline(&line, &size, file)) != -1) {
+                // multilines
+                if (len >= 4 && STR_EQUAL(line+len-4, "\"\"\"\n")) {
+                    len -= 4;
+                    while ((l = getline(&buffer, &bufsize, file)) != -1) {
+                        len += l;
+                        if (len >= size) {
+                            size = len+1;
+                            line = realloc(line, size);
+                        }
+                        memcpy(line+len-l, buffer, l);
+
+                        if (STR_STARTSWITH(line+len-4, "\"\"\"\n")) {
+                            line[len-4] = '\0';
+                            break;
+                        }
+                    }
                 }
+
+                if (line[0] == '#' || line[0] == ';') continue; // comment
+                free(execute_line(line, len, FALSE, FALSE));
             }
+            fclose(file);
+            if (line) free(line);
+            if (buffer) free(buffer);
         }
-
-        if (line[0] == '#' || line[0] == ';') continue; // comment
-        free(execute_line(line, len, FALSE, FALSE));
     }
-
-    fclose(config);
-    if (line) free(line);
-    if (buffer) free(buffer);
 
     reconfigure_all();
 }
