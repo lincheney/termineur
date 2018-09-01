@@ -729,7 +729,6 @@ gboolean term_search(VteTerminal* terminal, const char* data, int direction) {
 
     int start, end, max, min;
     term_get_row_positions(terminal, &start, &end, &min, &max);
-#define SELECT_CORNER() term_select_range(terminal, -1, end-min-1, -1, -1, GDK_SHIFT_MASK, TRUE)
 
     // vte_terminal_get_has_selection is unreliable, it can have empty selections
     AtkText* text = ATK_TEXT(gtk_widget_get_accessible(GTK_WIDGET(terminal)));
@@ -743,24 +742,24 @@ gboolean term_search(VteTerminal* terminal, const char* data, int direction) {
     // next/down = 1, previous/up = -1
     if (direction > 0) {
         if (! selected) {
-            SELECT_CORNER();
+            vte_terminal_unselect_all(terminal);
         }
         return vte_terminal_search_find_next(terminal);
 
     } else if (direction < 0) {
         if (! selected) {
-            SELECT_CORNER();
+            vte_terminal_unselect_all(terminal);
         }
         return vte_terminal_search_find_previous(terminal);
 
     } else if (! selected) {
-        SELECT_CORNER();
+        vte_terminal_unselect_all(terminal);
         return vte_terminal_search_find_previous(terminal);
 
     } else {
         // search regex, but keep same selection as much as possible
-
         gboolean found;
+
         // prevent wrap around making the scrollbar jump
         // we restore this later
         gboolean wrap = vte_terminal_search_get_wrap_around(terminal);
@@ -776,7 +775,7 @@ gboolean term_search(VteTerminal* terminal, const char* data, int direction) {
         if (! found) {
             // no match, vte makes empty selection at original selection
             // so we reset it to the corner
-            SELECT_CORNER();
+            vte_terminal_unselect_all(terminal);
         }
 
         // restore page size + wrap around
@@ -789,7 +788,6 @@ gboolean term_search(VteTerminal* terminal, const char* data, int direction) {
 
         return found;
     }
-#undef SELECT_CORNER
 }
 
 GtkWidget* make_terminal(const char* cwd, int argc, char** argv) {
