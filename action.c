@@ -405,7 +405,7 @@ void reload_config(VteTerminal* terminal, char* filename) {
     if (actions) {
         g_array_remove_range(actions, 0, actions->len);
     }
-    load_config(filename);
+    load_config(STR_EQUAL(filename, "") ? NULL : filename);
 }
 
 void subprocess_finish(GObject* proc, GAsyncResult* res, void* data) {
