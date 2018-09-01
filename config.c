@@ -204,7 +204,7 @@ int handle_config(char* line, size_t len, char** result) {
 
     g_strstrip(line);
 
-#define LINE_EQUALS(string) (STR_EQUAL(line, (#string)))
+#define LINE_EQUALS(string) (STR_EQUAL(line, (string)))
 #define MAP_LINE(string, body) \
     if (LINE_EQUALS(string)) { \
         body; \
@@ -222,6 +222,14 @@ int handle_config(char* line, size_t len, char** result) {
             } \
         } \
     } while(0)
+#define TRY_MAP_VALUE(var, _value, string, matcher) \
+    if (value && ((matcher) || STR_IEQUAL(value, (string)))) { \
+        var = (_value); \
+        return 1; \
+    } else if (!value && var == (_value)) { \
+        *result = strdup(string); \
+    }
+
 #define MAP_LINE_VALUE(string, type, ...) MAP_LINE(string, MAP_VALUE(type, __VA_ARGS__))
 
 #define PARSE_BOOL(string) ( ! ( \
@@ -258,7 +266,7 @@ int handle_config(char* line, size_t len, char** result) {
         }
     }
 
-    if (LINE_EQUALS(css)) {
+    if (LINE_EQUALS("css")) {
         if (value) {
             gtk_css_provider_load_from_data(css_provider, value, -1, NULL);
             GdkScreen* screen = gdk_screen_get_default();
@@ -269,38 +277,38 @@ int handle_config(char* line, size_t len, char** result) {
         return 1;
     }
 
-    MAP_LINE(background,                MAP_COLOUR(palette));
-    MAP_LINE(foreground,                MAP_COLOUR(palette+1));
-    MAP_LINE(window-title-format,       if (value) set_window_title_format(value)); // TODO
-    MAP_LINE(tab-label-format,          MAP_STR(tab_label_format); if (value) { free(tab_title_ui_format); tab_title_ui_format = NULL; } );
-    MAP_LINE(tab-title-ui,              MAP_STR(tab_title_ui_format); if (value) { free(tab_label_format); tab_label_format= NULL; } );
-    MAP_LINE(tab-fill,                  MAP_BOOL(tab_fill));
-    MAP_LINE(tab-expand,                MAP_BOOL(tab_expand));
-    MAP_LINE(tab-enable-popup,          MAP_BOOL(notebook_enable_popup));
-    MAP_LINE(tab-scrollable,            MAP_BOOL(notebook_scrollable));
-    MAP_LINE(show-tabs,                 MAP_BOOL(notebook_show_tabs));
-    MAP_LINE(ui-refresh-interval,       MAP_INT(ui_refresh_interval));
-    MAP_LINE(inactivity-duration,       MAP_INT(inactivity_duration));
-    MAP_LINE(encoding,                  MAP_STR(terminal_encoding));
-    MAP_LINE(font,                      if (value) { terminal_font = pango_font_description_from_string(value); }
+    MAP_LINE("background",              MAP_COLOUR(palette));
+    MAP_LINE("foreground",              MAP_COLOUR(palette+1));
+    MAP_LINE("window-title-format",     if (value) set_window_title_format(value)); // TODO
+    MAP_LINE("tab-label-format",        MAP_STR(tab_label_format); if (value) { free(tab_title_ui_format); tab_title_ui_format = NULL; } );
+    MAP_LINE("tab-title-ui",            MAP_STR(tab_title_ui_format); if (value) { free(tab_label_format); tab_label_format= NULL; } );
+    MAP_LINE("tab-fill",                MAP_BOOL(tab_fill));
+    MAP_LINE("tab-expand",              MAP_BOOL(tab_expand));
+    MAP_LINE("tab-enable-popup",        MAP_BOOL(notebook_enable_popup));
+    MAP_LINE("tab-scrollable",          MAP_BOOL(notebook_scrollable));
+    MAP_LINE("show-tabs",               MAP_BOOL(notebook_show_tabs));
+    MAP_LINE("ui-refresh-interval",     MAP_INT(ui_refresh_interval));
+    MAP_LINE("inactivity-duration",     MAP_INT(inactivity_duration));
+    MAP_LINE("encoding",                MAP_STR(terminal_encoding));
+    MAP_LINE("font",                    if (value) { terminal_font = pango_font_description_from_string(value); }
                                         else if (terminal_font) { *result = pango_font_description_to_string(terminal_font); } );
-    MAP_LINE(font-scale,                MAP_FLOAT(terminal_font_scale));
-    MAP_LINE(audible-bell,              MAP_BOOL(terminal_audible_bell));
-    MAP_LINE(allow-hyperlink,           MAP_BOOL(terminal_allow_hyperlink));
-    MAP_LINE(pointer-autohide,          MAP_BOOL(terminal_pointer_autohide));
-    MAP_LINE(rewrap-on-resize,          MAP_BOOL(terminal_rewrap_on_resize));
-    MAP_LINE(scroll-on-keystroke,       MAP_BOOL(terminal_scroll_on_keystroke));
-    MAP_LINE(scroll-on-output,          MAP_BOOL(terminal_scroll_on_output));
-    MAP_LINE(default-scrollback-lines,  MAP_INT(terminal_default_scrollback_lines));
-    MAP_LINE(word-char-exceptions,      MAP_STR(terminal_word_char_exceptions));
-    MAP_LINE(window-icon,               MAP_STR(window_icon));
-    MAP_LINE(window-close-confirm,      MAP_BOOL(window_close_confirm));
-    MAP_LINE(search-use-regex,          MAP_BOOL(search_use_regex));
-    MAP_LINE(search-wrap-around,        MAP_BOOL(search_wrap_around));
-    MAP_LINE(search-bar-animation-duration, MAP_INT(search_bar_animation_duration));
-    MAP_LINE(message-bar-animation-duration, MAP_INT(message_bar_animation_duration));
+    MAP_LINE("font-scale",              MAP_FLOAT(terminal_font_scale));
+    MAP_LINE("audible-bell",            MAP_BOOL(terminal_audible_bell));
+    MAP_LINE("allow-hyperlink",         MAP_BOOL(terminal_allow_hyperlink));
+    MAP_LINE("pointer-autohide",        MAP_BOOL(terminal_pointer_autohide));
+    MAP_LINE("rewrap-on-resize",        MAP_BOOL(terminal_rewrap_on_resize));
+    MAP_LINE("scroll-on-keystroke",     MAP_BOOL(terminal_scroll_on_keystroke));
+    MAP_LINE("scroll-on-output",        MAP_BOOL(terminal_scroll_on_output));
+    MAP_LINE("default-scrollback-lines",MAP_INT(terminal_default_scrollback_lines));
+    MAP_LINE("word-char-exceptions",    MAP_STR(terminal_word_char_exceptions));
+    MAP_LINE("window-icon",             MAP_STR(window_icon));
+    MAP_LINE("window-close-confirm",    MAP_BOOL(window_close_confirm));
+    MAP_LINE("search-use-regex",        MAP_BOOL(search_use_regex));
+    MAP_LINE("search-wrap-around",      MAP_BOOL(search_wrap_around));
+    MAP_LINE("search-bar-animation-duration", MAP_INT(search_bar_animation_duration));
+    MAP_LINE("message-bar-animation-duration", MAP_INT(message_bar_animation_duration));
 
-    if (LINE_EQUALS(search-pattern)) {
+    if (LINE_EQUALS("search-pattern")) {
         // this only affects the *current* terminal
         VteTerminal* terminal = get_active_terminal(NULL);
         if (terminal) {
@@ -314,7 +322,7 @@ int handle_config(char* line, size_t len, char** result) {
         return 1;
     }
 
-    if (LINE_EQUALS(scrollback-lines)) {
+    if (LINE_EQUALS("scrollback-lines")) {
         // this only affects the *current* terminal
         VteTerminal* terminal = get_active_terminal(NULL);
         if (terminal) {
@@ -329,30 +337,14 @@ int handle_config(char* line, size_t len, char** result) {
         return 1;
     }
 
-    if (LINE_EQUALS(tab-close-confirm)) {
-        if (value) {
-            if (g_ascii_strcasecmp(value, "smart") == 0) {
-                tab_close_confirm = CLOSE_CONFIRM_SMART;
-            } else if (PARSE_BOOL(value)) {
-                tab_close_confirm = CLOSE_CONFIRM_YES;
-            } else {
-                tab_close_confirm = CLOSE_CONFIRM_NO;
-            }
-        } else {
-            switch (tab_close_confirm) {
-                case CLOSE_CONFIRM_SMART:
-                    *result = strdup("smart"); break;
-                case CLOSE_CONFIRM_YES:
-                    *result = strdup("1"); break;
-                case CLOSE_CONFIRM_NO:
-                    *result = strdup("0"); break;
-            }
-        }
+    if (LINE_EQUALS("tab-close-confirm")) {
+        TRY_MAP_VALUE(tab_close_confirm, CLOSE_CONFIRM_SMART, "smart", FALSE);
+        TRY_MAP_VALUE(tab_close_confirm, CLOSE_CONFIRM_YES, "1", PARSE_BOOL(value));
+        TRY_MAP_VALUE(tab_close_confirm, CLOSE_CONFIRM_NO, "0", TRUE);
         return 1;
     }
 
-    if (LINE_EQUALS(default-args)) {
-        // TODO
+    if (LINE_EQUALS("default-args")) {
         if (value) {
             g_strfreev(default_args);
             default_args = shell_split(value, NULL);
@@ -372,90 +364,55 @@ int handle_config(char* line, size_t len, char** result) {
         return 1;
     }
 
-    if (LINE_EQUALS(show-scrollbar)) {
-        if (value) {
-            if (STR_IEQUAL(value, "auto") || STR_IEQUAL(value, "automatic")) {
-                scrollbar_policy = GTK_POLICY_AUTOMATIC;
-            } else if (! PARSE_BOOL(value) || STR_IEQUAL(value, "never")) {
-                scrollbar_policy = GTK_POLICY_NEVER;
-            } else {
-                scrollbar_policy = GTK_POLICY_ALWAYS;
-            }
-        } else {
-            switch (scrollbar_policy) {
-                case GTK_POLICY_AUTOMATIC:
-                    *result = strdup("auto"); break;
-                case GTK_POLICY_NEVER:
-                    *result = strdup("never"); break;
-                case GTK_POLICY_ALWAYS:
-                    *result = strdup("always"); break;
-                default: break;
-            }
-        }
+    if (LINE_EQUALS("show-scrollbar")) {
+        TRY_MAP_VALUE(scrollbar_policy, GTK_POLICY_AUTOMATIC, "auto", FALSE);
+        TRY_MAP_VALUE(scrollbar_policy, GTK_POLICY_AUTOMATIC, "automatic", FALSE);
+        TRY_MAP_VALUE(scrollbar_policy, GTK_POLICY_NEVER, "never", FALSE);
+        TRY_MAP_VALUE(scrollbar_policy, GTK_POLICY_NEVER, "never", !PARSE_BOOL(value));
+        TRY_MAP_VALUE(scrollbar_policy, GTK_POLICY_ALWAYS, "always", TRUE);
         return 1;
     }
 
-    if (LINE_EQUALS(search-case-sensitive)) {
-        if (value) {
-            if (STR_IEQUAL(value, "smart")) {
-                search_case_sensitive = REGEX_CASE_SMART;
-            } else if (PARSE_BOOL(value)) {
-                search_case_sensitive = REGEX_CASE_SENSITIVE;
-            } else {
-                search_case_sensitive = REGEX_CASE_INSENSITIVE;
-            }
-        } else {
-            switch (search_case_sensitive) {
-                case REGEX_CASE_SMART:
-                    *result = strdup("smart"); break;
-                case REGEX_CASE_SENSITIVE:
-                    *result = strdup("1"); break;
-                case REGEX_CASE_INSENSITIVE:
-                    *result = strdup("0"); break;
-                default: break;
-            }
-        }
+    if (LINE_EQUALS("search-case-sensitive")) {
+        TRY_MAP_VALUE(search_case_sensitive, REGEX_CASE_SMART, "smart", FALSE);
+        TRY_MAP_VALUE(search_case_sensitive, REGEX_CASE_SENSITIVE, "1", PARSE_BOOL(value));
+        TRY_MAP_VALUE(search_case_sensitive, REGEX_CASE_INSENSITIVE, "0", TRUE);
         return 1;
     }
 
-    MAP_LINE_VALUE(tab-pos, int, notebook_tab_pos,
+    if (LINE_EQUALS("cursor-blink-mode")) {
+        TRY_MAP_VALUE(terminal_cursor_blink_mode, VTE_CURSOR_BLINK_SYSTEM, "system", FALSE);
+        TRY_MAP_VALUE(terminal_cursor_blink_mode, VTE_CURSOR_BLINK_ON, "1", PARSE_BOOL(value));
+        TRY_MAP_VALUE(terminal_cursor_blink_mode, VTE_CURSOR_BLINK_OFF, "0", TRUE);
+        return 1;
+    }
+
+    MAP_LINE_VALUE("tab-pos", int, notebook_tab_pos,
             {"top",    GTK_POS_TOP},
             {"bottom", GTK_POS_BOTTOM},
             {"left",   GTK_POS_LEFT},
             {"right",  GTK_POS_RIGHT},
     );
 
-    MAP_LINE_VALUE(tab-title-ellipsize-mode, int, tab_label_ellipsize_mode,
+    MAP_LINE_VALUE("tab-title-ellipsize-mode", int, tab_label_ellipsize_mode,
             {"start",  PANGO_ELLIPSIZE_START},
             {"middle", PANGO_ELLIPSIZE_MIDDLE},
             {"end",    PANGO_ELLIPSIZE_END},
     );
 
-    MAP_LINE_VALUE(tab-label-alignment, int, tab_label_alignment,
+    MAP_LINE_VALUE("tab-label-alignment", int, tab_label_alignment,
             {"left",   0},
             {"right",  1},
             {"center", 0.5},
     );
 
-    MAP_LINE_VALUE(cursor-blink-mode, int, terminal_cursor_blink_mode,
-            {"system", VTE_CURSOR_BLINK_SYSTEM},
-            {"on",     VTE_CURSOR_BLINK_ON},
-            {"off",    VTE_CURSOR_BLINK_OFF},
-    );
-
-    MAP_LINE_VALUE(cursor-shape, int, terminal_cursor_shape,
+    MAP_LINE_VALUE("cursor-shape", int, terminal_cursor_shape,
             {"block",     VTE_CURSOR_SHAPE_BLOCK},
             {"ibeam",     VTE_CURSOR_SHAPE_IBEAM},
             {"underline", VTE_CURSOR_SHAPE_UNDERLINE},
     );
 
-    MAP_LINE_VALUE(cursor-shape, int, terminal_cursor_shape,
-            {"block",     VTE_CURSOR_SHAPE_BLOCK},
-            {"ibeam",     VTE_CURSOR_SHAPE_IBEAM},
-            {"underline", VTE_CURSOR_SHAPE_UNDERLINE},
-    );
-
-    MAP_LINE_VALUE(default-open-action, char*, default_open_action,
+    MAP_LINE_VALUE("default-open-action", char*, default_open_action,
             {"tab",       "new_tab"},
             {"window",    "new_window"},
     );
