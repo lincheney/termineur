@@ -374,24 +374,27 @@ void spawn_subprocess(VteTerminal* terminal, gchar* data_, char* text, char** re
     vte_terminal_get_cursor_position(terminal, &cursorx, &cursory);
     g_object_get(G_OBJECT(terminal), "hyperlink-hover-uri", &hyperlink, NULL);
 
-#define SET_ENVIRON(name, format, value) \
-    ( sprintf(buffer, (format), (value)), g_subprocess_launcher_setenv(launcher, APP_PREFIX "_" #name, buffer, TRUE) )
+#define SET_ENVIRON(name, value) \
+    g_subprocess_launcher_setenv(launcher, APP_PREFIX "_" #name, value, TRUE)
+#define FMT_ENVIRON(name, format, value) \
+    ( sprintf(buffer, (format), (value)), SET_ENVIRON(name, buffer) )
 
     // figure out actual row by looking at the adjustment
     GtkAdjustment* adj = gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(terminal));
     cursory -= gtk_adjustment_get_value(adj);
 
     g_subprocess_launcher_setenv(launcher, "TERM", TERM_ENV_VAR, TRUE);
-    SET_ENVIRON(PID, "%i", get_pid(terminal));
-    SET_ENVIRON(FGPID, "%i", get_foreground_pid(terminal));
-    SET_ENVIRON(CURSORX, "%li", cursorx);
-    SET_ENVIRON(CURSORY, "%li", cursory);
-    SET_ENVIRON(CONTROL_FLOW, "%i", get_term_attr(terminal).c_iflag & IXON ? 1 : 0);
-    SET_ENVIRON(COLUMNS, "%li", vte_terminal_get_column_count(terminal));
-    SET_ENVIRON(LINES, "%li", (long int)(gtk_adjustment_get_upper(adj) - gtk_adjustment_get_lower(adj)));
-    SET_ENVIRON(ROWS, "%li", vte_terminal_get_row_count(terminal));
+    SET_ENVIRON(PATH, app_path);
+    FMT_ENVIRON(PID, "%i", get_pid(terminal));
+    FMT_ENVIRON(FGPID, "%i", get_foreground_pid(terminal));
+    FMT_ENVIRON(CURSORX, "%li", cursorx);
+    FMT_ENVIRON(CURSORY, "%li", cursory);
+    FMT_ENVIRON(CONTROL_FLOW, "%i", get_term_attr(terminal).c_iflag & IXON ? 1 : 0);
+    FMT_ENVIRON(COLUMNS, "%li", vte_terminal_get_column_count(terminal));
+    FMT_ENVIRON(LINES, "%li", (long int)(gtk_adjustment_get_upper(adj) - gtk_adjustment_get_lower(adj)));
+    FMT_ENVIRON(ROWS, "%li", vte_terminal_get_row_count(terminal));
     /* TODO TERM? */
-    if (hyperlink) SET_ENVIRON(HYPERLINK, "%s", hyperlink);
+    if (hyperlink) SET_ENVIRON(HYPERLINK, hyperlink);
 
     // get x11 windowid
 #ifdef GDK_WINDOWING_X11
@@ -399,7 +402,7 @@ void spawn_subprocess(VteTerminal* terminal, gchar* data_, char* text, char** re
     GdkDisplay* display = gdk_window_get_display(window);
     if (GDK_IS_X11_DISPLAY(display)) {
         Window winid = gdk_x11_window_get_xid(window);
-        SET_ENVIRON(XWINDOWID, "0x%lx", winid);
+        FMT_ENVIRON(XWINDOWID, "0x%lx", winid);
     }
 #endif
 

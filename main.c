@@ -113,9 +113,20 @@ char* make_app_id() {
     return app_id;
 }
 
+char* find_app_path(char* arg0) {
+    if (! strchr(arg0, '/') || g_path_is_absolute(arg0)) {
+        return arg0;
+    }
+
+    char* cwd = g_get_current_dir();
+    char* path = g_build_filename(cwd, arg0, NULL);
+    return path;
+}
+
 int main(int argc, char *argv[]) {
     int status = 0;
     gtk_init(&argc, &argv);
+    app_path = find_app_path(argv[0]);
     argv = parse_args(&argc, argv);
 
     app_id = make_app_id();

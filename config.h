@@ -18,6 +18,7 @@ GdkRGBA palette[PALETTE_SIZE+2];
     "vte-terminal { background: none; }\n" \
     "notebook ." ROOT_SPLIT_CLASS " { background: black; }\n"
 
+char* app_path;
 char* app_id;
 char* config_filename;
 char** default_args;
