@@ -236,6 +236,7 @@ int handle_config(char* line, size_t len, char** result) {
     STR_IEQUAL((string), "no") \
     || STR_IEQUAL((string), "n") \
     || STR_IEQUAL((string), "false") \
+    || STR_IEQUAL((string), "off") \
     || STR_EQUAL((string), "") \
     || STR_EQUAL((string), "0") \
     ))
