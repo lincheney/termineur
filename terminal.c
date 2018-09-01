@@ -778,8 +778,7 @@ gboolean term_search(VteTerminal* terminal, const char* data, int direction) {
         found = vte_terminal_search_find_next(terminal);
 
         if (! found) {
-            // no match, vte makes empty selection at original selection
-            // so we reset it to the corner
+            // no match, vte makes empty selection at original selection so reset it
             vte_terminal_unselect_all(terminal);
         }
 
