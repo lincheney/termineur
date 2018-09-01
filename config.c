@@ -14,27 +14,6 @@ guint timer_id = 0;
 char* config_filename = NULL;
 char* app_id = NULL;
 
-GdkRGBA palette[PALETTE_SIZE+2] = {
-    { 0., 0., 0., 1. }, // background
-    { 1., 1., 1., 1. }, // foreground
-    { 0., 0., 0., 1. }, // black
-    { .5, 0., 0., 1. }, // red
-    { 0., .5, 0., 1. }, // green
-    { .5, .5, 0., 1. }, // yellow
-    { 0., 0., .5, 1. }, // blue
-    { .5, 0., .5, 1. }, // magenta
-    { 0., .5, .5, 1. }, // cyan
-    { 1., 1., 1., 1. }, // light grey
-    { .5, .5, .5, 1. }, // dark grey
-    { 1., 0., 0., 1. }, // light red
-    { 0., 1., 0., 1. }, // light green
-    { 1., 1., 0., 1. }, // light yellow
-    { 0., 0., 1., 1. }, // light blue
-    { 1., 0., 1., 1. }, // light magenta
-    { 0., 1., 1., 1. }, // light cyan
-    { 1., 1., 1., 1. }, // white
-};
-
 GtkPolicyType scrollbar_policy = GTK_POLICY_ALWAYS;
 GtkCssProvider* css_provider = NULL;
 char** default_args = NULL;
@@ -102,6 +81,28 @@ float ptr_to_float(void* x) {
     return flt;
 }
 
+void init_palette() {
+    for (int i = 0; i < PALETTE_SIZE; i++) {
+        if (i < 8) {
+            palette[i].red = (i & 1) ? 0.5 : 0;
+            palette[i].green = (i & 2) ? 0.5 : 0;
+            palette[i].blue = (i & 4) ? 0.5 : 0;
+        } else if (i < 16) {
+            palette[i].red = (i & 1) ? 1 : 0;
+            palette[i].green = (i & 2) ? 1 : 0;
+            palette[i].blue = (i & 4) ? 1 : 0;
+        } else if (i < 232) {
+            int j = i - 16;
+            palette[i].red = ((double)(j / 36)) / 5.;
+            palette[i].green = ((double)((j / 6) % 6)) / 5.;
+            palette[i].blue = ((double)(j % 6)) / 5.;
+        } else {
+            palette[i].red = palette[i].green = palette[i].blue = ((double)(i - 232)) / (255 - 232);
+        }
+    }
+    FOREGROUND.red = FOREGROUND.green = FOREGROUND.blue = 1;
+    BACKGROUND.red = BACKGROUND.green = BACKGROUND.blue = 0;
+}
 
 void configure_terminal(VteTerminal* terminal) {
     g_object_set(G_OBJECT(terminal),
@@ -121,7 +122,7 @@ void configure_terminal(VteTerminal* terminal) {
     vte_terminal_set_word_char_exceptions(terminal, terminal_word_char_exceptions);
     vte_terminal_search_set_wrap_around(terminal, search_wrap_around);
     // populate palette
-    vte_terminal_set_colors(terminal, &FOREGROUND, &BACKGROUND, palette+2, PALETTE_SIZE);
+    vte_terminal_set_colors(terminal, &FOREGROUND, &BACKGROUND, palette, PALETTE_SIZE);
 
     GtkWidget* grid = term_get_grid(terminal);
 
@@ -264,8 +265,8 @@ int handle_config(char* line, size_t len, char** result) {
         errno = 0;
         char* endptr = NULL;
         int n = strtol(tmp, &endptr, 10);
-        if (!errno && *endptr == '\0' && 0 <= n && n < 16) {
-            MAP_COLOUR(palette+2+n);
+        if (!errno && *endptr == '\0' && 0 <= n && n < PALETTE_SIZE) {
+            MAP_COLOUR(palette+n);
             return 1;
         }
     }
@@ -281,8 +282,8 @@ int handle_config(char* line, size_t len, char** result) {
         return 1;
     }
 
-    MAP_LINE("background",              MAP_COLOUR(palette));
-    MAP_LINE("foreground",              MAP_COLOUR(palette+1));
+    MAP_LINE("background",              MAP_COLOUR(&BACKGROUND));
+    MAP_LINE("foreground",              MAP_COLOUR(&FOREGROUND));
     MAP_LINE("window-title-format",     if (value) set_window_title_format(value)); // TODO
     MAP_LINE("tab-label-format",        MAP_STR(tab_label_format); if (value) { free(tab_title_ui_format); tab_title_ui_format = NULL; } );
     MAP_LINE("tab-title-ui",            MAP_STR(tab_title_ui_format); if (value) { free(tab_label_format); tab_label_format= NULL; } );
@@ -566,6 +567,8 @@ void load_config(char* filename) {
     if (! css_provider) {
         css_provider = gtk_css_provider_new();
     }
+
+    init_palette();
 
     if (filename) {
         char* final = filename;

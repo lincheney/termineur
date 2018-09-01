@@ -8,10 +8,10 @@
 #define APP_PREFIX "VTE_TERMINAL"
 #define TERM_ENV_VAR "xterm256-color" // this is actually set inside vte
 
-#define PALETTE_SIZE (16)
+#define PALETTE_SIZE (256)
 GdkRGBA palette[PALETTE_SIZE+2];
-#define BACKGROUND (palette[0])
-#define FOREGROUND (palette[1])
+#define FOREGROUND (palette[PALETTE_SIZE])
+#define BACKGROUND (palette[PALETTE_SIZE+1])
 
 // make sure terminal background is transparent by default
 #define GLOBAL_CSS \
