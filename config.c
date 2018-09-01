@@ -203,6 +203,9 @@ int handle_config(char* line, size_t len, char** result) {
     }
 
     g_strstrip(line);
+    if (STR_EQUAL(line, "")) {
+        return 1;
+    }
 
 #define LINE_EQUALS(string) (STR_EQUAL(line, (string)))
 #define MAP_LINE(string, body) \
