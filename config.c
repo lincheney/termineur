@@ -470,7 +470,6 @@ int handle_config(char* line, size_t len, char** result) {
         }
     }
 
-    /* g_warning("Unrecognised key: %s", line); */
     return 0;
 }
 
@@ -534,25 +533,24 @@ void* execute_line(char* line, int size, gboolean reconfigure, gboolean do_actio
         return result;
     }
 
-    if (! do_actions) {
-        return NULL;
-    }
-
-    line_copy = strdup(line);
-    Action action = lookup_action(line_copy);
-    free(line_copy);
-    if (action.func) {
-        VteTerminal* terminal = get_active_terminal(NULL);
-        if (terminal) {
-            action.func(terminal, action.data, &result);
-            if (action.cleanup) {
-                action.cleanup(action.data);
+    if (do_actions) {
+        line_copy = strdup(line);
+        Action action = lookup_action(line_copy);
+        free(line_copy);
+        if (action.func) {
+            VteTerminal* terminal = get_active_terminal(NULL);
+            if (terminal) {
+                action.func(terminal, action.data, &result);
+                if (action.cleanup) {
+                    action.cleanup(action.data);
+                }
+                return result;
             }
-            return result;
+            return NULL;
         }
-        return NULL;
     }
 
+    g_warning("Invalid input: %s", line);
     return NULL;
 }
 
