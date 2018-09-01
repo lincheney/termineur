@@ -51,7 +51,8 @@ void grid_cleanup(GtkWidget* grid) {
     split_cleanup(paned);
 }
 
-void term_exited(VteTerminal* terminal, gint status, GtkWidget* grid) {
+GtkWidget* term_remove(VteTerminal* terminal) {
+    GtkWidget* grid = term_get_grid(terminal);
     split_remove_term_from_chain(terminal);
     GtkWidget* active_terminal = split_get_active_term(term_get_tab(terminal));
     grid_cleanup(grid);
@@ -60,6 +61,11 @@ void term_exited(VteTerminal* terminal, gint status, GtkWidget* grid) {
         // focus next terminal
         gtk_widget_grab_focus(GTK_WIDGET(active_terminal));
     }
+    return grid;
+}
+
+void term_exited(VteTerminal* terminal, gint status, GtkWidget* grid) {
+    term_remove(terminal);
 }
 
 void term_destroyed(VteTerminal* terminal, GtkWidget* grid) {

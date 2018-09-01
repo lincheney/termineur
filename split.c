@@ -6,6 +6,10 @@
 #define RESIZE TRUE
 #define SHRINK FALSE
 
+int gtk_paned_get_n_children(GtkPaned* paned) {
+    return (gtk_paned_get_child1(paned) ? 1 : 0) + (gtk_paned_get_child2(paned) ? 1 : 0);
+}
+
 void gtk_paned_get_children(GtkPaned* paned, GtkWidget** child1, GtkWidget** child2) {
     *child1 = gtk_paned_get_child1(paned);
     *child2 = gtk_paned_get_child2(paned);

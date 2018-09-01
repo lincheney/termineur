@@ -7,6 +7,8 @@
 #define TERMINAL_FOCUS_KEY "focus_chain"
 #define ROOT_SPLIT_CLASS "split-root"
 
+int gtk_paned_get_n_children(GtkPaned* paned);
+
 GtkWidget* split_new_root();
 GtkWidget* split_get_root(GtkWidget* paned);
 GtkWidget* split_get_container(GtkWidget* widget);

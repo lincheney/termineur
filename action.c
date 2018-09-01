@@ -11,6 +11,7 @@
 #include "search_bar.h"
 
 GtkWidget* detaching_tab = NULL;
+VteTerminal* detaching_terminal = NULL;
 
 ActionFunc select_all = (ActionFunc)vte_terminal_select_all;
 ActionFunc unselect_all = (ActionFunc)vte_terminal_unselect_all;
@@ -280,13 +281,13 @@ void cut_tab(VteTerminal* terminal) {
 
 void paste_tab(VteTerminal* terminal) {
     if (! detaching_tab) {
-        g_warning("No tab to paste");
+        /* g_warning("No tab to paste"); */
         return;
     }
 
     GtkNotebook* src_notebook = GTK_NOTEBOOK(gtk_widget_get_parent(detaching_tab));
     GtkWidget* dest_window = term_get_window(terminal);
-    GtkNotebook* dest_notebook = g_object_get_data(G_OBJECT(dest_window), "notebook");
+    GtkNotebook* dest_notebook = GTK_NOTEBOOK(window_get_notebook(dest_window));
 
     int index = gtk_notebook_get_current_page(dest_notebook)+1;
     if (src_notebook == dest_notebook) {
@@ -300,6 +301,84 @@ void paste_tab(VteTerminal* terminal) {
     gtk_notebook_set_current_page(dest_notebook, index);
 
     detaching_tab = NULL;
+}
+
+void cut_terminal(VteTerminal* terminal) {
+    if (detaching_terminal) g_object_remove_weak_pointer(G_OBJECT(detaching_terminal), (void*)&detaching_terminal);
+    detaching_terminal = terminal;
+    g_object_add_weak_pointer(G_OBJECT(detaching_terminal), (void*)&detaching_terminal);
+}
+
+void paste_terminal(VteTerminal* terminal, char* data) {
+    if (! detaching_terminal) {
+        /* g_warning("No terminal to paste"); */
+        return;
+    }
+
+    GtkWidget* grid = term_get_grid(detaching_terminal);
+    g_object_ref(G_OBJECT(grid));
+
+    GtkWidget* dest = term_get_grid(terminal);
+    gboolean success = TRUE;
+
+    if (!data || STR_EQUAL(data, "")) data = default_open_action;
+
+    if (STR_EQUAL(data, "new_tab")) {
+        GtkWidget* window = term_get_window(terminal);
+        GtkNotebook* notebook = GTK_NOTEBOOK(window_get_notebook(window));
+        GtkWidget* root = term_get_tab(detaching_terminal);
+
+        // only new tab if not only term in this window
+        if (gtk_notebook_get_n_pages(notebook) > 1 && gtk_paned_get_n_children(GTK_PANED(root)) > 1) {
+            int index = gtk_notebook_get_current_page(notebook)+1;
+            term_remove(detaching_terminal);
+            add_tab_to_window(window, grid, index);
+        }
+
+    } else if (STR_EQUAL(data, "new_window")) {
+        GtkWidget* window = term_get_window(terminal);
+        GtkNotebook* notebook = GTK_NOTEBOOK(window_get_notebook(window));
+        GtkWidget* root = term_get_tab(detaching_terminal);
+
+        // only new window if not only term in this window
+        if (gtk_notebook_get_n_pages(notebook) > 1 && gtk_paned_get_n_children(GTK_PANED(root)) > 1) {
+            term_remove(detaching_terminal);
+            make_new_window(grid);
+        }
+
+    } else if (STR_STARTSWITH(data, "split_") && terminal == detaching_terminal) {
+        g_warning("Cannot split a terminal against itself");
+        success = FALSE;
+
+    } else if (STR_EQUAL(data, "split_above")) {
+        term_remove(detaching_terminal);
+        split(dest, grid, GTK_ORIENTATION_VERTICAL, FALSE);
+
+    } else if (STR_EQUAL(data, "split_below")) {
+        term_remove(detaching_terminal);
+        split(dest, grid, GTK_ORIENTATION_VERTICAL, TRUE);
+
+    } else if (STR_EQUAL(data, "split_left")) {
+        term_remove(detaching_terminal);
+        split(dest, grid, GTK_ORIENTATION_HORIZONTAL, FALSE);
+
+    } else if (STR_EQUAL(data, "split_right")) {
+        term_remove(detaching_terminal);
+        split(dest, grid, GTK_ORIENTATION_HORIZONTAL, TRUE);
+
+    } else {
+        g_warning("Unknown action: %s", data);
+        success = FALSE;
+    }
+
+    // focus the new terminal
+    if (success) {
+        terminal = g_object_get_data(G_OBJECT(grid), "terminal");
+        gtk_widget_grab_focus(GTK_WIDGET(detaching_terminal));
+    }
+
+    g_object_unref(G_OBJECT(grid));
+    detaching_terminal = NULL;
 }
 
 void switch_to_tab(VteTerminal* terminal, int num) {
@@ -644,6 +723,8 @@ Action make_action(char* name, char* arg) {
         MATCH_ACTION(detach_tab);
         MATCH_ACTION(cut_tab);
         MATCH_ACTION(paste_tab);
+        MATCH_ACTION(cut_terminal);
+        MATCH_ACTION_WITH_DATA(paste_terminal, strdup(arg), free);
         MATCH_ACTION_WITH_DATA_DEFAULT(switch_to_tab, GINT_TO_POINTER(atoi(arg)), NULL, 0);
         MATCH_ACTION(tab_popup_menu);
         MATCH_ACTION_WITH_DATA(reload_config, strdup(arg), free);
