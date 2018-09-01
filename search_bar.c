@@ -11,7 +11,15 @@ void search_bar_size_allocate(GtkWidget* bar, GdkRectangle* alloc, GtkWidget* gr
 
 void search_match(GtkWidget* entry, int direction) {
     VteTerminal* terminal = g_object_get_data(G_OBJECT(entry), "terminal");
-    term_search(terminal, gtk_entry_get_text(GTK_ENTRY(entry)), direction);
+    gboolean found = term_search(terminal, gtk_entry_get_text(GTK_ENTRY(entry)), direction);
+
+    GtkWidget* bar = g_object_get_data(G_OBJECT(entry), "bar");
+    GtkStyleContext* context = gtk_widget_get_style_context(bar);
+    if (found) {
+        gtk_style_context_remove_class(context, "not-found");
+    } else {
+        gtk_style_context_add_class(context, "not-found");
+    }
 }
 
 gboolean search_key_pressed(GtkWidget* entry, GdkEventKey* event) {
@@ -89,5 +97,6 @@ GtkWidget* search_bar_new(VteTerminal* terminal) {
     g_signal_connect(bar, "size-allocate", G_CALLBACK(search_bar_size_allocate), grid);
     g_object_set(bar, "search-mode-enabled", FALSE, NULL);
     g_object_set_data(G_OBJECT(bar), "entry", entry);
+    g_object_set_data(G_OBJECT(entry), "bar", bar);
     return bar;
 }
