@@ -166,9 +166,6 @@ int server_recv(GSocket* sock, GIOCondition io, Buffer* buffer) {
 }
 
 int run_server(int argc, char** argv) {
-    if (! config_filename) {
-        config_filename = g_build_filename(g_get_user_config_dir(), "vte_terminal", "config.ini", NULL);
-    }
     GtkCssProvider* css_provider = gtk_css_provider_new();
     gtk_css_provider_load_from_data(css_provider, GLOBAL_CSS, -1, NULL);
     GdkScreen* screen = gdk_screen_get_default();

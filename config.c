@@ -607,14 +607,13 @@ void load_config(char* filename) {
         css_provider = gtk_css_provider_new();
     }
 
-    if (! filename) filename = config_filename;
-
     if (filename) {
-        FILE* file = fopen(filename, "r");
-        if (! file) {
-            g_warning("Failed to open %s: %s", filename, strerror(errno));
+        char* final = filename;
+        if (! final) final = config_filename;
+        if (! final) final = g_build_filename(g_get_user_config_dir(), "vte_terminal", "config.ini", NULL);
+        FILE* file = fopen(final, "r");
 
-        } else {
+        if (file) {
             char* line = NULL;
             char* buffer = NULL;
             size_t size = 0, bufsize = 0;
@@ -644,6 +643,11 @@ void load_config(char* filename) {
             fclose(file);
             if (line) free(line);
             if (buffer) free(buffer);
+
+        } else if (errno == ENOENT && !filename && !config_filename) {
+            // do nothing, if no file
+        } else {
+            g_warning("Failed to open %s: %s", final, strerror(errno));
         }
     }
 
