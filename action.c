@@ -200,6 +200,7 @@ GtkWidget* make_split(VteTerminal* terminal, char* data, GtkOrientation orientat
             if (after) {
                 size = split_size - size - split_get_separator_size(paned);
             }
+            gtk_paned_set_position(GTK_PANED(paned), size);
             g_signal_connect(paned, "size-allocate", G_CALLBACK(on_split_resize), GINT_TO_POINTER(size));
         }
         free(size_str);
