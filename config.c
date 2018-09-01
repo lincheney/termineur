@@ -295,8 +295,6 @@ int handle_config(char* line, size_t len, char** result) {
     MAP_LINE("ui-refresh-interval",     MAP_INT(ui_refresh_interval));
     MAP_LINE("inactivity-duration",     MAP_INT(inactivity_duration));
     MAP_LINE("encoding",                MAP_STR(terminal_encoding));
-    MAP_LINE("font",                    if (value) { terminal_font = pango_font_description_from_string(value); }
-                                        else if (terminal_font) { *result = pango_font_description_to_string(terminal_font); } );
     MAP_LINE("font-scale",              MAP_FLOAT(terminal_font_scale));
     MAP_LINE("audible-bell",            MAP_BOOL(terminal_audible_bell));
     MAP_LINE("allow-hyperlink",         MAP_BOOL(terminal_allow_hyperlink));
@@ -312,6 +310,16 @@ int handle_config(char* line, size_t len, char** result) {
     MAP_LINE("search-wrap-around",      MAP_BOOL(search_wrap_around));
     MAP_LINE("search-bar-animation-duration", MAP_INT(search_bar_animation_duration));
     MAP_LINE("message-bar-animation-duration", MAP_INT(message_bar_animation_duration));
+
+    if (LINE_EQUALS("font")) {
+        if (value) {
+            pango_font_description_free(terminal_font);
+            terminal_font = pango_font_description_from_string(value);
+        } else if (terminal_font) {
+            *result = pango_font_description_to_string(terminal_font);
+        }
+        return 1;
+    }
 
     if (LINE_EQUALS("search-pattern")) {
         // this only affects the *current* terminal
