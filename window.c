@@ -207,7 +207,7 @@ void add_terminal_full(GtkWidget* window, const char* cwd, int argc, char** argv
 
 GtkWidget* make_window() {
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    ADD_CSS_CLASS(window, APP_PREFIX);
+    ADD_CSS_CLASS(window, APP_PREFIX_LOWER);
 
     // first window
     if (! toplevel_windows) {

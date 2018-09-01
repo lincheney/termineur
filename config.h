@@ -6,6 +6,7 @@
 #include "split.h"
 
 #define APP_PREFIX "TERMINEUR"
+#define APP_PREFIX_LOWER "termineur"
 #define TERM_ENV_VAR "xterm256-color" // this is actually set inside vte
 
 #define PALETTE_SIZE (256)
