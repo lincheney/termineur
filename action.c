@@ -45,7 +45,7 @@ void copy_text(VteTerminal* terminal) {
     vte_terminal_copy_clipboard_format(terminal, VTE_FORMAT_TEXT);
 }
 
-void change_font_size(VteTerminal* terminal, char* delta) {
+void change_font_scale(VteTerminal* terminal, char* delta) {
     float value = strtof(delta, NULL);
     if (delta[0] == '+' || value < 0) {
         value = vte_terminal_get_font_scale(terminal) + value;
@@ -702,7 +702,7 @@ Action make_action(char* name, char* arg) {
     while (1) {
         MATCH_ACTION_WITH_DATA(paste_text, strdup(arg), free);
         MATCH_ACTION(copy_text);
-        MATCH_ACTION_WITH_DATA(change_font_size, strdup(arg), free);
+        MATCH_ACTION_WITH_DATA(change_font_scale, strdup(arg), free);
         MATCH_ACTION(reset_terminal);
         MATCH_ACTION(scroll_up);
         MATCH_ACTION(scroll_down);
