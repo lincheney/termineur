@@ -70,6 +70,7 @@ gfloat tab_label_alignment = 0.5;
 int inactivity_duration = 10000;
 gboolean window_close_confirm = TRUE;
 gint tab_close_confirm = CLOSE_CONFIRM_SMART;
+guint message_bar_animation_duration = 250;
 
 // search options
 int search_case_sensitive = REGEX_CASE_SMART;
@@ -123,12 +124,15 @@ void configure_terminal(VteTerminal* terminal) {
     vte_terminal_set_colors(terminal, &FOREGROUND, &BACKGROUND, palette+2, PALETTE_SIZE);
 
     GtkWidget* grid = term_get_grid(terminal);
+
     GtkWidget* searchbar = g_object_get_data(G_OBJECT(grid), "searchbar");
     GtkWidget* revealer = gtk_bin_get_child(GTK_BIN(searchbar));
     if (GTK_IS_REVEALER(revealer)) {
         gtk_revealer_set_transition_duration(GTK_REVEALER(revealer), search_bar_animation_duration);
     }
 
+    GtkWidget* msg_bar = g_object_get_data(G_OBJECT(grid), "msg_bar");
+    gtk_revealer_set_transition_duration(GTK_REVEALER(msg_bar), message_bar_animation_duration);
 }
 
 void configure_tab(GtkContainer* notebook, GtkWidget* tab) {
@@ -294,6 +298,7 @@ int handle_config(char* line, size_t len, char** result) {
     MAP_LINE(search-use-regex,          MAP_BOOL(search_use_regex));
     MAP_LINE(search-wrap-around,        MAP_BOOL(search_wrap_around));
     MAP_LINE(search-bar-animation-duration, MAP_INT(search_bar_animation_duration));
+    MAP_LINE(message-bar-animation-duration, MAP_INT(message_bar_animation_duration));
 
     if (LINE_EQUALS(search-pattern)) {
         // this only affects the *current* terminal

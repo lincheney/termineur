@@ -28,6 +28,11 @@ char* tab_ui_definition = NULL;
 
 #define SELECTION_SCROLLOFF 5
 
+#define GRID_ROW_TERMINAL 0
+#define GRID_ROW_SEARCHBAR -2
+#define GRID_ROW_MESSAGEBAR -1
+#define GRID_COLUMNS 2
+
 GtkWidget* term_get_grid(VteTerminal* terminal) {
     return gtk_widget_get_ancestor(GTK_WIDGET(terminal), GTK_TYPE_GRID);
 }
@@ -340,27 +345,23 @@ void set_window_title_format(char* string) {
 gboolean term_hide_message_bar(VteTerminal* terminal) {
     GtkWidget* grid = term_get_grid(terminal);
     GtkWidget* msg_bar = GTK_WIDGET(g_object_get_data(G_OBJECT(grid), "msg_bar"));
-    if (gtk_widget_get_parent(msg_bar)) {
-        gtk_container_remove(GTK_CONTAINER(grid), msg_bar);
-    }
+    gtk_revealer_set_reveal_child(GTK_REVEALER(msg_bar), FALSE);
     return G_SOURCE_REMOVE;
 }
 
 void term_show_message_bar(VteTerminal* terminal, const char* message, int timeout) {
     GtkWidget* grid = term_get_grid(terminal);
     GtkWidget* msg_bar = GTK_WIDGET(g_object_get_data(G_OBJECT(grid), "msg_bar"));
+    gtk_revealer_set_reveal_child(GTK_REVEALER(msg_bar), TRUE);
 
-    if (! gtk_widget_get_parent(msg_bar)) {
-        gtk_grid_attach(GTK_GRID(grid), msg_bar, 0, -1, 2, 1);
-    }
-    GtkWidget* label = gtk_bin_get_child(GTK_BIN(msg_bar));
+    GtkWidget* label = gtk_bin_get_child(GTK_BIN(gtk_bin_get_child(GTK_BIN(msg_bar))));
     gtk_label_set_markup(GTK_LABEL(label), message);
 
     if (timeout > 0) {
-        g_timeout_add(timeout, (GSourceFunc)gtk_button_clicked, msg_bar);
+        g_timeout_add(timeout, (GSourceFunc)term_hide_message_bar, terminal);
     }
 
-    gtk_widget_show(msg_bar);
+    gtk_widget_show_all(msg_bar);
 }
 
 gboolean
@@ -797,10 +798,12 @@ GtkWidget* make_terminal(const char* cwd, int argc, char** argv) {
 GtkWidget* make_terminal_full(const char* cwd, int argc, char** argv, GSpawnChildSetupFunc child_setup, void* child_setup_data, GDestroyNotify child_setup_destroy) {
     GtkWidget* terminal = vte_terminal_new();
 
-    GtkWidget* msg_bar = gtk_button_new_with_label("");
-    label_new(gtk_bin_get_child(GTK_BIN(msg_bar)));
-    g_object_ref(msg_bar);
-    g_signal_connect(msg_bar, "clicked", G_CALLBACK(term_hide_message_bar), terminal);
+    GtkWidget* msg_bar = gtk_revealer_new();
+    g_object_set(msg_bar, "name", "messagebar", NULL);
+    GtkWidget* msg_button = gtk_button_new_with_label("");
+    gtk_container_add(GTK_CONTAINER(msg_bar), msg_button);
+    label_new(gtk_bin_get_child(GTK_BIN(msg_button)));
+    g_signal_connect_swapped(msg_button, "clicked", G_CALLBACK(term_hide_message_bar), terminal);
 
     // just a wrapper container to move the terminal about
     GtkWidget* overlay = gtk_overlay_new();
@@ -813,9 +816,9 @@ GtkWidget* make_terminal_full(const char* cwd, int argc, char** argv, GSpawnChil
     g_object_set_data(G_OBJECT(grid), "terminal", terminal);
     g_object_set_data(G_OBJECT(grid), "msg_bar", msg_bar);
     g_object_set_data(G_OBJECT(grid), "searchbar", searchbar);
-    gtk_grid_attach(GTK_GRID(grid), overlay, 0, 0, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), searchbar, 0, -1, 2, 1);
-    g_signal_connect_swapped(grid, "destroy", G_CALLBACK(g_object_unref), msg_bar);
+    gtk_grid_attach(GTK_GRID(grid), overlay, 0, GRID_ROW_TERMINAL, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), msg_bar, 0, GRID_ROW_MESSAGEBAR, GRID_COLUMNS, 1);
+    gtk_grid_attach(GTK_GRID(grid), searchbar, 0, GRID_ROW_SEARCHBAR, GRID_COLUMNS, 1);
     g_signal_connect_swapped(msg_bar, "focus-in-event", G_CALLBACK(gtk_widget_grab_focus), terminal);
 
     configure_terminal(VTE_TERMINAL(terminal));
