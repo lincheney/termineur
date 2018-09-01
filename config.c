@@ -420,41 +420,37 @@ int handle_config(char* line, size_t len, char** result) {
 
     // ONLY events from here on
     // events must take a value
-    if (value) {
+    char* event;
+    if (value && (event = STR_STRIP_PREFIX(line, "on-"))) {
 
         ActionData action = {0, 0, {NULL, NULL, NULL}};
 
-        tmp = STR_STRIP_PREFIX(line, "on-");
-        if (tmp) {
-            char* event = tmp;
-            action.key = -1;
-
 #define MAP_EVENT(string, value) \
-            if (STR_EQUAL(event, #string)) { \
-                action.metadata = value; \
-                break; \
-            }
+        if (STR_EQUAL(event, #string)) { \
+            action.key = -1; \
+            action.metadata = value; \
+            break; \
+        }
 
-            while (1) {
-                MAP_EVENT(bell, BELL_EVENT);
-                MAP_EVENT(hyperlink-hover, HYPERLINK_HOVER_EVENT);
-                MAP_EVENT(hyperlink-click, HYPERLINK_CLICK_EVENT);
-                MAP_EVENT(focus, FOCUS_IN_EVENT);
-                MAP_EVENT(start, START_EVENT);
+        while (1) {
+            MAP_EVENT(bell, BELL_EVENT);
+            MAP_EVENT(hyperlink-hover, HYPERLINK_HOVER_EVENT);
+            MAP_EVENT(hyperlink-click, HYPERLINK_CLICK_EVENT);
+            MAP_EVENT(focus, FOCUS_IN_EVENT);
+            MAP_EVENT(start, START_EVENT);
+
+            char* shortcut;
+            if ((shortcut = STR_STRIP_PREFIX(event, "key-"))) {
+                gtk_accelerator_parse(shortcut, &(action.key), (GdkModifierType*) &(action.metadata));
+                if (action.metadata & GDK_SHIFT_MASK) {
+                    action.key = gdk_keyval_to_upper(action.key);
+                }
                 break;
             }
 
+            break;
         }
 
-        tmp = STR_STRIP_PREFIX(line, "key-");
-        if (tmp) {
-            char* shortcut = tmp;
-
-            gtk_accelerator_parse(shortcut, &(action.key), (GdkModifierType*) &(action.metadata));
-            if (action.metadata & GDK_SHIFT_MASK) {
-                action.key = gdk_keyval_to_upper(action.key);
-            }
-        }
 
         if (action.key) {
             if (STR_EQUAL(value, "")) {
