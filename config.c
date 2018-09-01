@@ -93,11 +93,14 @@ void init_palette() {
             palette[i].blue = (i & 4) ? 1 : 0;
         } else if (i < 232) {
             int j = i - 16;
-            palette[i].red = ((double)(j / 36)) / 5.;
-            palette[i].green = ((double)((j / 6) % 6)) / 5.;
-            palette[i].blue = ((double)(j % 6)) / 5.;
+            double r = j / 36;
+            double g = (j / 6) % 6;
+            double b = j % 6;
+            palette[i].red   = r ? (r*40. + 55.) / 255. : 0;
+            palette[i].green = g ? (g*40. + 55.) / 255. : 0;
+            palette[i].blue  = b ? (b*40. + 55.) / 255. : 0;
         } else {
-            palette[i].red = palette[i].green = palette[i].blue = ((double)(i - 232)) / (255 - 232);
+            palette[i].red = palette[i].green = palette[i].blue = ((i - 232) * 10 + 8) / 255.;
         }
     }
     FOREGROUND.red = FOREGROUND.green = FOREGROUND.blue = 1;
