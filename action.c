@@ -572,8 +572,9 @@ void focus_split_below(VteTerminal* terminal) {
 
 void show_message_bar(VteTerminal* terminal, char* data) {
     int timeout = -1;
-    if (strncmp(data, "timeout=", sizeof("timeout=")-1) == 0) {
-        timeout = strtol(data + sizeof("timeout=") - 1, &data, 10);
+    char* timeout_str;
+    if (data && (timeout_str = STR_STRIP_PREFIX(data, "timeout="))) {
+        timeout = strtol(timeout_str, &data, 10);
         // find whitespace
         while (! g_ascii_isspace(*data) ) data++;
         data ++;

@@ -129,6 +129,8 @@ void configure_terminal(VteTerminal* terminal) {
 
     GtkWidget* grid = term_get_grid(terminal);
 
+    configure_terminal_scrollbar(terminal, scrollbar_policy);
+
     GtkWidget* searchbar = g_object_get_data(G_OBJECT(grid), "searchbar");
     GtkWidget* revealer = gtk_bin_get_child(GTK_BIN(searchbar));
     if (GTK_IS_REVEALER(revealer)) {

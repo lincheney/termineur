@@ -361,7 +361,9 @@ void term_show_message_bar(VteTerminal* terminal, const char* message, int timeo
     gtk_revealer_set_reveal_child(GTK_REVEALER(msg_bar), TRUE);
 
     GtkWidget* label = gtk_bin_get_child(GTK_BIN(gtk_bin_get_child(GTK_BIN(msg_bar))));
-    gtk_label_set_markup(GTK_LABEL(label), message);
+    if (message) {
+        gtk_label_set_markup(GTK_LABEL(label), message);
+    }
 
     if (timeout > 0) {
         g_timeout_add(timeout, (GSourceFunc)term_hide_message_bar, terminal);
