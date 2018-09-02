@@ -696,25 +696,22 @@ gboolean term_search(VteTerminal* terminal, const char* data, int direction) {
         pattern = g_regex_escape_string(data, -1);
     }
 
-    gboolean pattern_changed = FALSE;
-    if (!old || !pattern || !STR_EQUAL(old, pattern)) {
-        free(old);
-        g_object_set_data(G_OBJECT(terminal), "search-pattern", pattern);
-        pattern_changed = TRUE;
-    }
+    gboolean pattern_changed = !old || !pattern || !STR_EQUAL(old, pattern);
 
     int flags = PCRE2_MULTILINE | PCRE2_CASELESS;
-    switch (search_case_sensitive) {
-        case REGEX_CASE_SENSITIVE:
-            flags &= ~PCRE2_CASELESS; break;
-        case REGEX_CASE_SMART:
-            for (const char* c = pattern; pattern && *c; c++) {
-                if (*c == '\\' && *(c+1)) c++;
-                else if (g_ascii_isupper(*c)) {
-                    flags &= ~PCRE2_CASELESS;
-                    break;
+    if (pattern) {
+        switch (search_case_sensitive) {
+            case REGEX_CASE_SENSITIVE:
+                flags &= ~PCRE2_CASELESS; break;
+            case REGEX_CASE_SMART:
+                for (const char* c = pattern; pattern && *c; c++) {
+                    if (*c == '\\' && *(c+1)) c++;
+                    else if (g_ascii_isupper(*c)) {
+                        flags &= ~PCRE2_CASELESS;
+                        break;
+                    }
                 }
-            }
+        }
     }
 
     VteRegex* old_regex = vte_terminal_search_get_regex(terminal);
@@ -722,7 +719,6 @@ gboolean term_search(VteTerminal* terminal, const char* data, int direction) {
     gboolean flags_changed = (flags != GPOINTER_TO_INT(g_object_get_data(G_OBJECT(terminal), "flags")));
 
     if (pattern_changed || flags_changed) {
-        g_object_set_data(G_OBJECT(terminal), "flags", GINT_TO_POINTER(flags));
         if (pattern) {
             GError* error;
             regex = vte_regex_new_for_search(pattern, -1, flags, &error);
@@ -731,8 +727,13 @@ gboolean term_search(VteTerminal* terminal, const char* data, int direction) {
                 return FALSE;
             }
         }
+
+        g_object_set_data(G_OBJECT(terminal), "search-pattern", pattern);
+        g_object_set_data(G_OBJECT(terminal), "flags", GINT_TO_POINTER(flags));
         vte_terminal_search_set_regex(terminal, regex, 0);
+        free(old);
         free(old_regex);
+
     } else {
         regex = old_regex;
     }
