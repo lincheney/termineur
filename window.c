@@ -71,19 +71,30 @@ void notebook_size_allocate(GtkNotebook* notebook, GdkRectangle* alloc) {
     if (! tab_expand) return;
 
     int n = gtk_notebook_get_n_pages(notebook);
-    // defaults work fine for 0,1 tabs
-    if (n < 2) return;
+    if (n == 0) return;
 
     GtkPositionType pos = gtk_notebook_get_tab_pos(notebook);
+    GtkStateFlags state = gtk_widget_get_state_flags(GTK_WIDGET(notebook));
+    GtkStyleContext* style = gtk_widget_get_style_context(GTK_WIDGET(notebook));
+    GtkBorder border, padding, margin;
+    gtk_style_context_get_border(style, state, &border);
+    gtk_style_context_get_padding(style, state, &padding);
+    gtk_style_context_get_margin(style, state, &margin);
+
+    int width = alloc->width - border.left - padding.left - margin.left - border.right - padding.right - margin.right;
+    int height = alloc->height - border.top - padding.top - margin.top - border.bottom - padding.bottom - margin.bottom;
 
     for (int i = 0; i < n; i ++) {
         GtkWidget* page = gtk_notebook_get_nth_page(notebook, i);
         GtkWidget* label = gtk_notebook_get_tab_label(notebook, page);
         if (label) {
+            double value;
             if (pos == GTK_POS_LEFT || pos == GTK_POS_RIGHT) {
-                gtk_widget_set_size_request(label, -1, alloc->height/n);
+                value = ((double)height) / n;
+                gtk_widget_set_size_request(label, -1, (int)(value*(i+1)) - (int)(value*i));
             } else {
-                gtk_widget_set_size_request(label, alloc->width/n, -1);
+                value = ((double)width) / n;
+                gtk_widget_set_size_request(label, (int)(value*(i+1)) - (int)(value*i), -1);
             }
         }
     }
@@ -92,6 +103,10 @@ void notebook_size_allocate(GtkNotebook* notebook, GdkRectangle* alloc) {
 void notebook_tab_removed(GtkWidget* notebook, GtkWidget *child, guint page_num) {
     if (gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook)) == 0) {
         gtk_widget_destroy(gtk_widget_get_toplevel(notebook));
+    } else {
+        GdkRectangle rect;
+        gtk_widget_get_allocation(notebook, &rect);
+        notebook_size_allocate(GTK_NOTEBOOK(notebook), &rect);
     }
 }
 
