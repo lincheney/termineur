@@ -97,17 +97,20 @@ window.termineur
     │       │   └── label[.active][.inactive][.selected][.no-scrollback]
     │       ├── tab
     │       │   └── label[.active][.inactive][.selected][.no-scrollback]
-    │       ┊
+    │       ·
+    │       ·
+    │       ·
+    │       └── button.new-tab-button
     │
     └── stack
         ├── paned.split-root
         │   ├── [paned]*
         │   │   ├── grid[.active][.inactive][.selected][.no-scrollback]
         │   │   │   ├── searchbar[.not-found]
-        ┊   ┊   ┊   │   └── grid
-        ┊   ┊   ┊   │       ├── entry
-        ┊   ┊   ┊   │       ├── button
-                    │       └── button
+        ·   ·   ·   │   └── grid
+        ·   ·   ·   │       ├── entry
+        ·   ·   ·   │       ├── button
+        ·   ·   ·   │       └── button
                     ├── #messagebar
                     ├── overlay
                     │   ├── vte-terminal

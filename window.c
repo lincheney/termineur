@@ -267,6 +267,7 @@ GtkWidget* make_window() {
 
     GtkWidget* action_widget = gtk_button_new_from_icon_name("list-add", GTK_ICON_SIZE_LARGE_TOOLBAR);
     gtk_notebook_set_action_widget(GTK_NOTEBOOK(notebook), action_widget, GTK_PACK_END);
+    ADD_CSS_CLASS(action_widget, "new-tab-button");
     g_signal_connect(action_widget, "focus-in-event", G_CALLBACK(notebook_focus_event), window);
     g_signal_connect(action_widget, "clicked", G_CALLBACK(new_tab), NULL);
 
