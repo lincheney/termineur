@@ -265,7 +265,7 @@ GtkWidget* make_window() {
     gtk_widget_set_can_focus(notebook, FALSE);
     gtk_notebook_set_group_name(GTK_NOTEBOOK(notebook), "terminals");
 
-    GtkWidget* action_widget = gtk_button_new_from_icon_name("list-add", GTK_ICON_SIZE_LARGE_TOOLBAR);
+    GtkWidget* action_widget = gtk_button_new_with_label("+");
     gtk_notebook_set_action_widget(GTK_NOTEBOOK(notebook), action_widget, GTK_PACK_END);
     ADD_CSS_CLASS(action_widget, "new-tab-button");
     g_signal_connect(action_widget, "focus-in-event", G_CALLBACK(notebook_focus_event), window);
