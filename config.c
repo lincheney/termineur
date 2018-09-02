@@ -43,6 +43,7 @@ gboolean notebook_enable_popup = FALSE;
 gboolean notebook_scrollable = FALSE;
 int notebook_show_tabs = OPTION_SMART;
 GtkPositionType notebook_tab_pos = GTK_POS_TOP;
+gboolean notebook_show_new_tab_button = FALSE;
 int ui_refresh_interval = 5000;
 PangoEllipsizeMode tab_label_ellipsize_mode = PANGO_ELLIPSIZE_END;
 gfloat tab_label_alignment = 0.5;
@@ -162,6 +163,7 @@ void configure_window(GtkWindow* window) {
             "tab-pos",      notebook_tab_pos,
             NULL);
     refresh_ui_notebook(notebook);
+    gtk_widget_set_visible(gtk_notebook_get_action_widget(GTK_NOTEBOOK(notebook), GTK_PACK_END), notebook_show_new_tab_button);
 }
 
 void reconfigure_window(GtkWidget* window) {
@@ -296,6 +298,7 @@ int handle_config(char* line, size_t len, char** result) {
     MAP_LINE("tab-expand",              MAP_BOOL(tab_expand));
     MAP_LINE("tab-enable-popup",        MAP_BOOL(notebook_enable_popup));
     MAP_LINE("tab-scrollable",          MAP_BOOL(notebook_scrollable));
+    MAP_LINE("show-new-tab-button",     MAP_BOOL(notebook_show_new_tab_button));
     MAP_LINE("ui-refresh-interval",     MAP_INT(ui_refresh_interval));
     MAP_LINE("inactivity-duration",     MAP_INT(inactivity_duration));
     MAP_LINE("encoding",                MAP_STR(terminal_encoding));

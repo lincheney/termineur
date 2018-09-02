@@ -65,15 +65,34 @@ gint get_tab_number(VteTerminal* terminal) {
 }
 
 void notebook_size_allocate(GtkNotebook* notebook, GdkRectangle* alloc) {
-    // resize tab titles to be all the same size
+    GtkPositionType pos = gtk_notebook_get_tab_pos(notebook);
+    gboolean vertical = (pos == GTK_POS_LEFT || pos == GTK_POS_RIGHT);
+    int width = alloc->width;
+    int height = alloc->height;
 
-    // don't bother if tabs don't expand
+    GtkWidget* action_widget = gtk_notebook_get_action_widget(notebook, GTK_PACK_END);
+    if (action_widget && gtk_widget_is_visible(action_widget)) {
+        GdkRectangle rect;
+        gtk_widget_get_allocation(action_widget, &rect);
+        if (vertical) {
+            rect.y -= rect.width - rect.height;
+            rect.height = rect.width;
+        } else {
+            rect.x -= rect.height- rect.width;
+            rect.width = rect.height;
+        }
+        gtk_widget_size_allocate(action_widget, &rect);
+
+        width -= rect.width;
+        height -= rect.height;
+    }
+
+    // don't bother sizing tabs if they don't expand
     if (! tab_expand) return;
 
     int n = gtk_notebook_get_n_pages(notebook);
     if (n == 0) return;
 
-    GtkPositionType pos = gtk_notebook_get_tab_pos(notebook);
     GtkStateFlags state = gtk_widget_get_state_flags(GTK_WIDGET(notebook));
     GtkStyleContext* style = gtk_widget_get_style_context(GTK_WIDGET(notebook));
     GtkBorder border, padding, margin;
@@ -81,15 +100,16 @@ void notebook_size_allocate(GtkNotebook* notebook, GdkRectangle* alloc) {
     gtk_style_context_get_padding(style, state, &padding);
     gtk_style_context_get_margin(style, state, &margin);
 
-    int width = alloc->width - border.left - padding.left - margin.left - border.right - padding.right - margin.right;
-    int height = alloc->height - border.top - padding.top - margin.top - border.bottom - padding.bottom - margin.bottom;
+    width -= border.left + padding.left + margin.left + border.right + padding.right + margin.right;
+    height -= border.top + padding.top + margin.top + border.bottom + padding.bottom + margin.bottom;
 
+    // resize tab titles to be all the same size
     for (int i = 0; i < n; i ++) {
         GtkWidget* page = gtk_notebook_get_nth_page(notebook, i);
         GtkWidget* label = gtk_notebook_get_tab_label(notebook, page);
         if (label) {
             double value;
-            if (pos == GTK_POS_LEFT || pos == GTK_POS_RIGHT) {
+            if (vertical) {
                 value = ((double)height) / n;
                 gtk_widget_set_size_request(label, -1, (int)(value*(i+1)) - (int)(value*i));
             } else {
@@ -244,6 +264,12 @@ GtkWidget* make_window() {
     GtkWidget *notebook = gtk_notebook_new();
     gtk_widget_set_can_focus(notebook, FALSE);
     gtk_notebook_set_group_name(GTK_NOTEBOOK(notebook), "terminals");
+
+    GtkWidget* action_widget = gtk_button_new_from_icon_name("list-add", GTK_ICON_SIZE_LARGE_TOOLBAR);
+    gtk_notebook_set_action_widget(GTK_NOTEBOOK(notebook), action_widget, GTK_PACK_END);
+    g_signal_connect(action_widget, "focus-in-event", G_CALLBACK(notebook_focus_event), window);
+    g_signal_connect(action_widget, "clicked", G_CALLBACK(new_tab), NULL);
+
     g_object_set_data(G_OBJECT(window), "notebook", notebook);
     g_signal_connect(window, "delete-event", G_CALLBACK(prevent_window_close), NULL);
     g_signal_connect(window, "destroy", G_CALLBACK(window_destroyed), NULL);
@@ -263,8 +289,8 @@ GtkWidget* make_window() {
     g_signal_connect(window, "key-press-event", G_CALLBACK(key_pressed), NULL);
     gtk_container_add(GTK_CONTAINER(window), notebook);
 
-    configure_window(GTK_WINDOW(window));
     gtk_widget_show_all(window);
+    configure_window(GTK_WINDOW(window));
     return window;
 }
 
