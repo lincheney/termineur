@@ -730,10 +730,11 @@ gboolean term_search(VteTerminal* terminal, const char* data, int direction) {
 
     if (pattern_changed || flags_changed) {
         if (pattern) {
-            GError* error;
+            GError* error = NULL;
             regex = vte_regex_new_for_search(pattern, -1, flags, &error);
             if (error) {
                 g_warning("%s: %s", error->message, pattern);
+                g_error_free(error);
                 return FALSE;
             }
         }
@@ -742,7 +743,6 @@ gboolean term_search(VteTerminal* terminal, const char* data, int direction) {
         g_object_set_data(G_OBJECT(terminal), "flags", GINT_TO_POINTER(flags));
         vte_terminal_search_set_regex(terminal, regex, 0);
         free(old);
-        free(old_regex);
 
     } else {
         regex = old_regex;
