@@ -41,14 +41,14 @@ gboolean tab_expand = TRUE;
 gboolean tab_fill = TRUE;
 gboolean notebook_enable_popup = FALSE;
 gboolean notebook_scrollable = FALSE;
-gboolean notebook_show_tabs = FALSE;
+int notebook_show_tabs = OPTION_SMART;
 GtkPositionType notebook_tab_pos = GTK_POS_TOP;
 int ui_refresh_interval = 5000;
 PangoEllipsizeMode tab_label_ellipsize_mode = PANGO_ELLIPSIZE_END;
 gfloat tab_label_alignment = 0.5;
 int inactivity_duration = 10000;
 gboolean window_close_confirm = TRUE;
-gint tab_close_confirm = CLOSE_CONFIRM_SMART;
+gint tab_close_confirm = OPTION_SMART;
 guint message_bar_animation_duration = 250;
 
 // search options
@@ -159,9 +159,9 @@ void configure_window(GtkWindow* window) {
     g_object_set(notebook,
             "enable-popup", notebook_enable_popup,
             "scrollable",   notebook_scrollable,
-            "show-tabs",    notebook_show_tabs,
             "tab-pos",      notebook_tab_pos,
             NULL);
+    refresh_ui_notebook(notebook);
 }
 
 void reconfigure_window(GtkWidget* window) {
@@ -296,7 +296,6 @@ int handle_config(char* line, size_t len, char** result) {
     MAP_LINE("tab-expand",              MAP_BOOL(tab_expand));
     MAP_LINE("tab-enable-popup",        MAP_BOOL(notebook_enable_popup));
     MAP_LINE("tab-scrollable",          MAP_BOOL(notebook_scrollable));
-    MAP_LINE("show-tabs",               MAP_BOOL(notebook_show_tabs));
     MAP_LINE("ui-refresh-interval",     MAP_INT(ui_refresh_interval));
     MAP_LINE("inactivity-duration",     MAP_INT(inactivity_duration));
     MAP_LINE("encoding",                MAP_STR(terminal_encoding));
@@ -355,10 +354,17 @@ int handle_config(char* line, size_t len, char** result) {
         return 1;
     }
 
+    if (LINE_EQUALS("show-tabs")) {
+        TRY_MAP_VALUE(notebook_show_tabs, OPTION_SMART, "smart", FALSE);
+        TRY_MAP_VALUE(notebook_show_tabs, OPTION_YES, "1", PARSE_BOOL(value));
+        TRY_MAP_VALUE(notebook_show_tabs, OPTION_NO, "0", TRUE);
+        return 1;
+    }
+
     if (LINE_EQUALS("tab-close-confirm")) {
-        TRY_MAP_VALUE(tab_close_confirm, CLOSE_CONFIRM_SMART, "smart", FALSE);
-        TRY_MAP_VALUE(tab_close_confirm, CLOSE_CONFIRM_YES, "1", PARSE_BOOL(value));
-        TRY_MAP_VALUE(tab_close_confirm, CLOSE_CONFIRM_NO, "0", TRUE);
+        TRY_MAP_VALUE(tab_close_confirm, OPTION_SMART, "smart", FALSE);
+        TRY_MAP_VALUE(tab_close_confirm, OPTION_YES, "1", PARSE_BOOL(value));
+        TRY_MAP_VALUE(tab_close_confirm, OPTION_NO, "0", TRUE);
         return 1;
     }
 

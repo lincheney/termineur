@@ -106,10 +106,15 @@ void notebook_switch_page(GtkNotebook* notebook, GtkWidget* tab, guint num) {
     update_window_title(GTK_WINDOW(gtk_widget_get_toplevel(GTK_WIDGET(notebook))), VTE_TERMINAL(terminal));
 }
 
-void notebook_pages_changed(GtkWidget* notebook) {
+void refresh_ui_notebook(GtkWidget* notebook) {
     GtkWidget* window = gtk_widget_get_toplevel(notebook);
     if (gtk_widget_is_toplevel(window)) {
         refresh_ui_window(window);
+    }
+
+    if (notebook_show_tabs == OPTION_SMART) {
+        int n = gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook));
+        g_object_set(G_OBJECT(notebook), "show-tabs", n > 1, NULL);
     }
 }
 
@@ -151,9 +156,16 @@ gboolean window_focus_event(GtkWindow* window) {
     return FALSE;
 }
 
+gboolean notebook_focus_event(GtkWindow* notebook, GdkEvent* event, GtkWidget* window) {
+    // always pass focus to the terminal
+    VteTerminal* terminal = get_active_terminal(window);
+    gtk_widget_grab_focus(GTK_WIDGET(terminal));
+    return FALSE;
+}
+
 gboolean prevent_tab_close(VteTerminal* terminal) {
     if (! tab_close_confirm) return FALSE;
-    if (tab_close_confirm == CLOSE_CONFIRM_SMART && !is_running_foreground_process(terminal)) {
+    if (tab_close_confirm == OPTION_SMART && !is_running_foreground_process(terminal)) {
         return FALSE;
     }
 
@@ -223,14 +235,15 @@ GtkWidget* make_window() {
     g_signal_connect(window, "focus-in-event", G_CALLBACK(window_focus_event), NULL);
 
     gtk_notebook_set_show_border(GTK_NOTEBOOK(notebook), FALSE);
+    g_signal_connect(notebook, "focus-in-event", G_CALLBACK(notebook_focus_event), window);
     g_signal_connect(notebook, "size-allocate", G_CALLBACK(notebook_size_allocate), NULL);
     g_signal_connect(notebook, "page-removed", G_CALLBACK(notebook_tab_removed), NULL);
     g_signal_connect(notebook, "create-window", G_CALLBACK(notebook_create_window), NULL);
     g_signal_connect(notebook, "switch-page", G_CALLBACK(notebook_switch_page), NULL);
     // make sure term titles update whenever they are reordered
-    g_signal_connect(notebook, "page-reordered", G_CALLBACK(notebook_pages_changed), NULL);
-    g_signal_connect(notebook, "page-added", G_CALLBACK(notebook_pages_changed), NULL);
-    g_signal_connect(notebook, "page-removed", G_CALLBACK(notebook_pages_changed), NULL);
+    g_signal_connect(notebook, "page-reordered", G_CALLBACK(refresh_ui_notebook), NULL);
+    g_signal_connect(notebook, "page-added", G_CALLBACK(refresh_ui_notebook), NULL);
+    g_signal_connect(notebook, "page-removed", G_CALLBACK(refresh_ui_notebook), NULL);
 
     g_signal_connect(window, "key-press-event", G_CALLBACK(key_pressed), NULL);
     gtk_container_add(GTK_CONTAINER(window), notebook);

@@ -4,7 +4,7 @@
 GList* toplevel_windows;
 
 GtkWidget* get_active_window();
-VteTerminal* get_active_terminal();
+VteTerminal* get_active_terminal(GtkWidget* window);
 gint get_tab_number(VteTerminal* terminal);
 GtkWidget* window_get_notebook(GtkWidget*);
 
@@ -15,6 +15,7 @@ GtkWidget* make_new_window_full(GtkWidget*, const char*, int, char**);
 void add_tab_to_window(GtkWidget*, GtkWidget*, int);
 gboolean prevent_tab_close(VteTerminal*);
 void refresh_ui_window(GtkWidget* window);
+void refresh_ui_notebook(GtkWidget* notebook);
 
 #define FOREACH_WINDOW(var) \
     for (GList* _l = toplevel_windows; _l; _l = _l->next) \

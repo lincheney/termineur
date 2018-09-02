@@ -29,11 +29,12 @@ gboolean tab_expand;
 guint terminal_default_scrollback_lines;
 gboolean show_scrollbar;
 
-#define CLOSE_CONFIRM_NO 0
-#define CLOSE_CONFIRM_YES 1
-#define CLOSE_CONFIRM_SMART 2
+#define OPTION_NO 0
+#define OPTION_YES 1
+#define OPTION_SMART 2
 gint tab_close_confirm;
 gboolean window_close_confirm;
+int notebook_show_tabs;
 
 // search options
 #define REGEX_CASE_SENSITIVE 0
