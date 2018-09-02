@@ -17,11 +17,15 @@ ActionFunc select_all = (ActionFunc)vte_terminal_select_all;
 ActionFunc unselect_all = (ActionFunc)vte_terminal_unselect_all;
 
 void add_css_class(VteTerminal* terminal, char* data) {
-    term_change_css_class(terminal, data, 1);
+    if (data) {
+        term_change_css_class(terminal, data, 1);
+    }
 }
 
 void remove_css_class(VteTerminal* terminal, char* data) {
-    term_change_css_class(terminal, data, 0);
+    if (data) {
+        term_change_css_class(terminal, data, 0);
+    }
 }
 
 void paste_text(VteTerminal* terminal, char* data) {
@@ -46,8 +50,11 @@ void copy_text(VteTerminal* terminal) {
 }
 
 void change_font_scale(VteTerminal* terminal, char* delta) {
+    if (! delta) return;
+
     int sign;
     float value = PARSE_FLOAT_DELTA(delta, sign, NULL);
+
     if (sign) {
         value = vte_terminal_get_font_scale(terminal) + value*sign;
     }
@@ -88,18 +95,22 @@ void scroll_bottom(VteTerminal* terminal) {
 }
 
 void feed_data(VteTerminal* terminal, char* data) {
-    vte_terminal_feed_child_binary(terminal, (guint8*)data, strlen(data));
+    if (data) {
+        vte_terminal_feed_child_binary(terminal, (guint8*)data, strlen(data));
+    }
 }
 
 void feed_term(VteTerminal* terminal, char* data) {
-    vte_terminal_feed(terminal, data, -1);
+    if (data) {
+        vte_terminal_feed(terminal, data, -1);
+    }
 }
 
 GtkWidget* new_term(gchar* data, char** size, int** pipes) {
     gint argc;
     char* cwd = NULL;
     char **original, **argv = shell_split(data, &argc);
-    if (data && ! STR_EQUAL(data, "") && ! argv) {
+    if (data && ! argv) {
         g_warning("Failed to parse: %s", data);
         return NULL;
     }
@@ -343,7 +354,7 @@ void paste_terminal(VteTerminal* terminal, char* data) {
     GtkWidget* dest = term_get_grid(terminal);
     gboolean success = TRUE;
 
-    if (!data || STR_EQUAL(data, "")) data = default_open_action;
+    if (!data) data = default_open_action;
 
     if (STR_EQUAL(data, "new_tab")) {
         GtkWidget* window = term_get_window(terminal);
@@ -427,7 +438,7 @@ void reload_config(VteTerminal* terminal, char* filename) {
     if (actions) {
         g_array_remove_range(actions, 0, actions->len);
     }
-    load_config((filename && STR_EQUAL(filename, "")) ? NULL : filename);
+    load_config(filename);
 }
 
 void subprocess_finish(GObject* proc, GAsyncResult* res, void* data) {
@@ -593,6 +604,8 @@ void focus_split_below(VteTerminal* terminal) {
 }
 
 void resize_split(VteTerminal* terminal, char* data, GtkOrientation orientation, gboolean after) {
+    if (! data) return;
+
     char* suffix;
     int sign;
     int size = PARSE_INT_DELTA(data, sign, &suffix);
@@ -644,6 +657,7 @@ void show_message_bar(VteTerminal* terminal, char* data) {
         while (! g_ascii_isspace(*data) ) data++;
         data ++;
     }
+
     if (timeout) {
         term_show_message_bar(terminal, data, timeout);
     } else {
@@ -759,8 +773,11 @@ Action make_action(char* name, char* arg) {
         if (arg) { \
             arg = g_strstrip(arg); \
             arg = str_unescape(arg); \
-            action.data = processor; \
-            action.cleanup = _cleanup; \
+            /* data is never empty , at worst NULL */ \
+            if (! STR_EQUAL(arg, "")) { \
+                action.data = processor; \
+                action.cleanup = _cleanup; \
+            } \
         } else { \
             action.data = default; \
         } \
