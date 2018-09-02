@@ -7,13 +7,15 @@ LIBS:=$(shell pkg-config --libs $(DEPS))
 SOURCES:=$(shell find -name '*.c')
 TARGET=termineur
 
+debug: CFLAGS+=-g
+debug: $(TARGET)
+
+release: $(TARGET)
+
 $(TARGET): $(SOURCES:%.c=%.o)
 	@echo '>>> Compiling $@'
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 	@echo
-
-debug: CFLAGS+=-g
-debug: $(TARGET)
 
 $(foreach file,$(SOURCES),$(eval $(shell $(CC) -MM $(file) | tr -d '\n\\' )))
 
