@@ -1,138 +1,179 @@
-# popup-term
-Super simple VTE popup terminal
+# termineur
 
-## Configuration
+[VTE](https://developer.gnome.org/vte/unstable/) based terminal driven by a UNIX socket API.
 
-For `bool` values, `n`, `no`, `false`, `0`, ` ` (case insensitive) are considered false;
-everything else is true.
+Features (or lack thereof):
+* anything that VTE supports (24-bit colour, italics, scrollback, line wrap etc)
+* tabs and splits
+* UNIX socket API from which you can drive 90% of all terminal features.
+   (You could even drive terminal input, but that could be getting silly).
+* [lots of configuration options](example.ini), which can also all be set with the API
+* no default keybindings.
+* bare bones GUI.
+   There is a terminal, an optional tab bar and an optional scrollbar.
+   No GUI preferences dialog, no right-click menus etc.
 
-## UI options
+## Commands
 
-* `css = {string}`
-* `show-tabs = {bool}`
-* `tab-fill = {bool}`
-* `tab-expand = {bool}`
-* `tab-pos = top|bottom|left|right`
-* `tab-enable-popup = {bool}`
-    * enable the GtkNotebook popup
-* `tab-scrollable = {bool}`
-    * should the tab bar be scrollable
-* `show-scrollbar = {bool}`
-* `ui-refresh-interval = {int}`
-    * interval in ms to refresh tab titles etc
-* `inactivity-duration = {int}`
-    * interval in ms after which a terminal is considered "silent"
-* `window-title-format|tab-title-format = {string}`
-    * %-style format string:
-        * current working directory: `%d`
-        * foreground process name: `%n`
-        * terminal title: `%t`
-        * tab number: `%N`
-        * %: `%%`
-* `tab-title-markup = {bool}`
-    * parse Pango markup in the tab title
-* `tab-title-alignment = left|center|right`
-* `tab-title-ellipsize-mode = start|middle|end`
-* `window-icon = {string}`
-* `window-close-confirm = {bool}`
-    * show a confirmation dialog first when closing windows
-* `tab-close-confirm = {bool}|smart`
-    * show a confirmation dialog first when closing tabs
-    * for `smart`, the dialog is only shown if there is a foreground process
-* `default-open-action = tab|window`
-    * when launching new terminals, default to opening in new tab or new window
+There are 3 types of commands:
+* simple `key = value` settings
+* actions, e.g. `new_tab: vim`
+* event bindings `on-event = action`, e.g. `on-key-<control><shift>v = new_tab: vim`
 
-## Terminal options
+These can be specified in the configuration file when `termineur` starts up
+or over the UNIX socket API while it is running.
 
-* `background|foreground|col{0..15} = {string}`
-    * anything handled by [gdk_rgba_parse](https://developer.gnome.org/gdk3/stable/gdk3-RGBA-Colors.html#gdk-rgba-parse)
-* `encoding = {string}`
-* `font = {string}`
-* `font-scale = {float}`
-* `audible-bell = {bool}`
-* `allow-hyperlink = {bool}`
-    * OSC 8 hyperlink support
-* `pointer-autohide = {bool}`
-    * autohide pointer when typing
-* `rewrap-on-resize = {bool}`
-* `scroll-on-keystroke = {bool}`
-* `scroll-on-output = {bool}`
-* `default-scrollback-lines = {int}`
-* `word-char-exceptions = {string}`
-    * https://developer.gnome.org/vte/unstable/VteTerminal.html#VteTerminal--word-char-exceptions
-* `default-args = {string}`
-    * default program to run in new tabs/windows
-    * defaults to the user's shell or `/bin/sh`
-* `cursor-blink-mode = system|off|on`
-* `cursor-shape = block|ibeam|underline`
+See the [example configuration](example.ini) for a list of all current configuration options.
 
-## Events
+## Interacting over the UNIX socket
 
-* `on-bell = {callback}`
-* `on-hyperlink-hover = {callback}`
-* `on-hyperlink-click = {callback}`
-* `key-{keycombo} = {callback}`
-* `{callback}`
-    * one-off trigger of callback
+`termineur` listens on an abstract UNIX socket and accepts newline-delimited commands
+in the same syntax as the configuration file (almost; multiline is not supported).
+You can trigger actions, or change any settings/event bindings.
 
-`keycombo` are parsed by [gtk_accelerator_parse](https://developer.gnome.org/gtk3/stable/gtk3-Keyboard-Accelerators.html#gtk-accelerator-parse)
-e.g. `<Control><Alt>Page_Down`
+The socket name can be specified with the `--id` flag
+or retrieved from the `$TERMINEUR_ID` environment variable inside the terminal.
 
-## Callbacks
+You can use `termineur` itself as the socket client, or anything else that supports
+UNIX sockets (e.g. `socat`).
 
-* `paste_text [: {string}]`
-    * if the argument is not given, text from clipboard is pasted
-    * this is useful if you need to paste arbitrary text and need to respect bracketed paste
-* `copy_text`
-* `change_font_size : {float}`
-* `reset_terminal`
-* `scroll_up`
-* `scroll_down`
-* `scroll_page_up`
-* `scroll_page_down`
-* `scroll_top`
-* `scroll_bottom`
-* `select_all`
-* `unselect_all`
-* `feed_data : {string}`
-    * feed user input to the terminal
-* `feed_term : {string}`
-    * feed data to terminal as if it came from the terminal (NOT the user)
-* `new_tab|new_window [: {string}]`
-    * if argument given, it is run in the new tab/window
-    * if the first whitespace-delimited part matches `cwd=*`, the terminal is started in the given directory
-* `prev_tab`
-* `next_tab`
-* `move_tab_prev`
-* `move_tab_next`
-* `detach_tab`
-    * tab will move to a new window
-* `cut_tab|paste_tab`
-    * you can use this to move tabs between windows
-* `switch_to_tab : {int}`
-    * negative indices work from the end (e.g. -1 is the last tab)
-* `tab_popup_menu`
-    * trigger the tab bar popup menu
-* `reload_config [: {string}]`
-    * if argument given, this is the file to load config from
-* `close_tab`
-* `add_label_class|remove_label_class`
-    * add/remove CSS class from the tab label
-* `run|pipe_screen|pipe_line|pipe_all [: {string}]`
-    * run a process with the following env vars set:
-        * `VTE_TERMINAL_PID`: pid of the terminal process
-        * `VTE_TERMINAL_FGPID`: pid of the foreground process
-        * `VTE_TERMINAL_CURSORX`: column number of the cursor
-        * `VTE_TERMINAL_CURSORY`: row number of the cursor
-        * `VTE_TERMINAL_HYPERLINK`: hyperlink that the mouse is over (if any)
-        * `VTE_TERMINAL_WINID`: X11 window id
-    * `pipe_screen` pipes the visible text to stdin
-    * `pipe_line` pipes the cursor's current line to stdin
-    * `pipe_all` pipes all text including scrollback to stdin
-    * anything from stdout is fed back to the terminal as user input
-    * if no argument given, return the stdin instead
-* `scrollback_lines [: {int}]`
-    * change the scrollback for this terminal only
-    * -1 means unlimited scrollback
-    * with no argument, the scrollback is unchanged
-    * returns the current scrollback
+Both the following commands are equivalent:
+```bash
+termineur -c new_tab -c new_window
+(echo new_tab; echo new_window) | socat - ABSTRACT-CONNECT:$TERMINEUR_ID
+```
+
+Any output is returned back over the socket appended with a null byte
+(sometimes the output may have newlines).
+```bash
+$ # query a setting
+$ termineur -c scrollback-lines
+1000
+$ # pipe terminal text to less
+$ echo pipe_all | socat - ABSTRACT-CONNECT:$TERMINEUR_ID | less
+```
+
+### Opening a terminal connection
+
+You can open a new terminal and connect up stdin/stdout over the socket.
+
+Here's a quick example to hook up [fzf](https://github.com/junegunn/fzf) running in a new terminal:
+```bash
+$ file="$(find | termineur --connect new_tab:fzf)"
+$ # OR with socat
+$ file="$( (echo 'CONNECT_SOCK:3:new_tab:fzf'; find) | socat -t9999999 - ABSTRACT-CONNECT:$TERMINEUR_ID)"
+```
+
+The client should send one line with `CONNECT_SOCK:flags:action` (plus a newline),
+where flags is `3` (connect stdin+stdout), `2` (connect stdout only),
+`1` (connect stdin only) or `0` (don't connect any file descriptors)
+and action is any action that would open a terminal,
+i.e. `new_tab`, `new_window`, `split_left`, `split_right`, `split_above`, `split_below`.
+
+In the above example, both stdin and stdout are connected to `fzf` running in a `new_tab`.
+Some programs expect stdin/stdout to be a tty, so you should disable those connections:
+```bash
+$ cat file | termineur --no-connect-stdout --connect new_tab:less
+$ (echo 'CONNECT_SOCK:1:new_tab:less'; cat file) | socat -t9999999 - ABSTRACT-CONNECT:$TERMINEUR_ID)"
+```
+
+In the case that no file descriptors are connected (`0`),
+the socket connection will merely hang until the terminal is closed.
+
+You can run any commands before `CONNECT_SOCK:` but none after (since anything afterwards ends up piped to stdin).
+
+## CSS
+
+Widgets styled using [GTK+ CSS](https://developer.gnome.org/gtk3/stable/chap-css-overview.html).
+You can do this in the standard CSS files (e.g. `~/.config/gtk-3.0/gtk.css`) or with the `css` setting.
+
+Nodes are as follows:
+```
+window.termineur
+└── notebook
+    ├── header.top
+    │   └── tabs
+    │       ├── tab
+    │       │   └── label[.active][.inactive][.selected][.no-scrollback]
+    │       ├── tab
+    │       │   └── label[.active][.inactive][.selected][.no-scrollback]
+    │       ┊
+    │
+    └── stack
+        ├── paned.split-root
+        │   ├── [paned]*
+        │   │   ├── grid[.active][.inactive][.selected][.no-scrollback]
+        │   │   │   ├── searchbar[.not-found]
+        ┊   ┊   ┊   │   └── grid
+        ┊   ┊   ┊   │       ├── entry
+        ┊   ┊   ┊   │       ├── button
+                    │       └── button
+                    ├── #messagebar
+                    ├── overlay
+                    │   ├── vte-terminal
+                    │   └── [scrollbar]
+                    └── [scrollbar]
+```
+
+The position of scrollbar depends on the `show-scrollbar` setting.
+
+Tab title widgets may not always be `label` and depends on the `tab-title-ui` setting.
+
+The `.active` class is applied when there is terminal activity.
+The `.inactive` class is applied when there *was* terminal activity but not since the last `inactivity-duration` milliseconds.
+The `.selected` class is applied to the active terminal of a tab, even if it is not focused.
+The `.no-scrollback` class is applied when the terminal *currently* has no scrollback history,
+i.e. `scrollback-lines` may be set, but there is no scrollback history yet,
+or it has been cleared, or the terminal is on the alternate screen.
+
+## Tips and tricks
+
+#### Save output dialog
+
+```
+on-key-... = pipe_all: sh -c 'file="$(zenity --file-selection)" && cat >"$file"'
+```
+
+#### Open terminal buffer in less
+
+```
+on-key-... = pipe_all_ansi: termineur --no-connect-stdout --connect 'new_tab:less -R'
+```
+
+#### Select a URL
+
+```
+on-key-... = pipe_screen: sh -c "egrep -o '[[:alpha:]]+://[^[:space:]]*' | termineur --connect split_above:fzf"
+```
+
+#### Increase scrollback limit
+
+```
+on-key-... = run: sh -c 'termineur -c "scrollback-lines = $(( $(termineur -c scrollback-lines) + 1000 ))" '
+```
+
+#### Background image
+
+Make the terminal background transparent:
+```
+background = rgba(0x11, 0x11, 0x11, 0.8)
+```
+
+Then apply the following CSS:
+```css
+.termineur .split-root {
+    background: url("/path/to/image") center / cover;
+}
+```
+
+#### Dim inactive terminals
+
+Apply the following CSS:
+```css
+overlay {
+    background: rgba(64, 64, 64, 0.3);
+}
+.selected overlay {
+    background: none;
+}
+```
