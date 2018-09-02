@@ -202,7 +202,7 @@ gboolean split_move_focus(GtkWidget* widget, GtkOrientation orientation, gboolea
     }
 
     if (closest) {
-        gtk_widget_grab_focus(closest);
+        term_set_focus(VTE_TERMINAL(closest), TRUE);
         return TRUE;
     }
     return FALSE;

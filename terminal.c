@@ -59,7 +59,7 @@ GtkWidget* term_remove(VteTerminal* terminal) {
 
     if (active_terminal) {
         // focus next terminal
-        gtk_widget_grab_focus(GTK_WIDGET(active_terminal));
+        term_set_focus(VTE_TERMINAL(active_terminal), TRUE);
     }
     return grid;
 }
@@ -129,16 +129,24 @@ void change_terminal_state(VteTerminal* terminal, int new_state) {
     }
 }
 
-gboolean term_focus_in_event(VteTerminal* terminal, GdkEvent* event, gpointer data) {
+void term_set_focus(VteTerminal* terminal, gboolean grab) {
     // set some css
     GtkWidget* tab = term_get_tab(terminal);
     VteTerminal* old_focus = VTE_TERMINAL(split_get_active_term(tab));
-    if (old_focus && old_focus != terminal) {
-        term_change_css_class(old_focus, "selected", 0);
-    }
-    term_change_css_class(terminal, "selected", 1);
 
-    split_set_active_term(terminal);
+    term_change_css_class(terminal, "selected", 1);
+    if (old_focus != terminal) {
+        if (old_focus) {
+            term_change_css_class(old_focus, "selected", 0);
+        }
+        split_set_active_term(terminal);
+    }
+
+    gtk_widget_grab_focus(GTK_WIDGET(terminal));
+}
+
+gboolean term_focus_in_event(VteTerminal* terminal, GdkEvent* event, gpointer data) {
+    term_set_focus(terminal, FALSE);
     // clear activity once terminal is focused
     change_terminal_state(terminal, TERMINAL_NO_STATE);
 
@@ -611,6 +619,8 @@ void term_select_range(VteTerminal* terminal, double start_col, double start_row
 
     if (GTK_IS_ENTRY(focused)) {
         gtk_entry_grab_focus_without_selecting(GTK_ENTRY(focused));
+    } else if (VTE_IS_TERMINAL(focused)) {
+        term_set_focus(VTE_TERMINAL(focused), TRUE);
     } else {
         gtk_widget_grab_focus(focused);
     }

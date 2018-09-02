@@ -242,7 +242,7 @@ GtkWidget* make_split(VteTerminal* terminal, char* data, GtkOrientation orientat
 
     // focus the new terminal
     terminal = g_object_get_data(G_OBJECT(grid), "terminal");
-    gtk_widget_grab_focus(GTK_WIDGET(terminal));
+    term_set_focus(terminal, TRUE);
     return grid;
 }
 
@@ -407,7 +407,7 @@ void paste_terminal(VteTerminal* terminal, char* data) {
     // focus the new terminal
     if (success) {
         terminal = g_object_get_data(G_OBJECT(grid), "terminal");
-        gtk_widget_grab_focus(GTK_WIDGET(detaching_terminal));
+        term_set_focus(detaching_terminal, TRUE);
     }
 
     g_object_unref(G_OBJECT(grid));
@@ -569,22 +569,22 @@ void pipe_all_ansi(VteTerminal* terminal, char* data, char** result) {
 
 void move_split_right(VteTerminal* terminal) {
     split_move(term_get_grid(terminal), GTK_ORIENTATION_HORIZONTAL, TRUE);
-    gtk_widget_grab_focus(GTK_WIDGET(terminal));
+    term_set_focus(terminal, TRUE);
 }
 
 void move_split_left(VteTerminal* terminal) {
     split_move(term_get_grid(terminal), GTK_ORIENTATION_HORIZONTAL, FALSE);
-    gtk_widget_grab_focus(GTK_WIDGET(terminal));
+    term_set_focus(terminal, TRUE);
 }
 
 void move_split_above(VteTerminal* terminal) {
     split_move(term_get_grid(terminal), GTK_ORIENTATION_VERTICAL, FALSE);
-    gtk_widget_grab_focus(GTK_WIDGET(terminal));
+    term_set_focus(terminal, TRUE);
 }
 
 void move_split_below(VteTerminal* terminal) {
     split_move(term_get_grid(terminal), GTK_ORIENTATION_VERTICAL, TRUE);
-    gtk_widget_grab_focus(GTK_WIDGET(terminal));
+    term_set_focus(terminal, TRUE);
 }
 
 void focus_split_right(VteTerminal* terminal) {

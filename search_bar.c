@@ -46,6 +46,8 @@ void search_down_clicked(GtkWidget* button, GtkWidget* entry) {
 gboolean focus_widget(GtkWidget* widget) {
     if (GTK_IS_ENTRY(widget)) {
         gtk_entry_grab_focus_without_selecting(GTK_ENTRY(widget));
+    } else if (VTE_IS_TERMINAL(widget)) {
+        term_set_focus(VTE_TERMINAL(widget), TRUE);
     } else {
         gtk_widget_grab_focus(widget);
     }
