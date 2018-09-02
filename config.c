@@ -591,48 +591,46 @@ void load_config(char* filename) {
 
     init_palette();
 
-    if (filename) {
-        char* final = filename;
-        if (! final) final = config_filename;
-        if (! final) final = g_build_filename(g_get_user_config_dir(), "vte_terminal", "config.ini", NULL);
-        FILE* file = fopen(final, "r");
+    char* final = filename;
+    if (! final) final = config_filename;
+    if (! final) final = g_build_filename(g_get_user_config_dir(), "vte_terminal", "config.ini", NULL);
+    FILE* file = fopen(final, "r");
 
-        if (file) {
-            char* line = NULL;
-            char* buffer = NULL;
-            size_t size = 0, bufsize = 0;
-            ssize_t len, l;
-            while ((len = getline(&line, &size, file)) != -1) {
-                // multilines
-                if (len >= 4 && STR_EQUAL(line+len-4, "\"\"\"\n")) {
-                    len -= 4;
-                    while ((l = getline(&buffer, &bufsize, file)) != -1) {
-                        len += l;
-                        if (len >= size) {
-                            size = len+1;
-                            line = realloc(line, size);
-                        }
-                        memcpy(line+len-l, buffer, l);
+    if (file) {
+        char* line = NULL;
+        char* buffer = NULL;
+        size_t size = 0, bufsize = 0;
+        ssize_t len, l;
+        while ((len = getline(&line, &size, file)) != -1) {
+            // multilines
+            if (len >= 4 && STR_EQUAL(line+len-4, "\"\"\"\n")) {
+                len -= 4;
+                while ((l = getline(&buffer, &bufsize, file)) != -1) {
+                    len += l;
+                    if (len >= size) {
+                        size = len+1;
+                        line = realloc(line, size);
+                    }
+                    memcpy(line+len-l, buffer, l);
 
-                        if (STR_STARTSWITH(line+len-4, "\"\"\"\n")) {
-                            line[len-4] = '\0';
-                            break;
-                        }
+                    if (STR_STARTSWITH(line+len-4, "\"\"\"\n")) {
+                        line[len-4] = '\0';
+                        break;
                     }
                 }
-
-                if (line[0] == '#' || line[0] == ';') continue; // comment
-                free(execute_line(line, len, FALSE, FALSE));
             }
-            fclose(file);
-            if (line) free(line);
-            if (buffer) free(buffer);
 
-        } else if (errno == ENOENT && !filename && !config_filename) {
-            // do nothing, if no file
-        } else {
-            g_warning("Failed to open %s: %s", final, strerror(errno));
+            if (line[0] == '#' || line[0] == ';') continue; // comment
+            free(execute_line(line, len, FALSE, FALSE));
         }
+        fclose(file);
+        if (line) free(line);
+        if (buffer) free(buffer);
+
+    } else if (errno == ENOENT && !filename && !config_filename) {
+        // do nothing, if no default file
+    } else {
+        g_warning("Failed to open %s: %s", final, strerror(errno));
     }
 
     reconfigure_all();
