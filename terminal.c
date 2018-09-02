@@ -387,7 +387,7 @@ void check_full_scrollbar(GtkAdjustment* adjustment, VteTerminal* terminal) {
     double page_size = gtk_adjustment_get_page_size(adjustment);
     double lower = gtk_adjustment_get_lower(adjustment);
     double upper = gtk_adjustment_get_upper(adjustment);
-    term_change_css_class(terminal, "full-width", (value == lower && (value + page_size) == upper));
+    term_change_css_class(terminal, "no-scrollback", (value == lower && (value + page_size) == upper));
 }
 
 void configure_terminal_scrollbar(VteTerminal* terminal, GtkPolicyType scrollbar_policy) {
