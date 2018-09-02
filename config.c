@@ -563,7 +563,7 @@ void load_config(char* filename) {
 
     char* final = filename;
     if (! final) final = config_filename;
-    if (! final) final = g_build_filename(g_get_user_config_dir(), "vte_terminal", "config.ini", NULL);
+    if (! final) final = g_build_filename(g_get_user_config_dir(), APP_PREFIX_LOWER, "config.ini", NULL);
     FILE* file = fopen(final, "r");
 
     if (file) {
