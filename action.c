@@ -166,7 +166,7 @@ void on_split_resize(GtkWidget* paned, GdkRectangle *rect, int value) {
     g_signal_handlers_disconnect_by_func(paned, on_split_resize, GINT_TO_POINTER(value));
 }
 
-void set_split_size(VteTerminal* terminal, GtkWidget* pane, GtkOrientation orientation, gboolean after, int split_size, int size, int sign, char* suffix, gboolean async) {
+int set_split_size(VteTerminal* terminal, GtkWidget* pane, GtkOrientation orientation, gboolean after, int split_size, int size, int sign, char* units) {
     GdkRectangle rect;
 
     // get the available size before splitting
@@ -175,9 +175,9 @@ void set_split_size(VteTerminal* terminal, GtkWidget* pane, GtkOrientation orien
         split_size = orientation == GTK_ORIENTATION_HORIZONTAL ? rect.width : rect.height;
     }
 
-    if (STR_EQUAL(suffix, "%")) {
+    if (STR_EQUAL(units, "%")) {
         size = split_size*size/100;
-    } else if (STR_EQUAL(suffix, "px")) {
+    } else if (STR_EQUAL(units, "px")) {
         //
     } else {
         size *= orientation == GTK_ORIENTATION_HORIZONTAL ? vte_terminal_get_char_width(terminal) : vte_terminal_get_char_height(terminal);
@@ -190,18 +190,19 @@ void set_split_size(VteTerminal* terminal, GtkWidget* pane, GtkOrientation orien
         size += rect.width;
     }
 
-    if (sign) {
-        size = gtk_paned_get_position(GTK_PANED(pane)) + size*sign;
-    }
-
-    if (after) {
+    if (sign && after) {
+        // shift the sep in the opposite direction and offset the sep width
+        size = gtk_paned_get_position(GTK_PANED(pane)) - sign*size - split_get_separator_size(pane);
+    } else if (sign) {
+        // shift in the correct direction
+        size = gtk_paned_get_position(GTK_PANED(pane)) + sign*size;
+    } else if (after) {
+        // offset against the right edge
         size = split_size - size - split_get_separator_size(pane);
     }
 
     gtk_paned_set_position(GTK_PANED(pane), size);
-    if (async) {
-        g_signal_connect(pane, "size-allocate", G_CALLBACK(on_split_resize), GINT_TO_POINTER(size));
-    }
+    return size;
 }
 
 GtkWidget* make_split(VteTerminal* terminal, char* data, GtkOrientation orientation, gboolean after, int** pipes) {
@@ -222,7 +223,8 @@ GtkWidget* make_split(VteTerminal* terminal, char* data, GtkOrientation orientat
         char* suffix;
         int size = strto10l(size_str, &suffix);
         if (size > 0) {
-            set_split_size(terminal, paned, orientation, after, split_size, size, 0, suffix, TRUE);
+            size = set_split_size(terminal, paned, orientation, after, split_size, size, 0, suffix);
+            g_signal_connect(paned, "size-allocate", G_CALLBACK(on_split_resize), GINT_TO_POINTER(size));
         }
         free(size_str);
     }
@@ -614,7 +616,7 @@ void resize_split(VteTerminal* terminal, char* data, GtkOrientation orientation,
         child = pane;
     }
 
-    set_split_size(terminal, pane, orientation, after, 0, size, sign, suffix, FALSE);
+    set_split_size(terminal, pane, orientation, after, 0, size, sign, suffix);
 }
 
 void resize_split_right(VteTerminal* terminal, char* data) {
