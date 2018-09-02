@@ -16,8 +16,8 @@ GdkRGBA palette[PALETTE_SIZE+2];
 
 // make sure terminal background is transparent by default
 #define GLOBAL_CSS \
-    "vte-terminal { background: none; }\n" \
-    "notebook ." ROOT_SPLIT_CLASS " { background: black; }\n"
+    "." APP_PREFIX_LOWER " vte-terminal { background: none; }\n" \
+    "." APP_PREFIX_LOWER " notebook ." ROOT_SPLIT_CLASS " { background: black; }\n"
 
 char* app_path;
 char* app_id;
