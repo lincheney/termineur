@@ -10,6 +10,8 @@
 #include "utils.h"
 #include "search_bar.h"
 
+GHashTable* actions = NULL;
+
 GtkWidget* detaching_tab = NULL;
 VteTerminal* detaching_terminal = NULL;
 
@@ -435,9 +437,7 @@ void close_tab(VteTerminal* terminal) {
 }
 
 void reload_config(VteTerminal* terminal, char* filename) {
-    if (actions) {
-        g_array_remove_range(actions, 0, actions->len);
-    }
+    remove_all_action_bindings();
     load_config(filename);
 }
 
@@ -851,4 +851,69 @@ Action make_action(char* name, char* arg) {
         break;
     }
     return action;
+}
+
+#if __WORDSIZE != 64
+#error Only 64 bit supported
+#endif
+
+#define MAKE_KEY(k, m) (GINT_TO_POINTER(((guint64)(k) << sizeof(ActionMetadata)) | m))
+
+void free_action(Action* action) {
+    if (action->cleanup)
+        action->cleanup(action->data);
+}
+
+void free_action_list(GArray* list) {
+    g_array_free(list, TRUE);
+}
+
+GHashTable* get_actions_table(gboolean create) {
+    if (! actions && create) {
+        actions = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, (GDestroyNotify)free_action_list);
+    }
+    return actions;
+}
+
+GArray* get_action_list(ActionKey key, ActionMetadata metadata, gboolean create) {
+    GHashTable* table = get_actions_table(create);
+    if (! table) return NULL;
+
+    void* k = MAKE_KEY(key, metadata);
+    GArray* list = g_hash_table_lookup(table, k);
+
+    if (! list && create) {
+        list = g_array_new(FALSE, FALSE, sizeof(Action));
+        g_array_set_clear_func(list, (GDestroyNotify)free_action);
+        g_hash_table_insert(table, k, list);
+    }
+    return list;
+}
+
+void add_action_binding(ActionKey key, ActionMetadata metadata, Action action) {
+    g_array_append_val(get_action_list(key, metadata, TRUE), action);
+}
+
+void remove_action_binding(ActionKey key, ActionMetadata metadata) {
+    void* k = MAKE_KEY(key, metadata);
+    GHashTable* table = get_actions_table(FALSE);
+    if (table) g_hash_table_remove(table, k);
+}
+
+void remove_all_action_bindings() {
+    GHashTable* table = get_actions_table(FALSE);
+    if (table) g_hash_table_remove_all(table);
+}
+
+int trigger_action(VteTerminal* terminal, ActionKey key, ActionMetadata metadata) {
+    int handled = 0;
+    GArray* list = get_action_list(key, metadata, FALSE);
+    if (list) {
+        for (int i = 0; i < list->len; i++) {
+            Action* action = &g_array_index(list, Action, i);
+            action->func(terminal, action->data, NULL);
+            handled = 1;
+        }
+    }
+    return handled;
 }

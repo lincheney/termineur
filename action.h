@@ -16,6 +16,14 @@ typedef struct {
     Action action;
 } ActionData;
 
+typedef guint32 ActionKey;
+typedef guint32 ActionMetadata;
+
+int trigger_action(VteTerminal* terminal, ActionKey key, ActionMetadata metadata);
+void add_action_binding(ActionKey key, ActionMetadata metadata, Action action);
+void remove_action_binding(ActionKey key, ActionMetadata metadata);
+void remove_all_action_bindings();
+
 Action make_action(char*, char*);
 
 GtkWidget* new_tab(VteTerminal* terminal, char* data, int** pipes);

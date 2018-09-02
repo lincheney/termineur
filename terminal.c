@@ -77,14 +77,14 @@ void term_destroyed(VteTerminal* terminal, GtkWidget* grid) {
 }
 
 void terminal_bell(VteTerminal* terminal) {
-    trigger_action(terminal, -1, BELL_EVENT);
+    trigger_action(terminal, EVENT_KEY, BELL_EVENT);
 }
 
 void terminal_hyperlink_hover(VteTerminal* terminal) {
     char* uri;
     g_object_get(G_OBJECT(terminal), "hyperlink-hover-uri", &uri, NULL);
     if (uri) {
-        trigger_action(terminal, -1, HYPERLINK_HOVER_EVENT);
+        trigger_action(terminal, EVENT_KEY, HYPERLINK_HOVER_EVENT);
     }
 }
 
@@ -93,7 +93,7 @@ gboolean terminal_button_press_event(VteTerminal* terminal, GdkEvent* event) {
         char* uri;
         g_object_get(G_OBJECT(terminal), "hyperlink-hover-uri", &uri, NULL);
         if (uri) {
-            trigger_action(terminal, -1, HYPERLINK_CLICK_EVENT);
+            trigger_action(terminal, EVENT_KEY, HYPERLINK_CLICK_EVENT);
         }
     }
     return FALSE;
@@ -150,7 +150,7 @@ gboolean term_focus_in_event(VteTerminal* terminal, GdkEvent* event, gpointer da
     // clear activity once terminal is focused
     change_terminal_state(terminal, TERMINAL_NO_STATE);
 
-    trigger_action(terminal, -1, FOCUS_IN_EVENT);
+    trigger_action(terminal, EVENT_KEY, FOCUS_IN_EVENT);
     return FALSE;
 }
 

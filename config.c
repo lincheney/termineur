@@ -191,15 +191,6 @@ Action lookup_action(char* value) {
     return make_action(value, arg);
 }
 
-void unset_action(guint key, int metadata) {
-    for (int i = actions->len - 1; i >= 0; i--) {
-        ActionData* action = &g_array_index(actions, ActionData, i);
-        if (action->key == key && action->metadata == metadata) {
-            g_array_remove_index(actions, i);
-        }
-    }
-}
-
 int handle_config(char* line, size_t len, char** result) {
     char* tmp;
     char* value = strchr(line, '=');
@@ -448,15 +439,17 @@ int handle_config(char* line, size_t len, char** result) {
     char* event;
     if (value && (event = STR_STRIP_PREFIX(line, "on-"))) {
 
-        ActionData action = {0, 0, {NULL, NULL, NULL}};
+        ActionKey key = 0;
+        ActionMetadata metadata = 0;
 
 #define MAP_EVENT(string, value) \
         if (STR_EQUAL(event, #string)) { \
-            action.key = -1; \
-            action.metadata = value; \
+            key = EVENT_KEY; \
+            metadata = value; \
             break; \
         }
 
+        gboolean found = TRUE;
         while (1) {
             MAP_EVENT(bell, BELL_EVENT);
             MAP_EVENT(hyperlink-hover, HYPERLINK_HOVER_EVENT);
@@ -466,27 +459,27 @@ int handle_config(char* line, size_t len, char** result) {
 
             char* shortcut;
             if ((shortcut = STR_STRIP_PREFIX(event, "key-"))) {
-                gtk_accelerator_parse(shortcut, &(action.key), (GdkModifierType*) &(action.metadata));
-                if (action.metadata & GDK_SHIFT_MASK) {
-                    action.key = gdk_keyval_to_upper(action.key);
+                gtk_accelerator_parse(shortcut, &key, (GdkModifierType*)&metadata);
+                if (metadata & GDK_SHIFT_MASK) {
+                    key = gdk_keyval_to_upper(key);
                 }
                 break;
             }
 
+            found = FALSE;
             break;
         }
 
 
-        if (action.key) {
+        if (found) {
             if (STR_EQUAL(value, "")) {
                 // unset this shortcut
-                unset_action(action.key, action.metadata);
+                remove_action_binding(key, metadata);
                 return 1;
             } else {
-                Action a = lookup_action(value);
-                if (a.func) {
-                    action.action = a;
-                    g_array_append_val(actions, action);
+                Action action = lookup_action(value);
+                if (action.func) {
+                    add_action_binding(key, metadata, action);
                 } else {
                     g_warning("Unrecognised action: %s", value);
                 }
@@ -526,25 +519,6 @@ void reconfigure_all() {
     timer_id = g_timeout_add(ui_refresh_interval, refresh_ui, NULL);
 }
 
-int trigger_action(VteTerminal* terminal, guint key, int metadata) {
-    int handled = 0;
-    if (actions) {
-        for (int i = 0; i < actions->len; i++) {
-            ActionData* action = &g_array_index(actions, ActionData, i);
-            if (action->key == key && action->metadata == metadata) {
-                action->action.func(terminal, action->action.data, NULL);
-                handled = 1;
-            }
-        }
-    }
-    return handled;
-}
-
-void free_action_data(ActionData* c) {
-    if (c->action.cleanup)
-        c->action.cleanup(c->action.data);
-}
-
 void* execute_line(char* line, int size, gboolean reconfigure, gboolean do_actions) {
     char* line_copy;
     char* result = NULL;
@@ -581,10 +555,6 @@ void* execute_line(char* line, int size, gboolean reconfigure, gboolean do_actio
 
 void load_config(char* filename) {
     // init some things
-    if (! actions) {
-        actions = g_array_new(FALSE, FALSE, sizeof(ActionData));
-        g_array_set_clear_func(actions, (GDestroyNotify)free_action_data);
-    }
     if (! css_provider) {
         css_provider = gtk_css_provider_new();
     }

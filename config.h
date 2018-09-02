@@ -45,13 +45,12 @@ int search_case_sensitive;
 gboolean search_use_regex;
 char* search_pattern;
 
+#define EVENT_KEY 0
 #define BELL_EVENT 1
 #define HYPERLINK_HOVER_EVENT 2
 #define HYPERLINK_CLICK_EVENT 3
 #define FOCUS_IN_EVENT 4
 #define START_EVENT 5
-
-GArray* actions;
 
 char** shell_split(char* string, gint* argc);
 int set_config_from_str(char* line, size_t len);
@@ -62,6 +61,5 @@ void load_config(char* filename);
 void configure_terminal(VteTerminal*);
 void configure_tab(GtkContainer*, GtkWidget*);
 void configure_window(GtkWindow*);
-int trigger_action(VteTerminal* terminal, guint key, int metadata);
 
 #endif
