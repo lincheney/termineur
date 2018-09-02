@@ -14,4 +14,10 @@
 #define ADD_CSS_CLASS(widget, class) gtk_style_context_add_class(gtk_widget_get_style_context(widget), class)
 #define REMOVE_CSS_CLASS(widget, class) gtk_style_context_remove_class(gtk_widget_get_style_context(widget), class)
 
+#define strto10l(x, y) strtol(x, y, 10)
+#define PARSE_DELTA(string, sign_var, suffix_var, func) \
+    ( sign_var = (string[0] == '+') ? 1 : (string[0] == '-') ? -1 : 0, func(string, suffix_var)*(sign_var ? sign_var : 1) )
+#define PARSE_FLOAT_DELTA(string, sign_var, suffix_var) PARSE_DELTA(string, sign_var, suffix_var, strtof)
+#define PARSE_INT_DELTA(string, sign_var, suffix_var) PARSE_DELTA(string, sign_var, suffix_var, strto10l)
+
 #endif

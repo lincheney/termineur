@@ -46,9 +46,10 @@ void copy_text(VteTerminal* terminal) {
 }
 
 void change_font_scale(VteTerminal* terminal, char* delta) {
-    float value = strtof(delta, NULL);
-    if (delta[0] == '+' || value < 0) {
-        value = vte_terminal_get_font_scale(terminal) + value;
+    int sign;
+    float value = PARSE_FLOAT_DELTA(delta, sign, NULL);
+    if (sign) {
+        value = vte_terminal_get_font_scale(terminal) + value*sign;
     }
     vte_terminal_set_font_scale(terminal, value);
 }
@@ -165,6 +166,44 @@ void on_split_resize(GtkWidget* paned, GdkRectangle *rect, int value) {
     g_signal_handlers_disconnect_by_func(paned, on_split_resize, GINT_TO_POINTER(value));
 }
 
+void set_split_size(VteTerminal* terminal, GtkWidget* pane, GtkOrientation orientation, gboolean after, int split_size, int size, int sign, char* suffix, gboolean async) {
+    GdkRectangle rect;
+
+    // get the available size before splitting
+    if (! split_size) {
+        gtk_widget_get_allocation(pane, &rect);
+        split_size = orientation == GTK_ORIENTATION_HORIZONTAL ? rect.width : rect.height;
+    }
+
+    if (STR_EQUAL(suffix, "%")) {
+        size = split_size*size/100;
+    } else if (STR_EQUAL(suffix, "px")) {
+        //
+    } else {
+        size *= orientation == GTK_ORIENTATION_HORIZONTAL ? vte_terminal_get_char_width(terminal) : vte_terminal_get_char_height(terminal);
+    }
+
+    if (show_scrollbar && orientation == GTK_ORIENTATION_HORIZONTAL) {
+        GtkWidget* dest = term_get_grid(terminal);
+        GtkWidget* scrollbar = g_object_get_data(G_OBJECT(dest), "scrollbar");
+        gtk_widget_get_allocation(scrollbar, &rect);
+        size += rect.width;
+    }
+
+    if (sign) {
+        size = gtk_paned_get_position(GTK_PANED(pane)) + size*sign;
+    }
+
+    if (after) {
+        size = split_size - size - split_get_separator_size(pane);
+    }
+
+    gtk_paned_set_position(GTK_PANED(pane), size);
+    if (async) {
+        g_signal_connect(pane, "size-allocate", G_CALLBACK(on_split_resize), GINT_TO_POINTER(size));
+    }
+}
+
 GtkWidget* make_split(VteTerminal* terminal, char* data, GtkOrientation orientation, gboolean after, int** pipes) {
     GtkWidget* dest = term_get_grid(terminal);
     char* size_str = NULL;
@@ -177,32 +216,13 @@ GtkWidget* make_split(VteTerminal* terminal, char* data, GtkOrientation orientat
     GdkRectangle rect;
     gtk_widget_get_allocation(dest, &rect);
     int split_size = orientation == GTK_ORIENTATION_HORIZONTAL ? rect.width : rect.height;
-
     GtkWidget* paned = split(dest, grid, orientation, after);
 
     if (size_str) {
         char* suffix;
-        int size = strtol(size_str, &suffix, 10);
-        if (size) {
-            if (STR_EQUAL(suffix, "%")) {
-                size = split_size*size/100;
-            } else if (STR_EQUAL(suffix, "px")) {
-                //
-            } else {
-                size *= orientation == GTK_ORIENTATION_HORIZONTAL ? vte_terminal_get_char_width(terminal) : vte_terminal_get_char_height(terminal);
-            }
-
-            if (show_scrollbar && orientation == GTK_ORIENTATION_HORIZONTAL) {
-                GtkWidget* scrollbar = g_object_get_data(G_OBJECT(dest), "scrollbar");
-                gtk_widget_get_allocation(scrollbar, &rect);
-                size += rect.width;
-            }
-
-            if (after) {
-                size = split_size - size - split_get_separator_size(paned);
-            }
-            gtk_paned_set_position(GTK_PANED(paned), size);
-            g_signal_connect(paned, "size-allocate", G_CALLBACK(on_split_resize), GINT_TO_POINTER(size));
+        int size = strto10l(size_str, &suffix);
+        if (size > 0) {
+            set_split_size(terminal, paned, orientation, after, split_size, size, 0, suffix, TRUE);
         }
         free(size_str);
     }
@@ -570,6 +590,49 @@ void focus_split_below(VteTerminal* terminal) {
     split_move_focus(term_get_grid(terminal), GTK_ORIENTATION_VERTICAL, TRUE);
 }
 
+void resize_split(VteTerminal* terminal, char* data, GtkOrientation orientation, gboolean after) {
+    char* suffix;
+    int sign;
+    int size = PARSE_INT_DELTA(data, sign, &suffix);
+    after = !after;
+
+    // find first ancestor pane in correct orientation
+    GtkWidget* child = term_get_grid(terminal);
+    GtkWidget* root = term_get_tab(terminal);
+    GtkWidget* pane;
+    while (1) {
+        pane = gtk_widget_get_parent(child);
+        if (
+                gtk_orientable_get_orientation(GTK_ORIENTABLE(pane)) == orientation &&
+                (after ? gtk_paned_get_child2 : gtk_paned_get_child1)(GTK_PANED(pane)) == child
+        ) {
+            break;
+        }
+        if (pane == root) {
+            return;
+        }
+        child = pane;
+    }
+
+    set_split_size(terminal, pane, orientation, after, 0, size, sign, suffix, FALSE);
+}
+
+void resize_split_right(VteTerminal* terminal, char* data) {
+    resize_split(terminal, data, GTK_ORIENTATION_HORIZONTAL, TRUE);
+}
+
+void resize_split_left(VteTerminal* terminal, char* data) {
+    resize_split(terminal, data, GTK_ORIENTATION_HORIZONTAL, FALSE);
+}
+
+void resize_split_above(VteTerminal* terminal, char* data) {
+    resize_split(terminal, data, GTK_ORIENTATION_VERTICAL, FALSE);
+}
+
+void resize_split_below(VteTerminal* terminal, char* data) {
+    resize_split(terminal, data, GTK_ORIENTATION_VERTICAL, TRUE);
+}
+
 void show_message_bar(VteTerminal* terminal, char* data) {
     int timeout = -1;
     char* timeout_str;
@@ -753,6 +816,10 @@ Action make_action(char* name, char* arg) {
         MATCH_ACTION(focus_split_left);
         MATCH_ACTION(focus_split_above);
         MATCH_ACTION(focus_split_below);
+        MATCH_ACTION_WITH_DATA(resize_split_right, strdup(arg), free);
+        MATCH_ACTION_WITH_DATA(resize_split_left, strdup(arg), free);
+        MATCH_ACTION_WITH_DATA(resize_split_above, strdup(arg), free);
+        MATCH_ACTION_WITH_DATA(resize_split_below, strdup(arg), free);
         MATCH_ACTION_WITH_DATA(show_message_bar, strdup(arg), free);
         MATCH_ACTION(hide_message_bar);
         MATCH_ACTION_WITH_DATA(select_range, strdup(arg), free);
