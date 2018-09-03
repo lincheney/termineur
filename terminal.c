@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <pwd.h>
 #include <math.h>
 #include <string.h>
 #define PCRE2_CODE_UNIT_WIDTH 8
@@ -194,7 +195,7 @@ int get_foreground_pid(VteTerminal* terminal) {
     return fg_pid;
 }
 
-gboolean get_foreground_info(VteTerminal* terminal, int pid, char* name, int* ppid) {
+gboolean get_foreground_info(VteTerminal* terminal, int pid, char* name, int* ppid, int* euid) {
     pid = pid ? pid : get_foreground_pid(terminal);
     if (pid <= 0) return FALSE;
 
@@ -212,8 +213,8 @@ gboolean get_foreground_info(VteTerminal* terminal, int pid, char* name, int* pp
     char* value;
     char* ptr = file_buffer - 1;
 
-#define GET_FIELD(key, x) \
-    while (ptr && strncmp(ptr+1, key, sizeof(key)-1) != 0) { \
+#define GET_FIELD(key) \
+    while (ptr && !STR_STARTSWITH(ptr+1, key)) { \
         ptr = strchr(ptr+1, '\n'); \
     } \
     if (! ptr) return FALSE; \
@@ -223,13 +224,19 @@ gboolean get_foreground_info(VteTerminal* terminal, int pid, char* name, int* pp
     *ptr = '\0';
 
     if (name) {
-        GET_FIELD("Name:\t", 0);
+        GET_FIELD("Name:\t");
         strcpy(name, value);
     }
 
     if (ppid) {
-        GET_FIELD("PPid:\t", 1);
+        GET_FIELD("PPid:\t");
         *ppid = atoi(value);
+    }
+
+    if (euid) {
+        GET_FIELD("Uid:\t");
+        value = strchr(value, '\t');
+        *euid = atoi(value);
     }
 
     return TRUE;
@@ -256,12 +263,18 @@ gboolean term_construct_title(const char* format, int flags, VteTerminal* termin
     title = title ? title : "";
 
     char *dir = NULL, *name = NULL;
-    char dirbuffer[1024] = "", namebuffer[1024] = "";
+    char dirbuffer[256] = "", namebuffer[256] = "";
+    char* user = "";
+    int euid;
 
     // get name
     name = namebuffer;
-    if (flags & TITLE_FORMAT_NAME) {
-        get_foreground_info(terminal, 0, namebuffer, NULL);
+    if (flags & (TITLE_FORMAT_NAME | TITLE_FORMAT_USER)) {
+        get_foreground_info(terminal, 0, namebuffer, NULL, &euid);
+        if (flags & TITLE_FORMAT_USER) {
+            struct passwd* user_info = getpwuid(euid);
+            user = user_info->pw_name;
+        }
     }
 
     // get cwd
@@ -283,7 +296,7 @@ gboolean term_construct_title(const char* format, int flags, VteTerminal* termin
         dir = g_markup_escape_text(dir, -1);
     }
 
-    int result = snprintf(buffer, length, format, title, name, dir, tab_number) >= 0;
+    int result = snprintf(buffer, length, format, title, name, dir, tab_number, user) >= 0;
 
     if (escape_markup) {
         g_free(title);

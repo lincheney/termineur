@@ -127,9 +127,13 @@ TitleFormat parse_title_format(char* string) {
                 pieces[i] = "%3$s";
                 flags |= TITLE_FORMAT_CWD;
                 break;
-            case 'N': // tab numer
+            case 'N': // tab number
                 pieces[i] = "%4$i";
                 flags |= TITLE_FORMAT_NUM;
+                break;
+            case 'u': // username
+                pieces[i] = "%5$s";
+                flags |= TITLE_FORMAT_USER;
                 break;
             case '\0':
                 end --; // back out one so we don't go past end of array

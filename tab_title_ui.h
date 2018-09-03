@@ -8,6 +8,7 @@
 #define TITLE_FORMAT_NAME 2
 #define TITLE_FORMAT_CWD 3
 #define TITLE_FORMAT_NUM 4
+#define TITLE_FORMAT_USER 5
 
 typedef struct {
     int flags;

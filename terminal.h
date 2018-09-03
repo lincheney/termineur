@@ -13,7 +13,7 @@ void set_window_title_format(char*);
 gboolean term_construct_title(const char* format, int flags, VteTerminal* terminal, gboolean escape_markup, char* buffer, size_t length);
 int get_foreground_pid(VteTerminal* terminal);
 struct termios get_term_attr(VteTerminal* terminal);
-gboolean get_foreground_info(VteTerminal* terminal, int pid, char* name, int* ppid);
+gboolean get_foreground_info(VteTerminal* terminal, int pid, char* name, int* ppid, int* euid);
 int get_immediate_child_pid(VteTerminal* terminal);
 int is_running_foreground_process(VteTerminal* terminal);
 void update_terminal_css_class(VteTerminal* terminal);
