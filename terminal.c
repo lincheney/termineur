@@ -156,23 +156,32 @@ gboolean term_focus_in_event(VteTerminal* terminal, GdkEvent* event, gpointer da
 }
 
 gboolean terminal_inactivity(VteTerminal* terminal) {
+    if (gtk_widget_has_focus(GTK_WIDGET(terminal))) {
+        return FALSE;
+    }
+
     change_terminal_state(terminal, TERMINAL_INACTIVE);
     g_object_set_data(G_OBJECT(terminal), "inactivity_timer", NULL);
     return FALSE;
 }
 
 void terminal_activity(VteTerminal* terminal) {
+    if (gtk_widget_has_focus(GTK_WIDGET(terminal))) {
+        return;
+    }
+
     change_terminal_state(terminal, TERMINAL_ACTIVE);
     GSource* inactivity_timer = g_object_get_data(G_OBJECT(terminal), "inactivity_timer");
+
     if (inactivity_timer) {
-        // delay inactivity timer some more
-        g_source_set_ready_time(inactivity_timer, g_source_get_time(inactivity_timer) + inactivity_duration*1000);
-    } else {
-        inactivity_timer = g_timeout_source_new(inactivity_duration);
-        g_source_set_callback(inactivity_timer, (GSourceFunc)terminal_inactivity, terminal, NULL);
-        g_object_set_data(G_OBJECT(terminal), "inactivity_timer", inactivity_timer);
-        g_source_attach(inactivity_timer, NULL);
+        g_source_destroy(inactivity_timer);
+        g_source_unref(inactivity_timer);
     }
+
+    inactivity_timer = g_timeout_source_new(inactivity_duration);
+    g_source_set_callback(inactivity_timer, (GSourceFunc)terminal_inactivity, terminal, NULL);
+    g_object_set_data(G_OBJECT(terminal), "inactivity_timer", inactivity_timer);
+    g_source_attach(inactivity_timer, NULL);
 }
 
 
