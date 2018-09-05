@@ -100,7 +100,7 @@ char* make_app_id() {
 
     if (! app_id) {
         const char* display = gdk_display_get_name(gdk_display_get_default());
-        snprintf(buffer, sizeof(buffer), APP_PREFIX ".x%s", display+1);
+        snprintf(buffer, sizeof(buffer), APP_PREFIX "." GIT_REF ".%s", display);
         app_id = strndup(buffer, sizeof(buffer));
     } else if (STR_EQUAL(app_id, "")) {
         app_id = NULL;

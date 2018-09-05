@@ -12,6 +12,7 @@ debug: $(TARGET)
 
 release: $(TARGET)
 
+$(TARGET): CFLAGS+=-DGIT_REF=\"$(shell git rev-parse --short HEAD)\"
 $(TARGET): $(SOURCES:%.c=%.o)
 	@echo '>>> Compiling $@'
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
