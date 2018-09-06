@@ -150,6 +150,8 @@ void refresh_ui_notebook(GtkWidget* notebook) {
     if (notebook_show_tabs == OPTION_SMART) {
         int n = gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook));
         g_object_set(G_OBJECT(notebook), "show-tabs", n > 1, NULL);
+    } else {
+        g_object_set(G_OBJECT(notebook), "show-tabs", notebook_show_tabs, NULL);
     }
 }
 
