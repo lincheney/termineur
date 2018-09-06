@@ -74,17 +74,20 @@ void notebook_size_allocate(GtkNotebook* notebook, GdkRectangle* alloc) {
     if (action_widget && gtk_widget_is_visible(action_widget)) {
         GdkRectangle rect;
         gtk_widget_get_allocation(action_widget, &rect);
-        if (vertical) {
-            rect.y -= rect.width - rect.height;
-            rect.height = rect.width;
-        } else {
-            rect.x -= rect.height- rect.width;
-            rect.width = rect.height;
-        }
-        gtk_widget_size_allocate(action_widget, &rect);
 
-        width -= rect.width;
-        height -= rect.height;
+        if (rect.width > 1 && rect.height > 1) {
+            if (vertical) {
+                rect.y -= rect.width - rect.height;
+                rect.height = rect.width;
+            } else {
+                rect.x -= rect.height- rect.width;
+                rect.width = rect.height;
+            }
+            gtk_widget_size_allocate(action_widget, &rect);
+
+            width -= rect.width;
+            height -= rect.height;
+        }
     }
 
     // don't bother sizing tabs if they don't expand
