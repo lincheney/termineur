@@ -25,6 +25,7 @@ void remove_action_binding(ActionKey key, ActionMetadata metadata);
 void remove_all_action_bindings();
 
 Action make_action(char*, char*);
+void free_action(Action* action);
 
 GtkWidget* new_tab(VteTerminal* terminal, char* data, int** pipes);
 GtkWidget* new_window(VteTerminal* terminal, char* data, int** pipes);

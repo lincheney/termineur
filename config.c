@@ -82,7 +82,7 @@ float ptr_to_float(void* x) {
     return flt;
 }
 
-void init_palette() {
+void reset_palette() {
     for (int i = 0; i < PALETTE_SIZE; i++) {
         if (i < 8) {
             palette[i].red = (i & 1) ? 0.5 : 0;
@@ -540,9 +540,7 @@ void* execute_line(char* line, int size, gboolean reconfigure, gboolean do_actio
             VteTerminal* terminal = get_active_terminal(NULL);
             if (terminal) {
                 action.func(terminal, action.data, &result);
-                if (action.cleanup) {
-                    action.cleanup(action.data);
-                }
+                free_action(&action);
                 return result;
             }
             return NULL;
@@ -553,13 +551,18 @@ void* execute_line(char* line, int size, gboolean reconfigure, gboolean do_actio
     return NULL;
 }
 
-void load_config(char* filename) {
+void reset_config() {
+    remove_all_action_bindings();
+    reset_palette();
+}
+
+void load_config(char* filename, gboolean reset) {
     // init some things
     if (! css_provider) {
         css_provider = gtk_css_provider_new();
     }
 
-    init_palette();
+    reset_config();
 
     char* final = filename;
     if (! final) final = config_filename;

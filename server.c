@@ -171,7 +171,7 @@ int run_server(int argc, char** argv) {
     GdkScreen* screen = gdk_screen_get_default();
     gtk_style_context_add_provider_for_screen(screen, GTK_STYLE_PROVIDER(css_provider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
 
-    load_config(config_filename);
+    load_config(config_filename, TRUE);
     GtkWidget* window = make_new_window_full(NULL, NULL, argc, argv);
     trigger_action(get_active_terminal(window), EVENT_KEY, START_EVENT);
 

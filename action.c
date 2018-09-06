@@ -437,8 +437,7 @@ void close_tab(VteTerminal* terminal) {
 }
 
 void reload_config(VteTerminal* terminal, char* filename) {
-    remove_all_action_bindings();
-    load_config(filename);
+    load_config(filename, TRUE);
 }
 
 void subprocess_finish(GObject* proc, GAsyncResult* res, void* data) {
