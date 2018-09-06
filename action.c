@@ -437,7 +437,14 @@ void close_tab(VteTerminal* terminal) {
 }
 
 void reload_config(VteTerminal* terminal, char* filename) {
-    load_config(filename, TRUE);
+    config_load_from_file(filename, TRUE);
+    trigger_action(terminal, EVENT_KEY, CONFIG_LOAD_EVENT);
+}
+
+void load_file(VteTerminal* terminal, char* filename) {
+    if (filename) {
+        config_load_from_file(filename, FALSE);
+    }
 }
 
 void subprocess_finish(GObject* proc, GAsyncResult* res, void* data) {
@@ -815,6 +822,7 @@ Action make_action(char* name, char* arg) {
         MATCH_ACTION_WITH_DATA_DEFAULT(switch_to_tab, GINT_TO_POINTER(atoi(arg)), NULL, 0);
         MATCH_ACTION(tab_popup_menu);
         MATCH_ACTION_WITH_DATA(reload_config, strdup(arg), free);
+        MATCH_ACTION_WITH_DATA(load_file, strdup(arg), free);
         MATCH_ACTION_WITH_DATA(add_css_class, strdup(arg), free);
         MATCH_ACTION_WITH_DATA(remove_css_class, strdup(arg), free);
         MATCH_ACTION_WITH_DATA(run, strdup(arg), free);

@@ -51,13 +51,14 @@ char* search_pattern;
 #define HYPERLINK_CLICK_EVENT 3
 #define FOCUS_IN_EVENT 4
 #define START_EVENT 5
+#define CONFIG_LOAD_EVENT 6
 
 char** shell_split(char* string, gint* argc);
 int set_config_from_str(char* line, size_t len);
 Action lookup_action(char* value);
 void reconfigure_all();
 void* execute_line(char* line, int size, gboolean reconfigure, gboolean do_actions);
-void load_config(char* filename, gboolean reset);
+void config_load_from_file(char* filename, gboolean reset);
 void configure_terminal(VteTerminal*);
 void configure_tab(GtkContainer*, GtkWidget*);
 void configure_window(GtkWindow*);

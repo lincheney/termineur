@@ -456,6 +456,7 @@ int handle_config(char* line, size_t len, char** result) {
             MAP_EVENT(hyperlink-click, HYPERLINK_CLICK_EVENT);
             MAP_EVENT(focus, FOCUS_IN_EVENT);
             MAP_EVENT(start, START_EVENT);
+            MAP_EVENT(config, CONFIG_LOAD_EVENT);
 
             char* shortcut;
             if ((shortcut = STR_STRIP_PREFIX(event, "key-"))) {
@@ -523,6 +524,8 @@ void* execute_line(char* line, int size, gboolean reconfigure, gboolean do_actio
     char* line_copy;
     char* result = NULL;
 
+    if (size < 0) size = strlen(line);
+
     line_copy = strdup(line);
     int handled = handle_config(line_copy, size, &result);
     free(line_copy);
@@ -556,7 +559,7 @@ void reset_config() {
     reset_palette();
 }
 
-void load_config(char* filename, gboolean reset) {
+void config_load_from_file(char* filename, gboolean reset) {
     // init some things
     if (! css_provider) {
         css_provider = gtk_css_provider_new();

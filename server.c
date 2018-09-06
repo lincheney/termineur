@@ -171,9 +171,11 @@ int run_server(int argc, char** argv) {
     GdkScreen* screen = gdk_screen_get_default();
     gtk_style_context_add_provider_for_screen(screen, GTK_STYLE_PROVIDER(css_provider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
 
-    load_config(config_filename, TRUE);
+    config_load_from_file(config_filename, TRUE);
     GtkWidget* window = make_new_window_full(NULL, NULL, argc, argv);
-    trigger_action(get_active_terminal(window), EVENT_KEY, START_EVENT);
+    VteTerminal* terminal = get_active_terminal(window);
+    trigger_action(terminal, EVENT_KEY, START_EVENT);
+    trigger_action(terminal, EVENT_KEY, CONFIG_LOAD_EVENT);
 
     g_unix_signal_add(SIGINT, (GSourceFunc)gtk_main_quit, NULL);
     gtk_main();
