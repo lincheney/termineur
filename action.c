@@ -488,6 +488,7 @@ void spawn_subprocess(VteTerminal* terminal, gchar* data_, char* text, char** re
     char buffer[1024];
     glong cursorx, cursory;
     char* hyperlink = NULL;
+    proc_t* fgproc = get_foreground_process(terminal);
 
     // env vars
     vte_terminal_get_cursor_position(terminal, &cursorx, &cursory);
@@ -510,7 +511,7 @@ void spawn_subprocess(VteTerminal* terminal, gchar* data_, char* text, char** re
 
     SET_ENVIRON(PATH, app_path);
     FMT_ENVIRON(PID, "%i", get_pid(terminal));
-    FMT_ENVIRON(FGPID, "%i", get_foreground_pid(terminal));
+    FMT_ENVIRON(FGPID, "%i", fgproc->tid);
     FMT_ENVIRON(CURSORX, "%li", cursorx);
     FMT_ENVIRON(CURSORY, "%li", cursory);
     FMT_ENVIRON(CONTROL_FLOW, "%i", get_term_attr(terminal).c_iflag & IXON ? 1 : 0);
@@ -527,6 +528,8 @@ void spawn_subprocess(VteTerminal* terminal, gchar* data_, char* text, char** re
         FMT_ENVIRON(XWINDOWID, "0x%lx", winid);
     }
 #endif
+
+    freeproc(fgproc);
 
     GSubprocess* proc = g_subprocess_launcher_spawnv(launcher, (const char**)argv, &error);
     if (!proc) {

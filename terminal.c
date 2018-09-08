@@ -6,6 +6,7 @@
 #include <pwd.h>
 #include <math.h>
 #include <string.h>
+#include <proc/pwcache.h>
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
 #include "config.h"
@@ -197,83 +198,27 @@ gboolean get_current_dir(VteTerminal* terminal, char* buffer, size_t length) {
     return TRUE;
 }
 
-int get_foreground_pid(VteTerminal* terminal) {
+proc_t* get_foreground_process(VteTerminal* terminal) {
     VtePty* pty = vte_terminal_get_pty(terminal);
     int pty_fd = vte_pty_get_fd(pty);
-    int fg_pid = tcgetpgrp(pty_fd);
+    int pgid = tcgetpgrp(pty_fd);
 
-    if (kill(fg_pid, 0)) {
-        GError* error = NULL;
-        int exit_status;
-        char buffer[32];
-        snprintf(buffer, sizeof(buffer), "%i", fg_pid);
+    PROCTAB* ptp = openproc(PROC_FILLSTAT | PROC_PID, &pgid);
+    proc_t* proc = readproc(ptp, NULL);
 
-        char* stdout_buf = NULL;
-        char* argv[] = {"pgrep", "-g", buffer, NULL};
-
-        if (! g_spawn_sync(NULL, argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, &stdout_buf, NULL, &exit_status, &error)) {
-            g_warning("Failed to run pgrep: %s", error->message);
-            return 0;
+    if (! proc) {
+        // process using pgid does not exist, have to look for it
+        closeproc(ptp);
+        ptp = openproc(PROC_FILLSTAT);
+        while ((proc = readproc(ptp, proc))) {
+            if (proc->pgrp == pgid) {
+                break;
+            }
         }
-
-        if (exit_status) {
-            g_warning("Failed to run pgrep: %i", exit_status);
-            free(stdout_buf);
-            return 0;
-        }
-
-        fg_pid = atoi(stdout_buf);
-        free(stdout_buf);
     }
 
-    return fg_pid;
-}
-
-gboolean get_foreground_info(VteTerminal* terminal, int pid, char* name, int* ppid, int* euid) {
-    pid = pid ? pid : get_foreground_pid(terminal);
-    if (pid <= 0) return FALSE;
-
-    char fname[100];
-    snprintf(fname, 100, "/proc/%i/status", pid);
-
-    char file_buffer[1024];
-    int fd = open(fname, O_RDONLY);
-    if (fd < 0) return FALSE;
-    int length = read(fd, file_buffer, sizeof(file_buffer)-1);
-    if (length < 0) return FALSE;
-    close(fd);
-    file_buffer[length] = '\0';
-
-    char* value;
-    char* ptr = file_buffer - 1;
-
-#define GET_FIELD(key) \
-    while (ptr && !STR_STARTSWITH(ptr+1, key)) { \
-        ptr = strchr(ptr+1, '\n'); \
-    } \
-    if (! ptr) return FALSE; \
-    value = ptr + sizeof(key); \
-    ptr = strchr(value+1, '\n'); \
-    if (! ptr) return FALSE; \
-    *ptr = '\0';
-
-    if (name) {
-        GET_FIELD("Name:\t");
-        strcpy(name, value);
-    }
-
-    if (ppid) {
-        GET_FIELD("PPid:\t");
-        *ppid = atoi(value);
-    }
-
-    if (euid) {
-        GET_FIELD("Uid:\t");
-        value = strchr(value, '\t');
-        *euid = atoi(value);
-    }
-
-    return TRUE;
+    closeproc(ptp);
+    return proc;
 }
 
 struct termios get_term_attr(VteTerminal* terminal) {
@@ -285,7 +230,10 @@ struct termios get_term_attr(VteTerminal* terminal) {
 }
 
 int is_running_foreground_process(VteTerminal* terminal) {
-    return get_pid(terminal) != get_foreground_pid(terminal);
+    proc_t* proc = get_foreground_process(terminal);
+    int fg_pid = proc->tid;
+    freeproc(proc);
+    return get_pid(terminal) != fg_pid;
 }
 
 gboolean term_construct_title(const char* format, int flags, VteTerminal* terminal, gboolean escape_markup, char* buffer, size_t length) {
@@ -297,17 +245,17 @@ gboolean term_construct_title(const char* format, int flags, VteTerminal* termin
     title = title ? title : "";
 
     char *dir = NULL, *name = NULL;
-    char dirbuffer[256] = "", namebuffer[256] = "";
+    char dirbuffer[256] = "";
     char* user = "";
-    int euid = 0;
+    proc_t* proc = NULL;
 
     // get name
-    name = namebuffer;
     if (flags & (TITLE_FORMAT_NAME | TITLE_FORMAT_USER)) {
-        get_foreground_info(terminal, 0, namebuffer, NULL, &euid);
+        proc = get_foreground_process(terminal);
+        name = proc->cmd;
+
         if (flags & TITLE_FORMAT_USER) {
-            struct passwd* user_info = getpwuid(euid);
-            user = user_info->pw_name;
+            user = pwcache_get_user(proc->euid);
         }
     }
 
@@ -332,6 +280,7 @@ gboolean term_construct_title(const char* format, int flags, VteTerminal* termin
 
     int result = snprintf(buffer, length, format, title, name, dir, tab_number, user) >= 0;
 
+    freeproc(proc);
     if (escape_markup) {
         g_free(title);
         g_free(name);
