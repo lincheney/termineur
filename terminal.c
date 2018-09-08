@@ -201,6 +201,31 @@ int get_foreground_pid(VteTerminal* terminal) {
     VtePty* pty = vte_terminal_get_pty(terminal);
     int pty_fd = vte_pty_get_fd(pty);
     int fg_pid = tcgetpgrp(pty_fd);
+
+    if (kill(fg_pid, 0)) {
+        GError* error = NULL;
+        int exit_status;
+        char buffer[32];
+        snprintf(buffer, sizeof(buffer), "%i", fg_pid);
+
+        char* stdout_buf = NULL;
+        char* argv[] = {"pgrep", "-g", buffer, NULL};
+
+        if (! g_spawn_sync(NULL, argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, &stdout_buf, NULL, &exit_status, &error)) {
+            g_warning("Failed to run pgrep: %s", error->message);
+            return 0;
+        }
+
+        if (exit_status) {
+            g_warning("Failed to run pgrep: %i", exit_status);
+            free(stdout_buf);
+            return 0;
+        }
+
+        fg_pid = atoi(stdout_buf);
+        free(stdout_buf);
+    }
+
     return fg_pid;
 }
 
@@ -274,7 +299,7 @@ gboolean term_construct_title(const char* format, int flags, VteTerminal* termin
     char *dir = NULL, *name = NULL;
     char dirbuffer[256] = "", namebuffer[256] = "";
     char* user = "";
-    int euid;
+    int euid = 0;
 
     // get name
     name = namebuffer;
