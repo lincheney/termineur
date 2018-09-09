@@ -511,8 +511,10 @@ void spawn_subprocess(VteTerminal* terminal, gchar* data_, char* text, char** re
 
     SET_ENVIRON(PATH, app_path);
     FMT_ENVIRON(PID, "%i", get_pid(terminal));
-    FMT_ENVIRON(FGPID, "%i", fgproc->tid);
-    SET_ENVIRON(FGNAME, fgproc->cmd);
+    if (fgproc) {
+        FMT_ENVIRON(FGPID, "%i", fgproc->tid);
+        SET_ENVIRON(FGNAME, fgproc->cmd);
+    }
     FMT_ENVIRON(CURSORX, "%li", cursorx);
     FMT_ENVIRON(CURSORY, "%li", cursory);
     FMT_ENVIRON(CONTROL_FLOW, "%i", get_term_attr(terminal).c_iflag & IXON ? 1 : 0);

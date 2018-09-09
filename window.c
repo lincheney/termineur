@@ -211,7 +211,8 @@ gboolean prevent_tab_close(VteTerminal* terminal) {
 
     char message[1024];
     proc_t* proc = get_foreground_process(terminal);
-    snprintf(message, sizeof(message), "%s is still running.\nAre you sure you want to close it?", proc->cmd);
+    char* name = proc ? proc->cmd : "A process";
+    snprintf(message, sizeof(message), "%s is still running.\nAre you sure you want to close it?", name);
     freeproc(proc);
 
     gint response = run_confirm_close_dialog(gtk_widget_get_toplevel(GTK_WIDGET(terminal)), message);

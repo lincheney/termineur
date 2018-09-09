@@ -231,6 +231,8 @@ struct termios get_term_attr(VteTerminal* terminal) {
 
 int is_running_foreground_process(VteTerminal* terminal) {
     proc_t* proc = get_foreground_process(terminal);
+    if (! proc) return 1;
+
     int fg_pid = proc->tid;
     freeproc(proc);
     return get_pid(terminal) != fg_pid;
