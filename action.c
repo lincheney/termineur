@@ -877,13 +877,9 @@ void free_action(Action* action) {
         action->cleanup(action->data);
 }
 
-void free_action_list(GArray* list) {
-    g_array_free(list, TRUE);
-}
-
 GHashTable* get_actions_table(gboolean create) {
     if (! actions && create) {
-        actions = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, (GDestroyNotify)free_action_list);
+        actions = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, (GDestroyNotify)g_array_unref);
     }
     return actions;
 }
@@ -922,11 +918,13 @@ int trigger_action(VteTerminal* terminal, ActionKey key, ActionMetadata metadata
     int handled = 0;
     GArray* list = get_action_list(key, metadata, FALSE);
     if (list) {
+        g_array_ref(list);
         for (int i = 0; i < list->len; i++) {
             Action* action = &g_array_index(list, Action, i);
             action->func(terminal, action->data, NULL);
             handled = 1;
         }
+        g_array_unref(list);
     }
     return handled;
 }
