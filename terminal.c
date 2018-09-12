@@ -253,11 +253,12 @@ gboolean term_construct_title(const char* format, int flags, VteTerminal* termin
 
     // get name
     if (flags & (TITLE_FORMAT_NAME | TITLE_FORMAT_USER)) {
-        proc = get_foreground_process(terminal);
-        name = proc->cmd;
+        if ((proc = get_foreground_process(terminal))) {
+            name = proc->cmd;
 
-        if (flags & TITLE_FORMAT_USER) {
-            user = pwcache_get_user(proc->euid);
+            if (flags & TITLE_FORMAT_USER) {
+                user = pwcache_get_user(proc->euid);
+            }
         }
     }
 
