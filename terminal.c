@@ -203,7 +203,8 @@ proc_t* get_foreground_process(VteTerminal* terminal) {
     int pty_fd = vte_pty_get_fd(pty);
     int pgid = tcgetpgrp(pty_fd);
 
-    PROCTAB* ptp = openproc(PROC_FILLSTAT | PROC_PID, &pgid);
+    int pid_array[] = {pgid, 0};
+    PROCTAB* ptp = openproc(PROC_FILLSTAT | PROC_PID, pid_array);
     proc_t* proc = readproc(ptp, NULL);
 
     if (! proc) {
