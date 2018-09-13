@@ -12,13 +12,16 @@ debug: $(TARGET)
 
 release: $(TARGET)
 
-$(TARGET): CFLAGS+=-DGIT_REF=\"$(shell git rev-parse --short HEAD)\"
 $(TARGET): $(SOURCES:%.c=%.o)
 	@echo '>>> Compiling $@'
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 	@echo
 
 $(foreach file,$(SOURCES),$(eval $(shell $(CC) -MM $(file) | tr -d '\n\\' )))
+
+.git/HEAD:
+main.o: CFLAGS+=-DGIT_REF=\"$(shell git rev-parse --short HEAD)\"
+main.o: .git/HEAD
 
 %.o:
 	@echo '>>> Compiling $@'
