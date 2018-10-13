@@ -108,6 +108,8 @@ char* make_app_id() {
 
     if (app_id) {
         g_setenv(APP_PREFIX "_ID", app_id, TRUE);
+    } else {
+        g_unsetenv(APP_PREFIX "_ID");
     }
 
     return app_id;
